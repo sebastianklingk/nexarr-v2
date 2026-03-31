@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useMusicStore } from '../stores/music.store.js';
+import { useApi } from '../composables/useApi.js';
 import type { LidarrArtist } from '@nexarr/shared';
 
 const route  = useRoute();
@@ -9,7 +10,26 @@ const router = useRouter();
 const store  = useMusicStore();
 
 const artist    = ref<LidarrArtist | null>(null);
-const isLoading = ref(true);
+const isLoading    = ref(true);
+const isSearching  = ref(false);
+const searchStatus = ref<'idle' | 'ok' | 'error'>('idle');
+
+const { post } = useApi();
+
+async function triggerSearch() {
+  if (!artist.value || isSearching.value) return;
+  isSearching.value = true;
+  searchStatus.value = 'idle';
+  try {
+    await post(`/api/lidarr/artists/${artist.value.id}/search`);
+    searchStatus.value = 'ok';
+  } catch {
+    searchStatus.value = 'error';
+  } finally {
+    isSearching.value = false;
+    setTimeout(() => { searchStatus.value = 'idle'; }, 3000);
+  }
+}
 
 const artistId = computed(() => Number(route.params.id));
 
@@ -64,6 +84,20 @@ onMounted(async () => {
               <h1 class="hero-title">{{ artist.artistName }}</h1>
               <div class="hero-meta">
                 <span v-if="artist.genres?.length" class="meta-item">{{ artist.genres.slice(0,3).join(', ') }}</span>
+              </div>
+              <div class="hero-actions">
+                <button
+                  class="search-btn"
+                  :class="{ 'search-btn--loading': isSearching, 'search-btn--ok': searchStatus === 'ok', 'search-btn--error': searchStatus === 'error' }"
+                  :disabled="isSearching"
+                  @click="triggerSearch"
+                >
+                  <svg v-if="isSearching" class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                  <svg v-else-if="searchStatus === 'ok'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  <svg v-else-if="searchStatus === 'error'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  {{ isSearching ? 'Suche läuft…' : searchStatus === 'ok' ? 'Gestartet!' : searchStatus === 'error' ? 'Fehler' : 'Jetzt suchen' }}
+                </button>
               </div>
               <div class="hero-badges">
                 <span v-if="artist.albumCount" class="status-badge badge-neutral">
@@ -149,6 +183,15 @@ onMounted(async () => {
 .album-title { font-size: var(--text-sm); color: var(--text-secondary); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .album-year  { font-size: var(--text-xs); color: var(--text-muted); margin-top: 2px; }
 .album-tracks { font-size: var(--text-xs); color: var(--text-muted); margin-top: 1px; }
+
+.hero-actions { margin-bottom: var(--space-1); }
+.search-btn { display: inline-flex; align-items: center; gap: var(--space-2); padding: 6px 14px; border-radius: var(--radius-md); background: rgba(34,198,91,.12); border: 1px solid rgba(34,198,91,.3); color: var(--lidarr); font-size: var(--text-sm); font-weight: 500; cursor: pointer; transition: all .15s ease; }
+.search-btn:hover:not(:disabled) { background: rgba(34,198,91,.2); border-color: rgba(34,198,91,.5); }
+.search-btn:disabled { opacity: .6; cursor: not-allowed; }
+.search-btn--ok { background: rgba(34,198,91,.2); border-color: rgba(34,198,91,.5); }
+.search-btn--error { background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.3); color: #ef4444; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin .8s linear infinite; }
 
 .detail-loading { display: flex; flex-direction: column; }
 .skeleton-hero  { height: 380px; width: 100%; border-radius: 0; }

@@ -16,6 +16,11 @@ import calendarRoutes  from './routes/calendar.routes.js';
 import tautulliRoutes  from './routes/tautulli.routes.js';
 import overseerrRoutes from './routes/overseerr.routes.js';
 import prowlarrRoutes  from './routes/prowlarr.routes.js';
+import { gotifyRouter }  from './routes/gotify.routes.js';
+import { bazarrRouter } from './routes/bazarr.routes.js';
+import { tmdbRouter }   from './routes/tmdb.routes.js';
+import { plexRouter }   from './routes/plex.routes.js';
+import { absRouter }    from './routes/abs.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -56,6 +61,11 @@ export function createApp() {
   app.use('/api/tautulli',  tautulliRoutes);
   app.use('/api/overseerr', overseerrRoutes);
   app.use('/api/prowlarr',  prowlarrRoutes);
+  app.use('/api/gotify',    gotifyRouter);
+  app.use('/api/bazarr',    bazarrRouter);
+  app.use('/api/tmdb',      tmdbRouter);
+  app.use('/api/plex',      plexRouter);
+  app.use('/api/abs',       absRouter);
 
   // ── Static (Production) ───────────────────────────────────────────────────
   if (env.NODE_ENV === 'production') {

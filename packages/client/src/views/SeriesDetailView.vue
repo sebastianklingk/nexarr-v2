@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useSeriesStore } from '../stores/series.store.js';
 import { useApi } from '../composables/useApi.js';
-import type { SonarrSeries, SonarrEpisode, SonarrSeason } from '@nexarr/shared';
+import type { SonarrSeries, SonarrEpisode, SonarrSeason, TMDBCredits, TMDBVideo } from '@nexarr/shared';
 
 const route  = useRoute();
 const router = useRouter();
@@ -16,6 +16,37 @@ const activeTab    = ref<'seasons' | 'overview'>('seasons');
 const openSeasons  = ref<Set<number>>(new Set([1]));
 const isSearching  = ref(false);
 const searchStatus = ref<'idle' | 'ok' | 'error'>('idle');
+
+// TMDB
+const tmdbCredits = ref<TMDBCredits | null>(null);
+const tmdbTrailer = ref<TMDBVideo | null>(null);
+const tmdbLoading = ref(false);
+
+// Plex
+const plexUrl = ref<string | null>(null);
+
+function loadPlex() {
+  if (!series.value) return;
+  plexUrl.value = `https://app.plex.tv/desktop#!/search?query=${encodeURIComponent(series.value.title)}`;
+}
+
+async function loadTmdb() {
+  if (!series.value?.tvdbId || tmdbCredits.value !== null) return;
+  tmdbLoading.value = true;
+  try {
+    const res = await fetch(`/api/tmdb/find/tvdb/${series.value.tvdbId}`, { credentials: 'include' });
+    if (!res.ok) return;
+    const data = await res.json();
+    tmdbCredits.value = data.credits ?? null;
+    const vids: TMDBVideo[] = data.videos?.results ?? [];
+    tmdbTrailer.value =
+      vids.find(v => v.type === 'Trailer' && v.official) ??
+      vids.find(v => v.type === 'Trailer') ??
+      vids.find(v => v.type === 'Teaser') ??
+      null;
+  } catch { /* optional */ }
+  finally { tmdbLoading.value = false; }
+}
 
 const { post } = useApi();
 
@@ -83,6 +114,8 @@ onMounted(async () => {
     episodes.value = await store.fetchEpisodes(seriesId.value);
   }
   isLoading.value = false;
+  loadTmdb();
+  loadPlex();
 });
 </script>
 
@@ -131,6 +164,26 @@ onMounted(async () => {
               </div>
               <!-- Actions -->
               <div class="hero-actions">
+                <a
+                  v-if="tmdbTrailer"
+                  :href="`https://www.youtube.com/watch?v=${tmdbTrailer.key}`"
+                  target="_blank"
+                  rel="noopener"
+                  class="action-btn action-trailer"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                  Trailer
+                </a>
+                <a
+                  v-if="plexUrl"
+                  :href="plexUrl"
+                  target="_blank"
+                  rel="noopener"
+                  class="action-btn action-plex"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8l7 4-7 4z"/></svg>
+                  In Plex öffnen
+                </a>
                 <button
                   class="action-btn action-search"
                   :class="{ loading: isSearching, success: searchStatus === 'ok', error: searchStatus === 'error' }"
@@ -164,7 +217,8 @@ onMounted(async () => {
       <!-- Tabs -->
       <div class="tabs-bar">
         <button v-for="tab in (['seasons','overview'] as const)" :key="tab"
-          :class="['tab-btn', { active: activeTab === tab }]" @click="activeTab = tab">
+          :class="['tab-btn', { active: activeTab === tab }]"
+          @click="activeTab = tab; if (tab === 'overview') loadTmdb()">
           {{ tab === 'seasons' ? 'Staffeln' : 'Übersicht' }}
         </button>
       </div>
@@ -236,6 +290,36 @@ onMounted(async () => {
             <a :href="`https://www.imdb.com/title/${series.imdbId}`" target="_blank" rel="noopener" class="detail-link">{{ series.imdbId }}</a>
           </div>
         </div>
+
+        <!-- Crew -->
+        <div v-if="tmdbCredits?.crew.length" class="crew-section">
+          <h3 class="cast-heading">Crew</h3>
+          <div class="crew-list">
+            <div v-for="m in tmdbCredits.crew" :key="m.id + m.job" class="crew-item">
+              <span class="crew-name">{{ m.name }}</span>
+              <span class="crew-job">{{ m.job }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cast -->
+        <div v-if="tmdbCredits?.cast.length" class="cast-section">
+          <h3 class="cast-heading">Besetzung</h3>
+          <div class="cast-grid">
+            <div v-for="actor in tmdbCredits.cast" :key="actor.id" class="cast-card">
+              <div class="cast-photo">
+                <img v-if="actor.profile_path" :src="`https://image.tmdb.org/t/p/w185${actor.profile_path}`" :alt="actor.name" loading="lazy" />
+                <div v-else class="cast-photo-placeholder">{{ actor.name[0] }}</div>
+              </div>
+              <p class="cast-name">{{ actor.name }}</p>
+              <p class="cast-character">{{ actor.character }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="tmdbLoading" class="cast-loading">
+          <div v-for="i in 6" :key="i" class="skeleton cast-skeleton" />
+        </div>
       </div>
 
     </template>
@@ -287,6 +371,30 @@ onMounted(async () => {
 }
 
 .action-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.action-trailer {
+  background: rgba(255, 0, 0, 0.1);
+  border: 1px solid rgba(255, 0, 0, 0.25);
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+.action-trailer:hover {
+  background: rgba(255, 0, 0, 0.2);
+  border-color: rgba(255, 0, 0, 0.45);
+  color: var(--text-primary);
+}
+
+.action-plex {
+  background: rgba(229, 160, 13, 0.1);
+  border: 1px solid rgba(229, 160, 13, 0.25);
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+.action-plex:hover {
+  background: rgba(229, 160, 13, 0.2);
+  border-color: rgba(229, 160, 13, 0.45);
+  color: var(--text-primary);
+}
 
 .action-search {
   background: rgba(53, 197, 244, 0.12);
@@ -375,6 +483,24 @@ onMounted(async () => {
 .ep-missing { color: var(--status-error); }
 
 .ep-loading { padding: var(--space-4); color: var(--text-muted); font-size: var(--text-sm); text-align: center; }
+
+/* Cast & Crew */
+.cast-heading { font-size: var(--text-sm); font-weight: 600; color: var(--text-secondary); border-left: 3px solid var(--tmdb); padding-left: var(--space-3); margin-bottom: var(--space-4); }
+.crew-section { margin-top: var(--space-6); }
+.crew-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.crew-item { display: flex; align-items: baseline; gap: var(--space-3); }
+.crew-name { font-size: var(--text-sm); color: var(--text-secondary); font-weight: 500; min-width: 160px; }
+.crew-job  { font-size: var(--text-xs); color: var(--text-muted); }
+.cast-section { margin-top: var(--space-6); }
+.cast-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: var(--space-3); }
+.cast-card { display: flex; flex-direction: column; gap: var(--space-1); }
+.cast-photo { aspect-ratio: 2/3; border-radius: var(--radius-md); overflow: hidden; background: var(--bg-elevated); border: 1px solid var(--bg-border); margin-bottom: var(--space-1); }
+.cast-photo img { width: 100%; height: 100%; object-fit: cover; }
+.cast-photo-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; color: var(--text-muted); }
+.cast-name { font-size: var(--text-xs); color: var(--text-secondary); font-weight: 600; line-height: 1.3; }
+.cast-character { font-size: var(--text-xs); color: var(--text-muted); line-height: 1.3; }
+.cast-loading { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: var(--space-3); margin-top: var(--space-6); }
+.cast-skeleton { aspect-ratio: 2/3; border-radius: var(--radius-md); }
 
 /* Overview tab */
 .overview-text { color: var(--text-tertiary); line-height: 1.7; font-size: var(--text-base); }

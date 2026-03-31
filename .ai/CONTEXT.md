@@ -1,7 +1,8 @@
 # nexarr v2 – AI Context
 > Dieses Dokument wird am Ende jeder Session aktualisiert.
-> Zuletzt aktualisiert: 31.03.2026
+> Zuletzt aktualisiert: 31.03.2026 – Phase 8 abgeschlossen, TypeCheck ✅, Server läuft
 > Aktualisiert von: Chat-Claude
+> Stand: Phase 7 vollständig abgeschlossen, Phase 8 offen
 
 ---
 
@@ -50,54 +51,32 @@ sleep 3 && echo "OK"
 ### Abgeschlossene Phasen
 - [x] Phase 0 – Fundament (Monorepo, Auth, Socket.io, Docker, Cache, Vue Shell, Login)
 - [x] Phase 1 – Radarr / Movies (MoviesView, MovieDetailView, PosterCard, movies.store)
+- [x] Phase 2 – Sonarr + Lidarr (SeriesView, SeriesDetailView mit Staffel-Accordion, MusicView, ArtistDetailView)
+- [x] Phase 3 – Dashboard + Real-time (Downloads Queue, Socket.io live)
+- [x] Phase 4 – Sidebar Download-Badge, CalendarView, SearchView
+- [x] Phase 5 – SettingsView, PM2
+- [x] Phase 6 – Tautulli, Overseerr, Prowlarr, Radarr/Sonarr Lookup+Add
+- [x] Phase 7 – MovieDetailView/SeriesDetailView "Jetzt suchen", TautulliView, OverseerrView
 
 ### Aktive Phase
-- **Phase 3** – Dashboard + Real-time (Downloads Queue, Socket.io live)
+- **Phase 8** – Erweiterungen
 
-### Abgeschlossene Phasen
-- [x] Phase 0 – Fundament
-- [x] Phase 1 – Radarr / Movies
-- [x] Phase 2 – Sonarr + Lidarr (SeriesView, SeriesDetailView mit Staffel-Accordion, MusicView, ArtistDetailView)
+### Phase 8 – Status
+- [x] 8.1 – Lidarr: "Jetzt suchen" in ArtistDetailView
+- [x] 8.2 – Gotify: Service, Routes, gotify.store.ts, ToastContainer.vue, GotifyView.vue, Sidebar-Eintrag + Badge
+- [x] 8.3 – Bazarr: Service, Routes, BazarrSubtitle Type, MovieDetailView Untertitel-Tab (vorhanden/fehlend, suchen, löschen)
+- [x] 8.4 – TMDB: Service, Routes, TMDBCredits/Video Types, Trailer-Button + Cast-Grid in Movie+SeriesDetailView, tvdbId-Lookup für Sonarr
+- [x] 8.5 – Plex: Service, Routes, env.ts (PLEX_URL/TOKEN), „In Plex öffnen“-Button in Movie+SeriesDetailView
+- [x] 8.6 – ABS: Service, Routes, ABSLibrary/Item/Progress Types, abs.store.ts, AbsView.vue (Grid, Library-Switcher, Suche, Pagination), Sidebar-Eintrag
 
-### Offene TODOs (Phase 3)
-- [x] DownloadsView.vue – SABnzbd Queue + Radarr/Sonarr/Lidarr Queue
-- [x] queue.store.ts (Pinia, befüllt via Socket.io)
-- [x] Socket.io Queue-Push vom Server (Polling alle 3s, lazy start/stop)
-- [x] DashboardView.vue – Stats-Widgets (Counts, aktive Downloads)
+### Phase 8 – VOLLSTÄNDIG ABGESCHLOSSEN ✅
 
-### Phase 4 – Abgeschlossen
-- [x] Sidebar Download-Badge (live, animiert, SABnzbd-Farbe)
-- [x] CalendarView.vue – Radarr+Sonarr+Lidarr aggregiert, 30-Tage-Fenster
-- [x] SearchView.vue – Lokale Bibliothekssuche mit Highlight
-- [x] /api/calendar Backend-Route (aggregiert alle drei Arr)
-
-### Phase 5 – Abgeschlossen
-- [x] SettingsView.vue – Integration-Grid (8 Services), System-Stats, Cache-Control, About
-- [x] /api/system/integrations – Live Status Check mit Version-Abfrage
-- [x] PM2 als Process Manager – SIGHUP-resistent, session-unabhängig
-
-### Phase 6 – Abgeschlossen
-- [x] Tautulli Service + Routes (/api/tautulli/activity, stats, history)
-- [x] Overseerr Service + Routes (/api/overseerr/requests, approve, decline, delete)
-- [x] Prowlarr Service + Routes (/api/prowlarr/search, grab, indexers)
-- [x] Radarr/Sonarr Lookup + Add + triggerSearch Endpoints
-- [x] SearchView: Prowlarr-Tab mit Grab-Button + Bibliotheks-Tab
-- [x] DashboardView: Tautulli-Streams-Widget + Overseerr Pending-Requests-Widget
-- [x] Shared Types: TautulliStream, TautulliActivity, OverseerrRequest, ProwlarrResult
-
-### Phase 7 – Abgeschlossen
-- [x] MovieDetailView: "Jetzt suchen" Button (Radarr Command) – useApi.post, Spin-Anim, 3s Feedback
-- [x] SeriesDetailView: "Jetzt suchen" Button (Sonarr Command) – identisches Pattern, Sonarr-Farben
-- [x] TautulliView.vue – CSS-Balkendiagramme Top-Filme/Serien/User/Plattformen + Verlaufs-Liste, Sidebar-Eintrag
-- [x] OverseerrView.vue – Requests mit Filter-Tabs, Approve/Decline/Delete, Poster via TMDB, Sidebar-Eintrag
-
-### Nächste Schritte (Phase 8 – Ideen)
-- [ ] Bazarr Integration (Untertitel-Status pro Film/Serie)
-- [ ] Gotify Push-Notifications (Toast wenn neue Nachricht)
-- [ ] Plex Integration (direkt abspielen / Deep-Link)
-- [ ] ABS Audiobookshelf Integration
-- [ ] TMDB API – Trailer-Links, Cast/Crew in DetailViews
-- [ ] Lidarr: "Jetzt suchen" Button in ArtistDetailView
+### Offene Ideen (Phase 9)
+- [ ] ABS: Detail-Ansicht pro Buch/Podcast (Fortschrittsbalken, Episodenliste)
+- [ ] Dashboard-Widget: ABS „Zuletzt gehört“
+- [ ] Plex: Live-Sessions-Widget im Dashboard (via plex.service.getSessions)
+- [ ] Bazarr: Untertitel-Tab auch in SeriesDetailView
+- [ ] Settings: Gotify + ABS + Plex Status-Check ergänzen
 
 ---
 

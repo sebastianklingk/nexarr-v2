@@ -43,6 +43,10 @@ export async function getQueue(): Promise<unknown> {
   }, TTL.QUEUE);
 }
 
+export async function triggerSearch(artistId: number): Promise<void> {
+  await client().post('/command', { name: 'ArtistSearch', artistId });
+}
+
 export async function getCalendar(start: string, end: string): Promise<unknown[]> {
   const key = `lidarr_calendar_${start}_${end}`;
   return C.fetch(key, async () => {

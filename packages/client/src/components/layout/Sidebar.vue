@@ -3,10 +3,12 @@ import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '../../stores/auth.store.js';
 import { useQueueStore } from '../../stores/queue.store.js';
+import { useGotifyStore } from '../../stores/gotify.store.js';
 
 const route      = useRoute();
 const auth       = useAuthStore();
-const queueStore = useQueueStore();
+const queueStore  = useQueueStore();
+const gotifyStore = useGotifyStore();
 
 const collapsed = ref(localStorage.getItem('sidebar-collapsed') === 'true');
 
@@ -26,8 +28,10 @@ const navItems = [
   { name: 'Kalender',      path: '/calendar',    icon: 'calendar', color: 'var(--text-tertiary)' },
   { name: 'Suche',         path: '/search',      icon: 'search',   color: 'var(--text-tertiary)' },
   { name: 'Statistiken',   path: '/tautulli',    icon: 'chart',    color: 'var(--tautulli)' },
-  { name: 'Anfragen',      path: '/overseerr',   icon: 'inbox',    color: 'var(--overseerr)' },
-  { name: 'Einstellungen', path: '/settings',    icon: 'settings', color: 'var(--text-tertiary)' },
+  { name: 'Anfragen',           path: '/overseerr',       icon: 'inbox',  color: 'var(--overseerr)' },
+  { name: 'Audiobookshelf',     path: '/audiobookshelf',  icon: 'book',   color: 'var(--abs, #F0A500)' },
+  { name: 'Benachrichtigungen', path: '/gotify',           icon: 'bell',   color: 'var(--gotify)' },
+  { name: 'Einstellungen',      path: '/settings',    icon: 'settings', color: 'var(--text-tertiary)' },
 ];
 
 function isActive(path: string) {
@@ -35,11 +39,15 @@ function isActive(path: string) {
 }
 
 function showBadge(path: string): boolean {
-  return path === '/downloads' && queueStore.totalCount > 0 && !isActive('/downloads');
+  if (path === '/downloads') return queueStore.totalCount > 0 && !isActive('/downloads');
+  if (path === '/gotify')    return gotifyStore.unreadCount > 0 && gotifyStore.configured && !isActive('/gotify');
+  return false;
 }
 
-function badgeLabel(): string {
-  return queueStore.totalCount > 99 ? '99+' : String(queueStore.totalCount);
+function badgeLabel(path: string): string {
+  if (path === '/downloads') return queueStore.totalCount > 99 ? '99+' : String(queueStore.totalCount);
+  if (path === '/gotify')    return gotifyStore.unreadCount > 99 ? '99+' : String(gotifyStore.unreadCount);
+  return '';
 }
 </script>
 
@@ -66,7 +74,7 @@ function badgeLabel(): string {
       >
         <span class="nav-icon-wrap">
           <span class="nav-icon" v-html="getIcon(item.icon)" />
-          <span v-if="showBadge(item.path)" class="nav-badge">{{ badgeLabel() }}</span>
+          <span v-if="showBadge(item.path)" class="nav-badge">{{ badgeLabel(item.path) }}</span>
         </span>
         <Transition name="label">
           <span v-if="!collapsed" class="nav-label">{{ item.name }}</span>
@@ -106,6 +114,8 @@ function getIcon(name: string): string {
     settings: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
     chart:    `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>`,
     inbox:    `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>`,
+    bell:     `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>`,
+    book:     `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`,
     logout:   `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
   };
   return icons[name] ?? '';

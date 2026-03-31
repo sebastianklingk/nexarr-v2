@@ -1,11 +1,20 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router';
 import { useAuthStore } from './stores/auth.store.js';
-import { computed } from 'vue';
+import { useGotifyStore } from './stores/gotify.store.js';
+import { computed, watch } from 'vue';
 import Sidebar from './components/layout/Sidebar.vue';
+import ToastContainer from './components/layout/ToastContainer.vue';
 
-const auth = useAuthStore();
+const auth   = useAuthStore();
+const gotify = useGotifyStore();
 const isLoggedIn = computed(() => auth.isLoggedIn);
+
+// Gotify-Polling starten sobald eingeloggt
+watch(isLoggedIn, (loggedIn) => {
+  if (loggedIn) gotify.startPolling();
+  else          gotify.stopPolling();
+}, { immediate: true });
 </script>
 
 <template>
@@ -19,6 +28,7 @@ const isLoggedIn = computed(() => auth.isLoggedIn);
           </Transition>
         </RouterView>
       </main>
+      <ToastContainer />
     </template>
     <template v-else>
       <RouterView />

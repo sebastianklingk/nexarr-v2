@@ -20,4 +20,11 @@ router.get('/queue', requireAuth, async (_req, res, next) => {
   try { res.json(await lidarrService.getQueue()); } catch (e) { next(e); }
 });
 
+router.post('/artists/:id/search', requireAuth, async (req, res, next) => {
+  try {
+    await lidarrService.triggerSearch(Number(req.params.id));
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
 export default router;

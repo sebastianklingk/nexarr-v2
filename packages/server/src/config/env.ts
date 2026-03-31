@@ -45,6 +45,9 @@ const envSchema = z.object({
 
   ABS_URL:           optUrl,
   ABS_TOKEN:         optStr,
+
+  PLEX_URL:          optUrl,
+  PLEX_TOKEN:        optStr,
 });
 
 const result = envSchema.safeParse(process.env);

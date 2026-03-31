@@ -75,6 +75,16 @@ export const router = createRouter({
       component: () => import('../views/OverseerrView.vue'),
     },
     {
+      path: '/audiobookshelf',
+      name: 'audiobookshelf',
+      component: () => import('../views/AbsView.vue'),
+    },
+    {
+      path: '/gotify',
+      name: 'gotify',
+      component: () => import('../views/GotifyView.vue'),
+    },
+    {
       path: '/settings',
       name: 'settings',
       component: () => import('../views/SettingsView.vue'),
