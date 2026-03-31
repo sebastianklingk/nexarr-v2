@@ -1,8 +1,15 @@
 import { Request, Response, NextFunction, Router } from 'express';
 import bcrypt from 'bcryptjs';
-import { getDb } from '../db/index.js';
+import { dbGet } from '../db/index.js';
 
 const router = Router();
+
+interface UserRow {
+  id: number;
+  username: string;
+  password: string;
+  role: string;
+}
 
 // POST /api/auth/login
 router.post('/login', async (req: Request, res: Response, next: NextFunction) => {
@@ -14,17 +21,14 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
       return;
     }
 
-    const db = getDb();
-    const user = db
-      .prepare('SELECT * FROM users WHERE username = ?')
-      .get(username) as { id: number; username: string; password: string; role: string } | undefined;
+    const user = dbGet<UserRow>('SELECT * FROM users WHERE username = ?', username);
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
       res.status(401).json({ error: 'Ungültige Anmeldedaten' });
       return;
     }
 
-    req.session.userId = user.id;
+    req.session.userId   = user.id;
     req.session.username = user.username;
     req.session.userRole = user.role as 'admin' | 'viewer' | 'requester';
 
@@ -49,9 +53,9 @@ router.get('/me', (req: Request, res: Response) => {
     return;
   }
   res.json({
-    id: req.session.userId,
+    id:       req.session.userId,
     username: req.session.username,
-    role: req.session.userRole,
+    role:     req.session.userRole,
   });
 });
 

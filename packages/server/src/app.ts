@@ -23,28 +23,29 @@ export function createApp() {
 
   app.use(cors({
     origin: env.NODE_ENV === 'development'
-      ? ['http://localhost:5173', `http://192.168.188.42:5173`]
+      ? ['http://localhost:5173', 'http://192.168.188.42:5173']
       : false,
     credentials: true,
   }));
 
+  // Memory-Store für Dev (reicht, Daten gehen beim Neustart verloren – kein Problem)
   app.use(session({
-    secret: env.SESSION_SECRET,
-    resave: false,
+    secret:            env.SESSION_SECRET,
+    resave:            false,
     saveUninitialized: false,
     cookie: {
-      secure: env.NODE_ENV === 'production',
+      secure:   env.NODE_ENV === 'production',
       httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 Tage
+      maxAge:   7 * 24 * 60 * 60 * 1000, // 7 Tage
     },
   }));
 
   // ── API Routes ────────────────────────────────────────────────────────────
-  app.use('/api/auth',    authRoutes);
-  app.use('/api/system',  systemRoutes);
-  app.use('/api/radarr',  radarrRoutes);
-  app.use('/api/sonarr',  sonarrRoutes);
-  app.use('/api/lidarr',  lidarrRoutes);
+  app.use('/api/auth',   authRoutes);
+  app.use('/api/system', systemRoutes);
+  app.use('/api/radarr', radarrRoutes);
+  app.use('/api/sonarr', sonarrRoutes);
+  app.use('/api/lidarr', lidarrRoutes);
 
   // ── Static (Production) ───────────────────────────────────────────────────
   if (env.NODE_ENV === 'production') {
@@ -54,6 +55,11 @@ export function createApp() {
       res.sendFile(path.join(clientDist, 'index.html'));
     });
   }
+
+  // ── 404 Handler ──────────────────────────────────────────────────────────
+  app.use((req: express.Request, res: express.Response) => {
+    res.status(404).json({ error: `Endpoint nicht gefunden: ${req.path}` });
+  });
 
   // ── Error Handler (muss zuletzt sein) ────────────────────────────────────
   app.use(errorHandler);

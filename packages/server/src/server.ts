@@ -2,7 +2,7 @@ import 'dotenv/config';
 import http from 'node:http';
 import bcrypt from 'bcryptjs';
 import { env } from './config/env.js';
-import { initDb, getDb } from './db/index.js';
+import { initDb, dbGet, dbRun } from './db/index.js';
 import { createApp } from './app.js';
 import { initSocket } from './socket/index.js';
 
@@ -11,12 +11,10 @@ async function bootstrap() {
   initDb();
 
   // Ersten Admin-User anlegen falls noch keiner existiert
-  const db = getDb();
-  const userCount = (db.prepare('SELECT COUNT(*) as c FROM users').get() as { c: number }).c;
-  if (userCount === 0) {
-    const defaultPassword = 'nexarr';
-    const hash = await bcrypt.hash(defaultPassword, 12);
-    db.prepare('INSERT INTO users (username, password, role) VALUES (?, ?, ?)').run('admin', hash, 'admin');
+  const existing = dbGet<{ c: number }>('SELECT COUNT(*) as c FROM users');
+  if (!existing || existing.c === 0) {
+    const hash = await bcrypt.hash('nexarr', 12);
+    dbRun('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', 'admin', hash, 'admin');
     console.log('👤 Standard-Admin angelegt: admin / nexarr  ← Bitte Passwort ändern!');
   }
 

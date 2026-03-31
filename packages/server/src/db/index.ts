@@ -1,11 +1,11 @@
-import Database from 'better-sqlite3';
+import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
 import { env } from '../config/env.js';
 
-let db: Database.Database;
+let db: DatabaseSync;
 
-export function getDb(): Database.Database {
+export function getDb(): DatabaseSync {
   if (!db) throw new Error('DB nicht initialisiert. initDb() zuerst aufrufen.');
   return db;
 }
@@ -18,24 +18,29 @@ export function initDb(): void {
     fs.mkdirSync(dbDir, { recursive: true });
   }
 
-  db = new Database(dbPath);
-  db.pragma('journal_mode = WAL');
-  db.pragma('foreign_keys = ON');
+  db = new DatabaseSync(dbPath);
 
-  runMigrations(db);
+  // WAL-Modus für bessere Concurrency
+  db.exec('PRAGMA journal_mode = WAL');
+  db.exec('PRAGMA foreign_keys = ON');
+
+  runMigrations();
   console.log(`✅ SQLite: ${dbPath}`);
 }
 
-function runMigrations(db: Database.Database): void {
+function runMigrations(): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS migrations (
-      id        INTEGER PRIMARY KEY,
-      name      TEXT NOT NULL UNIQUE,
-      run_at    INTEGER DEFAULT (unixepoch())
+      id     INTEGER PRIMARY KEY,
+      name   TEXT NOT NULL UNIQUE,
+      run_at INTEGER DEFAULT (unixepoch())
     )
   `);
 
-  const migrationsDir = new URL('./migrations', import.meta.url).pathname;
+  const migrationsDir = path.join(
+    path.dirname(new URL(import.meta.url).pathname),
+    'migrations'
+  );
 
   if (!fs.existsSync(migrationsDir)) return;
 
@@ -52,4 +57,17 @@ function runMigrations(db: Database.Database): void {
     db.prepare('INSERT INTO migrations (name) VALUES (?)').run(file);
     console.log(`  ↳ Migration: ${file}`);
   }
+}
+
+// Typed helpers – node:sqlite gibt unknown zurück
+export function dbGet<T>(sql: string, ...params: unknown[]): T | undefined {
+  return db.prepare(sql).get(...params) as T | undefined;
+}
+
+export function dbAll<T>(sql: string, ...params: unknown[]): T[] {
+  return db.prepare(sql).all(...params) as T[];
+}
+
+export function dbRun(sql: string, ...params: unknown[]): { changes: number; lastInsertRowid: number | bigint } {
+  return db.prepare(sql).run(...params) as { changes: number; lastInsertRowid: number | bigint };
 }

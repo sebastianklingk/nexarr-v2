@@ -48,16 +48,21 @@ sleep 3 && echo "OK"
 ## Aktueller Implementierungs-Stand
 
 ### Abgeschlossene Phasen
-- [ ] Phase 0 – Fundament (Monorepo, Auth, Socket.io, Docker, Cache)
+- [x] Phase 0 – Fundament (Monorepo, Auth, Socket.io, Docker, Cache, Vue Shell, Login)
+- [x] Phase 1 – Radarr / Movies (MoviesView, MovieDetailView, PosterCard, movies.store)
 
 ### Aktive Phase
-- **Keine** – Projekt noch nicht gestartet. Beginne mit Phase 0.
+- **Phase 2** – Sonarr + Lidarr (Series, Music Views)
 
 ### Nächste Phase
-- Phase 0 – Fundament
+- Phase 3 – Dashboard + Real-time Queue
 
-### Offene TODOs (aktuelle Phase)
-- Alles in Phase 0 ist noch offen
+### Offene TODOs (Phase 2)
+- [ ] SeriesView.vue – vollständig ausbauen
+- [ ] SeriesDetailView.vue mit Staffel-Accordion
+- [ ] series.store.ts
+- [ ] MusicView.vue + ArtistDetailView.vue
+- [ ] music.store.ts (Lidarr)
 
 ---
 
