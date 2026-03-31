@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/info/.ssh/**)",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=5 root@192.168.188.42 'echo ok')",
+      "Bash(ssh -i ~/.ssh/claude_nexarr -o BatchMode=yes -o ConnectTimeout=5 root@192.168.188.42 \"echo ok\")",
+      "Bash(ssh -i ~/.ssh/claude_nexarr -o BatchMode=yes -o ConnectTimeout=5 -p 2222 root@192.168.188.42 \"echo ok\")",
+      "Bash(ssh -i ~/.ssh/claude_nexarr -o BatchMode=yes -o ConnectTimeout=5 sebastian@192.168.188.42 \"echo ok\")",
+      "Bash(sshpass -p 'claude' ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=5 claude@192.168.188.42 \"echo ok\")",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=5 claude@192.168.188.42 \"echo ok\")",
+      "Bash(/c/Users/info/AppData/Local/Programs/Python/Python312/python.exe -m pip install paramiko -q)",
+      "Bash(/c/Users/info/AppData/Local/Programs/Python/Python312/python.exe -c \":*)",
+      "Bash(PYTHON=\"/c/Users/info/AppData/Local/Programs/Python/Python312/python.exe\")",
+      "Bash($PYTHON:*)",
+      "Bash(/c/Users/info/AppData/Local/Programs/Python/Python312/python.exe \"C:\\\\Users\\\\info\\\\AppData\\\\Local\\\\Temp\\\\nexarr_start.py\")",
+      "Bash(PY=\"/c/Users/info/AppData/Local/Programs/Python/Python312/python.exe\")",
+      "Bash(CMD=\"C:/Users/info/AppData/Local/Temp/nexarr_cmd.py\")",
+      "Bash($PY \"$CMD\" \"cd /mnt/user/appdata/openclaw/config/workspace/nexarr-v2 && > /tmp/nexarr-v2.log && nohup npm run dev > /tmp/nexarr-v2.log 2>&1 & echo STARTED_PID=$!\")",
+      "Bash($PY \"$CMD\" \"cd /mnt/user/appdata/openclaw/config/workspace/nexarr-v2 && > /tmp/nexarr-v2.log && nohup npm run dev > /tmp/nexarr-v2.log 2>&1 & echo STARTED\")",
+      "Bash(/c/Users/info/AppData/Local/Programs/Python/Python312/python.exe \"C:/Users/info/AppData/Local/Temp/nexarr_check.py\")",
+      "Bash(/c/Users/info/AppData/Local/Programs/Python/Python312/python.exe \"C:/Users/info/AppData/Local/Temp/nexarr_start2.py\")",
+      "Bash(/c/Users/info/AppData/Local/Programs/Python/Python312/python.exe:*)"
+    ]
+  }
+}

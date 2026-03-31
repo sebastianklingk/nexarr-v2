@@ -33,7 +33,7 @@ export function createApp() {
 
   app.use(cors({
     origin: env.NODE_ENV === 'development'
-      ? ['http://localhost:5173', 'http://192.168.188.42:5173']
+      ? (origin, cb) => cb(null, true)   // Dev: alle lokalen Origins erlauben
       : false,
     credentials: true,
   }));
