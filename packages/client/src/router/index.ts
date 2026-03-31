@@ -45,6 +45,11 @@ export const router = createRouter({
       component: () => import('../views/MusicView.vue'),
     },
     {
+      path: '/music/:id',
+      name: 'artist-detail',
+      component: () => import('../views/ArtistDetailView.vue'),
+    },
+    {
       path: '/downloads',
       name: 'downloads',
       component: () => import('../views/DownloadsView.vue'),

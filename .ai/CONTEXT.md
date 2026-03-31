@@ -52,17 +52,18 @@ sleep 3 && echo "OK"
 - [x] Phase 1 – Radarr / Movies (MoviesView, MovieDetailView, PosterCard, movies.store)
 
 ### Aktive Phase
-- **Phase 2** – Sonarr + Lidarr (Series, Music Views)
+- **Phase 3** – Dashboard + Real-time (Downloads Queue, Socket.io live)
 
-### Nächste Phase
-- Phase 3 – Dashboard + Real-time Queue
+### Abgeschlossene Phasen
+- [x] Phase 0 – Fundament
+- [x] Phase 1 – Radarr / Movies
+- [x] Phase 2 – Sonarr + Lidarr (SeriesView, SeriesDetailView mit Staffel-Accordion, MusicView, ArtistDetailView)
 
-### Offene TODOs (Phase 2)
-- [ ] SeriesView.vue – vollständig ausbauen
-- [ ] SeriesDetailView.vue mit Staffel-Accordion
-- [ ] series.store.ts
-- [ ] MusicView.vue + ArtistDetailView.vue
-- [ ] music.store.ts (Lidarr)
+### Offene TODOs (Phase 3)
+- [ ] DownloadsView.vue – SABnzbd Queue + Radarr/Sonarr/Lidarr Queue
+- [ ] queue.store.ts (Pinia, befüllt via Socket.io)
+- [ ] Socket.io Queue-Push vom Server (Polling + Push)
+- [ ] DashboardView.vue – Stats-Widgets (Counts, aktuell laufende Downloads)
 
 ---
 
