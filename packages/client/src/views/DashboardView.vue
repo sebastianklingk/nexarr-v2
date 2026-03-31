@@ -1,22 +1,40 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, computed } from 'vue';
+import { onMounted, onUnmounted, computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useMoviesStore } from '../stores/movies.store.js';
 import { useSeriesStore } from '../stores/series.store.js';
 import { useMusicStore } from '../stores/music.store.js';
 import { useQueueStore } from '../stores/queue.store.js';
+import { useApi } from '../composables/useApi.js';
+import type { TautulliStream, OverseerrRequest } from '@nexarr/shared';
 
 const router = useRouter();
 const movies = useMoviesStore();
 const series = useSeriesStore();
 const music  = useMusicStore();
 const queue  = useQueueStore();
+const { get } = useApi();
+
+// Tautulli
+interface TautulliMini { stream_count: number; total_bandwidth: number; sessions: TautulliStream[]; }
+const tautulli = ref<TautulliMini | null>(null);
+async function loadTautulli() {
+  try { tautulli.value = await get<TautulliMini>('/api/tautulli/activity'); } catch { /* nicht konfiguriert */ }
+}
+
+// Overseerr
+const pendingRequests = ref<OverseerrRequest[]>([]);
+async function loadOverseerr() {
+  try { pendingRequests.value = await get<OverseerrRequest[]>('/api/overseerr/requests?filter=pending'); } catch { /* nicht konfiguriert */ }
+}
 
 onMounted(async () => {
   await Promise.allSettled([
     movies.fetchMovies(),
     series.fetchSeries(),
     music.fetchArtists(),
+    loadTautulli(),
+    loadOverseerr(),
   ]);
   queue.subscribe();
 });
@@ -200,6 +218,50 @@ function navigate(route: string) {
         </div>
       </div>
 
+    </section>
+
+    <!-- Tautulli Streams -->
+    <section v-if="tautulli" class="section">
+      <div class="section-header-row">
+        <h2 class="section-label">Aktive Streams</h2>
+        <span class="section-badge" style="color: var(--tautulli)">{{ tautulli.stream_count }}</span>
+      </div>
+      <div v-if="tautulli.sessions.length === 0" class="dl-placeholder">
+        <span class="placeholder-text">Keine aktiven Streams</span>
+      </div>
+      <div v-else class="stream-list">
+        <div v-for="s in tautulli.sessions" :key="s.session_id" class="stream-card">
+          <div class="stream-meta">
+            <span class="stream-user">{{ s.friendly_name }}</span>
+            <span class="stream-sep">·</span>
+            <span class="stream-title">{{ s.grandparent_title ? `${s.grandparent_title} – ` : '' }}{{ s.title }}</span>
+          </div>
+          <div class="stream-sub">
+            <span :class="['stream-state', s.state === 'playing' ? 'state-play' : 'state-pause']">{{ s.state === 'playing' ? '▶' : '⏸' }}</span>
+            <span class="stream-progress">{{ s.progress_percent }}%</span>
+            <span class="stream-decision">{{ s.transcode_decision ?? 'direct play' }}</span>
+            <span class="stream-platform">{{ s.player ?? s.platform }}</span>
+          </div>
+          <div class="stream-bar-wrap">
+            <div class="stream-bar" :style="{ width: `${s.progress_percent}%` }" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Overseerr Requests -->
+    <section v-if="pendingRequests.length > 0" class="section">
+      <div class="section-header-row">
+        <h2 class="section-label">Pending Requests</h2>
+        <button class="link-btn" @click="navigate('/settings')">Overseerr ›</button>
+      </div>
+      <div class="request-list">
+        <div v-for="r in pendingRequests.slice(0, 5)" :key="r.id" class="request-card">
+          <span :class="['request-type', r.type === 'movie' ? 'type-movie' : 'type-tv']">{{ r.type === 'movie' ? 'Film' : 'Serie' }}</span>
+          <span class="request-title">{{ r.media?.title ?? `TMDB #${r.media?.tmdbId}` }}</span>
+          <span class="request-by">von {{ r.requestedBy?.displayName }}</span>
+        </div>
+      </div>
     </section>
 
     <!-- Quick Nav -->
@@ -547,4 +609,130 @@ function navigate(route: string) {
 }
 
 .quick-icon { font-size: 16px; line-height: 1; }
+
+/* ── Section Badge ── */
+.section-badge {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Tautulli Streams ── */
+.stream-list { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.stream-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--bg-border);
+  border-left: 3px solid var(--tautulli);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.stream-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.stream-user {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--tautulli);
+}
+
+.stream-sep { color: var(--text-muted); }
+
+.stream-title {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.stream-sub {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.stream-sub > * { font-size: var(--text-xs); color: var(--text-muted); }
+
+.stream-state { font-size: var(--text-xs); }
+.state-play { color: var(--status-success); }
+.state-pause { color: var(--text-muted); }
+
+.stream-bar-wrap {
+  height: 2px;
+  background: var(--bg-elevated);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-top: var(--space-1);
+}
+
+.stream-bar {
+  height: 100%;
+  background: var(--tautulli);
+  border-radius: 99px;
+  opacity: 0.7;
+  transition: width 1s ease;
+}
+
+/* ── Overseerr Requests ── */
+.request-list { display: flex; flex-direction: column; gap: 2px; }
+
+.request-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-surface);
+  border: 1px solid var(--bg-border);
+  border-radius: var(--radius-md);
+}
+
+.request-type {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.type-movie {
+  background: rgba(244,165,74,0.12);
+  color: var(--radarr);
+  border: 1px solid rgba(244,165,74,0.25);
+}
+
+.type-tv {
+  background: rgba(53,197,244,0.12);
+  color: var(--sonarr);
+  border: 1px solid rgba(53,197,244,0.25);
+}
+
+.request-title {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.request-by {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
 </style>

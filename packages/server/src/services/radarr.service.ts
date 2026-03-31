@@ -44,6 +44,21 @@ export async function getCalendar(start: string, end: string): Promise<unknown[]
   }, TTL.CALENDAR);
 }
 
+export async function lookup(term: string): Promise<unknown[]> {
+  const { data } = await client().get('/movie/lookup', { params: { term } });
+  return data as unknown[];
+}
+
+export async function addMovie(body: Record<string, unknown>): Promise<unknown> {
+  const { data } = await client().post('/movie', body);
+  C.invalidate('radarr_movies');
+  return data;
+}
+
+export async function triggerSearch(movieIds: number[]): Promise<void> {
+  await client().post('/command', { name: 'MoviesSearch', movieIds });
+}
+
 export async function getStatus(): Promise<unknown> {
   return C.fetch('radarr_status', async () => {
     const { data } = await client().get('/system/status');

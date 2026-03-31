@@ -130,6 +130,82 @@ export interface LidarrAlbum {
   foreignAlbumId: string;
 }
 
+// ─── Tautulli ────────────────────────────────────────────────────────────────
+
+export interface TautulliStream {
+  session_id: string;
+  user: string;
+  friendly_name: string;
+  title: string;
+  grandparent_title?: string;   // Serie
+  parent_media_index?: string;  // Staffel
+  media_index?: string;         // Episode
+  year?: string;
+  media_type: 'movie' | 'episode' | 'track';
+  state: 'playing' | 'paused' | 'buffering';
+  progress_percent: string;
+  view_offset: number;
+  duration: number;
+  stream_video_resolution?: string;
+  stream_video_codec?: string;
+  stream_audio_codec?: string;
+  stream_container?: string;
+  transcode_decision?: 'direct play' | 'copy' | 'transcode';
+  ip_address?: string;
+  platform?: string;
+  player?: string;
+  thumb?: string;
+  grandparent_thumb?: string;
+  rating_key: string;
+}
+
+export interface TautulliActivity {
+  stream_count: number;
+  sessions: TautulliStream[];
+  stream_count_direct_play: number;
+  stream_count_direct_stream: number;
+  stream_count_transcode: number;
+  total_bandwidth: number;
+  lan_bandwidth: number;
+  wan_bandwidth: number;
+}
+
+// ─── Overseerr ────────────────────────────────────────────────────────────────
+
+export interface OverseerrRequest {
+  id: number;
+  status: number;       // 1=pending, 2=approved, 3=declined, 4=available
+  type: 'movie' | 'tv';
+  requestedBy: { id: number; displayName: string; avatar?: string };
+  createdAt: string;
+  updatedAt: string;
+  media: {
+    id: number;
+    tmdbId: number;
+    tvdbId?: number;
+    status: number;
+    title?: string;
+    posterPath?: string;
+  };
+}
+
+// ─── Prowlarr ─────────────────────────────────────────────────────────────────
+
+export interface ProwlarrResult {
+  guid: string;
+  indexerId: number;
+  indexer: string;
+  title: string;
+  size: number;
+  seeders?: number;
+  leechers?: number;
+  protocol: 'usenet' | 'torrent';
+  categories: Array<{ id: number; name: string }>;
+  publishDate?: string;
+  downloadUrl?: string;
+  infoUrl?: string;
+}
+
 // ─── SABnzbd ──────────────────────────────────────────────────────────────────
 
 export interface SabnzbdQueueItem {

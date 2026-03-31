@@ -45,6 +45,21 @@ export async function getQueue(): Promise<unknown> {
   }, TTL.QUEUE);
 }
 
+export async function lookup(term: string): Promise<unknown[]> {
+  const { data } = await client().get('/series/lookup', { params: { term } });
+  return data as unknown[];
+}
+
+export async function addSeries(body: Record<string, unknown>): Promise<unknown> {
+  const { data } = await client().post('/series', body);
+  C.invalidate('sonarr_series');
+  return data;
+}
+
+export async function triggerSearch(seriesId: number): Promise<void> {
+  await client().post('/command', { name: 'SeriesSearch', seriesId });
+}
+
 export async function getCalendar(start: string, end: string): Promise<unknown[]> {
   const key = `sonarr_calendar_${start}_${end}`;
   return C.fetch(key, async () => {

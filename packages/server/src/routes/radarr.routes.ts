@@ -31,6 +31,27 @@ router.get('/queue', requireAuth, async (_req: Request, res: Response, next: Nex
   }
 });
 
+router.get('/lookup', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const term = (req.query.term as string)?.trim();
+    if (!term) { res.json([]); return; }
+    res.json(await radarrService.lookup(term));
+  } catch (err) { next(err); }
+});
+
+router.post('/movies', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    res.json(await radarrService.addMovie(req.body as Record<string, unknown>));
+  } catch (err) { next(err); }
+});
+
+router.post('/movies/:id/search', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await radarrService.triggerSearch([Number(req.params.id)]);
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
 router.get('/status', requireAuth, async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const status = await radarrService.getStatus();

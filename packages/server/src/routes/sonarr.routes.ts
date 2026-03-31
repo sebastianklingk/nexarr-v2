@@ -28,4 +28,25 @@ router.get('/queue', requireAuth, async (_req: Request, res: Response, next: Nex
   } catch (err) { next(err); }
 });
 
+router.get('/lookup', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const term = (req.query.term as string)?.trim();
+    if (!term) { res.json([]); return; }
+    res.json(await sonarrService.lookup(term));
+  } catch (err) { next(err); }
+});
+
+router.post('/series', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    res.json(await sonarrService.addSeries(req.body as Record<string, unknown>));
+  } catch (err) { next(err); }
+});
+
+router.post('/series/:id/search', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await sonarrService.triggerSearch(Number(req.params.id));
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
 export default router;

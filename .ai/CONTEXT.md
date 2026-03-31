@@ -71,10 +71,25 @@ sleep 3 && echo "OK"
 - [x] SearchView.vue – Lokale Bibliothekssuche mit Highlight
 - [x] /api/calendar Backend-Route (aggregiert alle drei Arr)
 
-### Nächste Schritte (Phase 5)
-- [ ] SettingsView.vue – Integration Status, API-Keys testen
-- [ ] Tautulli Integration – Streams, Activity
-- [ ] Sidebar collapsed-Modus: Badge auch im collapsed state sichtbar
+### Phase 5 – Abgeschlossen
+- [x] SettingsView.vue – Integration-Grid (8 Services), System-Stats, Cache-Control, About
+- [x] /api/system/integrations – Live Status Check mit Version-Abfrage
+- [x] PM2 als Process Manager – SIGHUP-resistent, session-unabhängig
+
+### Phase 6 – Abgeschlossen
+- [x] Tautulli Service + Routes (/api/tautulli/activity, stats, history)
+- [x] Overseerr Service + Routes (/api/overseerr/requests, approve, decline, delete)
+- [x] Prowlarr Service + Routes (/api/prowlarr/search, grab, indexers)
+- [x] Radarr/Sonarr Lookup + Add + triggerSearch Endpoints
+- [x] SearchView: Prowlarr-Tab mit Grab-Button + Bibliotheks-Tab
+- [x] DashboardView: Tautulli-Streams-Widget + Overseerr Pending-Requests-Widget
+- [x] Shared Types: TautulliStream, TautulliActivity, OverseerrRequest, ProwlarrResult
+
+### Nächste Schritte (Phase 7)
+- [ ] MovieDetailView: "Jetzt suchen" Button (Radarr Command)
+- [ ] SeriesDetailView: "Jetzt suchen" Button (Sonarr Command)
+- [ ] Tautulli Stats-View (Wiedergabe-Charts)
+- [ ] Overseerr Request-View mit Approve/Decline
 
 ---
 
