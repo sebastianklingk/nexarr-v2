@@ -1048,17 +1048,35 @@ bleiben aber im Gitea-Repo versioniert. `ROADMAP.md` und `V2_PLAN.md` ebenfalls.
 
 ### 19.2 Arbeitsaufteilung
 
-| Aufgabe | Chat-Claude | Claude Code |
+Chat-Claude hat via nexarr-MCP direkten Lese- und Schreibzugriff auf den Workspace.
+Die Entscheidungsregel:
+
+**Chat-Claude direkt (via MCP)** wenn:
+- Einzelne Dateien schreiben oder patchen (Config, Types, kleine Fixes)
+- Verzeichnisstruktur anlegen (Scaffolding)
+- `.ai/`-Dateien pflegen (CONTEXT, CONVENTIONS, SESSION_LOG)
+- Code lesen und reviewen
+- Repos anlegen via Browser-MCP (Gitea/GitHub API)
+
+**Claude Code** wenn:
+- Shell-Befehle nötig: `git`, `npm install`, `npx tsc`, `npm run dev`
+- Komplette Feature-Phasen mit vielen Dateien + sofortigem TypeScript-Check
+- Debugging das interaktive Server-Logs braucht
+- Docker Build + Push
+
+| Aufgabe | Chat-Claude (MCP) | Claude Code |
 |---|---|---|
 | Architektur-Entscheidungen | ✅ Plant | ❌ |
 | Phasen-Planung | ✅ Definiert | ❌ |
-| Claude-Code-Prompts verfassen | ✅ Schreibt | ❌ |
 | CONTEXT.md / SESSION_LOG.md | ✅ Aktualisiert | ❌ |
-| Backend Routes + Services | ❌ | ✅ Implementiert |
-| Vue Views + Components | ❌ | ✅ Implementiert |
-| TypeScript Types | ❌ | ✅ Implementiert |
-| Git Commits | ❌ | ✅ Führt aus |
-| Debugging | Beide | Beide |
+| Einzeldateien schreiben/patchen | ✅ Direkt via MCP | ❌ |
+| Scaffolding (Dirs + Files) | ✅ Direkt via MCP | ❌ |
+| Große Feature-Phasen (viele Dateien) | ❌ | ✅ Implementiert |
+| TypeScript-Check (`tsc --noEmit`) | ❌ | ✅ Führt aus |
+| `npm install` / `npm run dev` | ❌ | ✅ Führt aus |
+| Git Commits + Push | ❌ | ✅ Führt aus |
+| Debugging (Server-Logs) | ❌ | ✅ Führt aus |
+| Code reviewen | ✅ Liest via MCP | Beide |
 
 ### 19.3 Session-Ablauf
 

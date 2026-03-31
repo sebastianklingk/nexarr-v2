@@ -4,6 +4,24 @@
 
 ---
 
+## Wer macht was? Chat-Claude vs. Claude Code
+
+Chat-Claude hat via nexarr-MCP direkten Dateizugriff auf den Workspace.
+Vor jeder Aufgabe kurz abwägen:
+
+| Situation | Wer macht es? |
+|---|---|
+| Einzelne Datei schreiben / patchen | Chat-Claude direkt |
+| Verzeichnisse + Scaffold anlegen | Chat-Claude direkt |
+| `.ai/`-Dateien pflegen | Chat-Claude direkt |
+| Code lesen / reviewen | Chat-Claude direkt |
+| `git`, `npm install`, `npx tsc` | Claude Code |
+| Große Feature-Phase (5+ Dateien + TypeCheck) | Claude Code |
+| Server-Debugging (Logs, Crashes) | Claude Code |
+| Docker Build / Push | Claude Code |
+
+---
+
 ## TypeScript
 
 ### Grundregeln
