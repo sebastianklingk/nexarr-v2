@@ -1,6 +1,8 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import { C } from '../cache/cache.js';
+import { env } from '../config/env.js';
+import axios from 'axios';
 import os from 'node:os';
 
 const router = Router();
@@ -40,6 +42,50 @@ router.get('/status', requireAuth, (_req: Request, res: Response) => {
     loadAvg: os.loadavg(),
     cache:   C.stats(),
   });
+});
+
+// GET /api/system/integrations – Status aller konfigurierten Integrationen
+router.get('/integrations', requireAuth, async (_req: Request, res: Response) => {
+  interface IntegrationDef {
+    name: string;
+    url: string | undefined;
+    apiKey: string | undefined;
+    testPath: string;
+    headers?: Record<string, string>;
+    params?: Record<string, string>;
+  }
+
+  const integrations: IntegrationDef[] = [
+    { name: 'radarr',    url: env.RADARR_URL,    apiKey: env.RADARR_API_KEY,    testPath: '/api/v3/system/status',  headers: { 'X-Api-Key': env.RADARR_API_KEY ?? '' } },
+    { name: 'sonarr',   url: env.SONARR_URL,    apiKey: env.SONARR_API_KEY,    testPath: '/api/v3/system/status',  headers: { 'X-Api-Key': env.SONARR_API_KEY ?? '' } },
+    { name: 'lidarr',   url: env.LIDARR_URL,    apiKey: env.LIDARR_API_KEY,    testPath: '/api/v1/system/status',  headers: { 'X-Api-Key': env.LIDARR_API_KEY ?? '' } },
+    { name: 'prowlarr', url: env.PROWLARR_URL,  apiKey: env.PROWLARR_API_KEY,  testPath: '/api/v1/system/status',  headers: { 'X-Api-Key': env.PROWLARR_API_KEY ?? '' } },
+    { name: 'sabnzbd',  url: env.SABNZBD_URL,   apiKey: env.SABNZBD_API_KEY,   testPath: '/api',                   params: { output: 'json', apikey: env.SABNZBD_API_KEY ?? '', mode: 'version' } },
+    { name: 'tautulli', url: env.TAUTULLI_URL,  apiKey: env.TAUTULLI_API_KEY,  testPath: '/api/v2',                params: { apikey: env.TAUTULLI_API_KEY ?? '', cmd: 'get_server_info' } },
+    { name: 'overseerr',url: env.OVERSEERR_URL, apiKey: env.OVERSEERR_API_KEY, testPath: '/api/v1/status',         headers: { 'X-Api-Key': env.OVERSEERR_API_KEY ?? '' } },
+    { name: 'bazarr',   url: env.BAZARR_URL,    apiKey: env.BAZARR_API_KEY,    testPath: '/api/system/status',     headers: { 'X-Api-Key': env.BAZARR_API_KEY ?? '' } },
+  ];
+
+  const results = await Promise.all(
+    integrations.map(async (i) => {
+      if (!i.url || !i.apiKey) {
+        return { name: i.name, status: 'unconfigured' as const, version: null, url: i.url ?? null };
+      }
+      try {
+        const { data } = await axios.get(`${i.url}${i.testPath}`, {
+          headers: i.headers,
+          params:  i.params,
+          timeout: 5_000,
+        });
+        const version = data?.version ?? data?.response?.data?.version ?? null;
+        return { name: i.name, status: 'online' as const, version, url: i.url };
+      } catch {
+        return { name: i.name, status: 'offline' as const, version: null, url: i.url };
+      }
+    })
+  );
+
+  res.json(results);
 });
 
 export default router;
