@@ -1,6 +1,6 @@
 # nexarr v2 – AI Context
 > Dieses Dokument wird am Ende jeder Session aktualisiert.
-> Zuletzt aktualisiert: [DATUM DER ERSTEN SESSION]
+> Zuletzt aktualisiert: 31.03.2026
 > Aktualisiert von: Chat-Claude
 
 ---
@@ -60,10 +60,16 @@ sleep 3 && echo "OK"
 - [x] Phase 2 – Sonarr + Lidarr (SeriesView, SeriesDetailView mit Staffel-Accordion, MusicView, ArtistDetailView)
 
 ### Offene TODOs (Phase 3)
-- [ ] DownloadsView.vue – SABnzbd Queue + Radarr/Sonarr/Lidarr Queue
-- [ ] queue.store.ts (Pinia, befüllt via Socket.io)
-- [ ] Socket.io Queue-Push vom Server (Polling + Push)
-- [ ] DashboardView.vue – Stats-Widgets (Counts, aktuell laufende Downloads)
+- [x] DownloadsView.vue – SABnzbd Queue + Radarr/Sonarr/Lidarr Queue
+- [x] queue.store.ts (Pinia, befüllt via Socket.io)
+- [x] Socket.io Queue-Push vom Server (Polling alle 3s, lazy start/stop)
+- [x] DashboardView.vue – Stats-Widgets (Counts, aktive Downloads)
+
+### Nächste Schritte (Phase 4 Vorbereitung)
+- [ ] TypeCheck + Server-Start verifizieren (Claude Code)
+- [ ] CalendarView.vue – Sonarr/Lidarr/Radarr Kalender
+- [ ] SearchView.vue – Prowlarr-Suche
+- [ ] Sidebar Download-Badge (live count aus queue.store)
 
 ---
 

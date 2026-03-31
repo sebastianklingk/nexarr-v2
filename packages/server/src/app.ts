@@ -6,11 +6,12 @@ import { fileURLToPath } from 'node:url';
 import { env } from './config/env.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
-import authRoutes   from './routes/auth.routes.js';
-import systemRoutes from './routes/system.routes.js';
-import radarrRoutes from './routes/radarr.routes.js';
-import sonarrRoutes from './routes/sonarr.routes.js';
-import lidarrRoutes from './routes/lidarr.routes.js';
+import authRoutes    from './routes/auth.routes.js';
+import systemRoutes  from './routes/system.routes.js';
+import radarrRoutes  from './routes/radarr.routes.js';
+import sonarrRoutes  from './routes/sonarr.routes.js';
+import lidarrRoutes  from './routes/lidarr.routes.js';
+import sabnzbdRoutes from './routes/sabnzbd.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -41,11 +42,12 @@ export function createApp() {
   }));
 
   // ── API Routes ────────────────────────────────────────────────────────────
-  app.use('/api/auth',   authRoutes);
-  app.use('/api/system', systemRoutes);
-  app.use('/api/radarr', radarrRoutes);
-  app.use('/api/sonarr', sonarrRoutes);
-  app.use('/api/lidarr', lidarrRoutes);
+  app.use('/api/auth',    authRoutes);
+  app.use('/api/system',  systemRoutes);
+  app.use('/api/radarr',  radarrRoutes);
+  app.use('/api/sonarr',  sonarrRoutes);
+  app.use('/api/lidarr',  lidarrRoutes);
+  app.use('/api/sabnzbd', sabnzbdRoutes);
 
   // ── Static (Production) ───────────────────────────────────────────────────
   if (env.NODE_ENV === 'production') {

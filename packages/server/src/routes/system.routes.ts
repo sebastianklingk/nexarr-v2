@@ -23,7 +23,7 @@ router.delete('/cache', requireAuth, (_req: Request, res: Response) => {
 
 // DELETE /api/system/cache/:key
 router.delete('/cache/:key', requireAuth, (req: Request, res: Response) => {
-  C.invalidate(req.params.key!);
+  C.invalidate(req.params.key as string);
   res.json({ ok: true });
 });
 

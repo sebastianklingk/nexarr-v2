@@ -1,4 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
+import type { SQLInputValue } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
 import { env } from '../config/env.js';
@@ -59,15 +60,15 @@ function runMigrations(): void {
   }
 }
 
-// Typed helpers – node:sqlite gibt unknown zurück
+// node:sqlite erwartet SQLInputValue – intern gecasted, Aufrufer nutzen unknown
 export function dbGet<T>(sql: string, ...params: unknown[]): T | undefined {
-  return db.prepare(sql).get(...params) as T | undefined;
+  return db.prepare(sql).get(...(params as SQLInputValue[])) as T | undefined;
 }
 
 export function dbAll<T>(sql: string, ...params: unknown[]): T[] {
-  return db.prepare(sql).all(...params) as T[];
+  return db.prepare(sql).all(...(params as SQLInputValue[])) as T[];
 }
 
 export function dbRun(sql: string, ...params: unknown[]): { changes: number; lastInsertRowid: number | bigint } {
-  return db.prepare(sql).run(...params) as { changes: number; lastInsertRowid: number | bigint };
+  return db.prepare(sql).run(...(params as SQLInputValue[])) as { changes: number; lastInsertRowid: number | bigint };
 }

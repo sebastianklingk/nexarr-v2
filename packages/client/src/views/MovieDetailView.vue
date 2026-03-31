@@ -152,10 +152,6 @@ onMounted(async () => {
         <p v-else class="no-overview">Keine Beschreibung verfügbar.</p>
 
         <div class="details-grid">
-          <div v-if="movie.studio" class="detail-item">
-            <span class="detail-label">Studio</span>
-            <span class="detail-value">{{ movie.studio }}</span>
-          </div>
           <div v-if="movie.inCinemas" class="detail-item">
             <span class="detail-label">Kinostart</span>
             <span class="detail-value">{{ new Date(movie.inCinemas).toLocaleDateString('de-DE') }}</span>

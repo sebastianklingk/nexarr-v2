@@ -22,8 +22,10 @@ export const useMusicStore = defineStore('music', () => {
   );
 
   const stats = computed(() => ({
-    artists: artists.value.length,
-    albums:  albums.value.length,
+    total:     artists.value.length,
+    artists:   artists.value.length,
+    albums:    albums.value.length,
+    monitored: artists.value.filter(a => a.monitored).length,
   }));
 
   // ── Actions ──────────────────────────────────────────────────────────────
