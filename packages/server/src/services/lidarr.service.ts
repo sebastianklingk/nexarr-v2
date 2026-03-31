@@ -42,3 +42,11 @@ export async function getQueue(): Promise<unknown> {
     return data;
   }, TTL.QUEUE);
 }
+
+export async function getCalendar(start: string, end: string): Promise<unknown[]> {
+  const key = `lidarr_calendar_${start}_${end}`;
+  return C.fetch(key, async () => {
+    const { data } = await client().get('/calendar', { params: { start, end } });
+    return data as unknown[];
+  }, TTL.CALENDAR);
+}

@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { ref, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import { useAuthStore } from '../../stores/auth.store.js';
+import { useQueueStore } from '../../stores/queue.store.js';
 
-const route = useRoute();
-const router = useRouter();
-const auth = useAuthStore();
+const route      = useRoute();
+const auth       = useAuthStore();
+const queueStore = useQueueStore();
 
 const collapsed = ref(localStorage.getItem('sidebar-collapsed') === 'true');
+
+onMounted(() => queueStore.subscribe());
 
 function toggleCollapsed() {
   collapsed.value = !collapsed.value;
@@ -15,23 +18,32 @@ function toggleCollapsed() {
 }
 
 const navItems = [
-  { name: 'Dashboard',   path: '/dashboard',  icon: 'grid',       color: 'var(--accent)' },
-  { name: 'Filme',       path: '/movies',      icon: 'film',       color: 'var(--radarr)' },
-  { name: 'Serien',      path: '/series',      icon: 'tv',         color: 'var(--sonarr)' },
-  { name: 'Musik',       path: '/music',       icon: 'music',      color: 'var(--lidarr)' },
-  { name: 'Downloads',   path: '/downloads',   icon: 'download',   color: 'var(--sabnzbd)' },
-  { name: 'Kalender',    path: '/calendar',    icon: 'calendar',   color: 'var(--text-tertiary)' },
-  { name: 'Suche',       path: '/search',      icon: 'search',     color: 'var(--text-tertiary)' },
-  { name: 'Einstellungen', path: '/settings', icon: 'settings',   color: 'var(--text-tertiary)' },
+  { name: 'Dashboard',     path: '/dashboard',  icon: 'grid',     color: 'var(--accent)' },
+  { name: 'Filme',         path: '/movies',      icon: 'film',     color: 'var(--radarr)' },
+  { name: 'Serien',        path: '/series',      icon: 'tv',       color: 'var(--sonarr)' },
+  { name: 'Musik',         path: '/music',       icon: 'music',    color: 'var(--lidarr)' },
+  { name: 'Downloads',     path: '/downloads',   icon: 'download', color: 'var(--sabnzbd)' },
+  { name: 'Kalender',      path: '/calendar',    icon: 'calendar', color: 'var(--text-tertiary)' },
+  { name: 'Suche',         path: '/search',      icon: 'search',   color: 'var(--text-tertiary)' },
+  { name: 'Einstellungen', path: '/settings',    icon: 'settings', color: 'var(--text-tertiary)' },
 ];
 
 function isActive(path: string) {
   return route.path === path || route.path.startsWith(path + '/');
 }
+
+function showBadge(path: string): boolean {
+  return path === '/downloads' && queueStore.totalCount > 0 && !isActive('/downloads');
+}
+
+function badgeLabel(): string {
+  return queueStore.totalCount > 99 ? '99+' : String(queueStore.totalCount);
+}
 </script>
 
 <template>
   <aside :class="['sidebar', { collapsed }]">
+
     <!-- Logo -->
     <div class="sidebar-logo" @click="toggleCollapsed">
       <div class="logo-mark">n</div>
@@ -50,7 +62,10 @@ function isActive(path: string) {
         :style="isActive(item.path) ? `--item-color: ${item.color}` : ''"
         :title="collapsed ? item.name : undefined"
       >
-        <span class="nav-icon" v-html="getIcon(item.icon)" />
+        <span class="nav-icon-wrap">
+          <span class="nav-icon" v-html="getIcon(item.icon)" />
+          <span v-if="showBadge(item.path)" class="nav-badge">{{ badgeLabel() }}</span>
+        </span>
         <Transition name="label">
           <span v-if="!collapsed" class="nav-label">{{ item.name }}</span>
         </Transition>
@@ -64,17 +79,19 @@ function isActive(path: string) {
         :title="collapsed ? 'Abmelden' : undefined"
         @click="auth.logout()"
       >
-        <span class="nav-icon" v-html="getIcon('logout')" />
+        <span class="nav-icon-wrap">
+          <span class="nav-icon" v-html="getIcon('logout')" />
+        </span>
         <Transition name="label">
           <span v-if="!collapsed" class="nav-label">{{ auth.user?.username }}</span>
         </Transition>
       </button>
     </div>
+
   </aside>
 </template>
 
 <script lang="ts">
-// Inline SVG Icons – kein Font, kein Import-Overhead
 function getIcon(name: string): string {
   const icons: Record<string, string> = {
     grid:     `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`,
@@ -99,8 +116,7 @@ function getIcon(name: string): string {
   border-right: 1px solid var(--bg-border);
   display: flex;
   flex-direction: column;
-  transition: width 0.25s var(--ease-standard),
-              min-width 0.25s var(--ease-standard);
+  transition: width 0.25s var(--ease-standard), min-width 0.25s var(--ease-standard);
   overflow: hidden;
   z-index: 100;
 }
@@ -115,7 +131,7 @@ function getIcon(name: string): string {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-4);
+  padding: var(--space-4);
   height: 56px;
   cursor: pointer;
   border-bottom: 1px solid var(--bg-border);
@@ -134,7 +150,6 @@ function getIcon(name: string): string {
   font-weight: 700;
   font-size: 16px;
   color: #fff;
-  letter-spacing: -0.5px;
 }
 
 .logo-text {
@@ -182,12 +197,46 @@ function getIcon(name: string): string {
   border-left-color: var(--item-color, var(--accent));
 }
 
-.nav-icon {
+/* Icon + Badge wrapper */
+.nav-icon-wrap {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   min-width: 18px;
   flex-shrink: 0;
+}
+
+.nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Download-Badge */
+.nav-badge {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: var(--sabnzbd);
+  color: #000;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 99px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  animation: badge-pop 0.2s ease;
+}
+
+@keyframes badge-pop {
+  0%   { transform: scale(0); }
+  70%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
 }
 
 .nav-label {
@@ -208,15 +257,12 @@ function getIcon(name: string): string {
   font-size: var(--text-base);
 }
 
-/* Label slide transition */
+/* Label transition */
 .label-enter-active,
 .label-leave-active {
   transition: opacity 0.15s ease, width 0.25s var(--ease-standard);
   overflow: hidden;
 }
 .label-enter-from,
-.label-leave-to {
-  opacity: 0;
-  width: 0;
-}
+.label-leave-to { opacity: 0; width: 0; }
 </style>

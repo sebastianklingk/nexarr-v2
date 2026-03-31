@@ -36,6 +36,14 @@ export async function getQueue(): Promise<unknown> {
   }, TTL.QUEUE);
 }
 
+export async function getCalendar(start: string, end: string): Promise<unknown[]> {
+  const key = `radarr_calendar_${start}_${end}`;
+  return C.fetch(key, async () => {
+    const { data } = await client().get('/calendar', { params: { start, end } });
+    return data as unknown[];
+  }, TTL.CALENDAR);
+}
+
 export async function getStatus(): Promise<unknown> {
   return C.fetch('radarr_status', async () => {
     const { data } = await client().get('/system/status');

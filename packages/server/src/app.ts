@@ -11,7 +11,8 @@ import systemRoutes  from './routes/system.routes.js';
 import radarrRoutes  from './routes/radarr.routes.js';
 import sonarrRoutes  from './routes/sonarr.routes.js';
 import lidarrRoutes  from './routes/lidarr.routes.js';
-import sabnzbdRoutes from './routes/sabnzbd.routes.js';
+import sabnzbdRoutes  from './routes/sabnzbd.routes.js';
+import calendarRoutes from './routes/calendar.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -47,7 +48,8 @@ export function createApp() {
   app.use('/api/radarr',  radarrRoutes);
   app.use('/api/sonarr',  sonarrRoutes);
   app.use('/api/lidarr',  lidarrRoutes);
-  app.use('/api/sabnzbd', sabnzbdRoutes);
+  app.use('/api/sabnzbd',  sabnzbdRoutes);
+  app.use('/api/calendar', calendarRoutes);
 
   // ── Static (Production) ───────────────────────────────────────────────────
   if (env.NODE_ENV === 'production') {

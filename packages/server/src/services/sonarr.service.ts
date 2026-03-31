@@ -44,3 +44,11 @@ export async function getQueue(): Promise<unknown> {
     return data;
   }, TTL.QUEUE);
 }
+
+export async function getCalendar(start: string, end: string): Promise<unknown[]> {
+  const key = `sonarr_calendar_${start}_${end}`;
+  return C.fetch(key, async () => {
+    const { data } = await client().get('/calendar', { params: { start, end, includeSeries: true } });
+    return data as unknown[];
+  }, TTL.CALENDAR);
+}

@@ -65,11 +65,16 @@ sleep 3 && echo "OK"
 - [x] Socket.io Queue-Push vom Server (Polling alle 3s, lazy start/stop)
 - [x] DashboardView.vue – Stats-Widgets (Counts, aktive Downloads)
 
-### Nächste Schritte (Phase 4 Vorbereitung)
-- [ ] TypeCheck + Server-Start verifizieren (Claude Code)
-- [ ] CalendarView.vue – Sonarr/Lidarr/Radarr Kalender
-- [ ] SearchView.vue – Prowlarr-Suche
-- [ ] Sidebar Download-Badge (live count aus queue.store)
+### Phase 4 – Abgeschlossen
+- [x] Sidebar Download-Badge (live, animiert, SABnzbd-Farbe)
+- [x] CalendarView.vue – Radarr+Sonarr+Lidarr aggregiert, 30-Tage-Fenster
+- [x] SearchView.vue – Lokale Bibliothekssuche mit Highlight
+- [x] /api/calendar Backend-Route (aggregiert alle drei Arr)
+
+### Nächste Schritte (Phase 5)
+- [ ] SettingsView.vue – Integration Status, API-Keys testen
+- [ ] Tautulli Integration – Streams, Activity
+- [ ] Sidebar collapsed-Modus: Badge auch im collapsed state sichtbar
 
 ---
 
