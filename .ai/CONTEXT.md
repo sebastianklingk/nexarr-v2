@@ -85,11 +85,19 @@ sleep 3 && echo "OK"
 - [x] DashboardView: Tautulli-Streams-Widget + Overseerr Pending-Requests-Widget
 - [x] Shared Types: TautulliStream, TautulliActivity, OverseerrRequest, ProwlarrResult
 
-### Nächste Schritte (Phase 7)
-- [ ] MovieDetailView: "Jetzt suchen" Button (Radarr Command)
-- [ ] SeriesDetailView: "Jetzt suchen" Button (Sonarr Command)
-- [ ] Tautulli Stats-View (Wiedergabe-Charts)
-- [ ] Overseerr Request-View mit Approve/Decline
+### Phase 7 – Abgeschlossen
+- [x] MovieDetailView: "Jetzt suchen" Button (Radarr Command) – useApi.post, Spin-Anim, 3s Feedback
+- [x] SeriesDetailView: "Jetzt suchen" Button (Sonarr Command) – identisches Pattern, Sonarr-Farben
+- [x] TautulliView.vue – CSS-Balkendiagramme Top-Filme/Serien/User/Plattformen + Verlaufs-Liste, Sidebar-Eintrag
+- [x] OverseerrView.vue – Requests mit Filter-Tabs, Approve/Decline/Delete, Poster via TMDB, Sidebar-Eintrag
+
+### Nächste Schritte (Phase 8 – Ideen)
+- [ ] Bazarr Integration (Untertitel-Status pro Film/Serie)
+- [ ] Gotify Push-Notifications (Toast wenn neue Nachricht)
+- [ ] Plex Integration (direkt abspielen / Deep-Link)
+- [ ] ABS Audiobookshelf Integration
+- [ ] TMDB API – Trailer-Links, Cast/Crew in DetailViews
+- [ ] Lidarr: "Jetzt suchen" Button in ArtistDetailView
 
 ---
 

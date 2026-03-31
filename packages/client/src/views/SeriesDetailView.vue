@@ -2,17 +2,37 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useSeriesStore } from '../stores/series.store.js';
+import { useApi } from '../composables/useApi.js';
 import type { SonarrSeries, SonarrEpisode, SonarrSeason } from '@nexarr/shared';
 
 const route  = useRoute();
 const router = useRouter();
 const store  = useSeriesStore();
 
-const series     = ref<SonarrSeries | null>(null);
-const episodes   = ref<SonarrEpisode[]>([]);
-const isLoading  = ref(true);
-const activeTab  = ref<'seasons' | 'overview'>('seasons');
-const openSeasons = ref<Set<number>>(new Set([1]));
+const series       = ref<SonarrSeries | null>(null);
+const episodes     = ref<SonarrEpisode[]>([]);
+const isLoading    = ref(true);
+const activeTab    = ref<'seasons' | 'overview'>('seasons');
+const openSeasons  = ref<Set<number>>(new Set([1]));
+const isSearching  = ref(false);
+const searchStatus = ref<'idle' | 'ok' | 'error'>('idle');
+
+const { post } = useApi();
+
+async function triggerSearch() {
+  if (!series.value || isSearching.value) return;
+  isSearching.value = true;
+  searchStatus.value = 'idle';
+  try {
+    await post(`/api/sonarr/series/${series.value.id}/search`);
+    searchStatus.value = 'ok';
+  } catch {
+    searchStatus.value = 'error';
+  } finally {
+    isSearching.value = false;
+    setTimeout(() => { searchStatus.value = 'idle'; }, 3000);
+  }
+}
 
 const seriesId = computed(() => Number(route.params.id));
 
@@ -109,6 +129,22 @@ onMounted(async () => {
                 <span v-if="series.genres?.length" class="meta-sep">·</span>
                 <span v-if="series.genres?.length" class="meta-item">{{ series.genres.slice(0,3).join(', ') }}</span>
               </div>
+              <!-- Actions -->
+              <div class="hero-actions">
+                <button
+                  class="action-btn action-search"
+                  :class="{ loading: isSearching, success: searchStatus === 'ok', error: searchStatus === 'error' }"
+                  :disabled="isSearching"
+                  @click="triggerSearch"
+                >
+                  <svg v-if="isSearching" class="spin-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                  <svg v-else-if="searchStatus === 'ok'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  <svg v-else-if="searchStatus === 'error'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <span>{{ isSearching ? 'Suche läuft…' : searchStatus === 'ok' ? 'Gestartet!' : searchStatus === 'error' ? 'Fehler' : 'Jetzt suchen' }}</span>
+                </button>
+              </div>
+
               <div class="hero-badges">
                 <span :class="['status-badge', series.status === 'continuing' ? 'badge-continuing' : 'badge-ended']">
                   {{ series.status === 'continuing' ? '● Laufend' : '■ Beendet' }}
@@ -230,6 +266,49 @@ onMounted(async () => {
 .badge-ended   { background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--bg-border); }
 .badge-neutral { background: var(--bg-elevated); color: var(--text-tertiary); border: 1px solid var(--bg-border); }
 .badge-rating  { background: rgba(245,197,24,.12); color: var(--sabnzbd); border: 1px solid rgba(245,197,24,.25); }
+
+/* Actions */
+.hero-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 14px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  transition: background 0.15s ease, opacity 0.15s ease;
+  cursor: pointer;
+}
+
+.action-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.action-search {
+  background: rgba(53, 197, 244, 0.12);
+  border: 1px solid rgba(53, 197, 244, 0.3);
+  color: var(--text-secondary);
+}
+.action-search:not(:disabled):hover {
+  background: rgba(53, 197, 244, 0.22);
+  border-color: rgba(53, 197, 244, 0.5);
+  color: var(--text-primary);
+}
+.action-search.success {
+  background: rgba(34,197,94,0.15);
+  border-color: rgba(34,197,94,0.35);
+}
+.action-search.error {
+  background: rgba(248,113,113,0.15);
+  border-color: rgba(248,113,113,0.35);
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin-icon { animation: spin 0.8s linear infinite; }
 
 /* Tabs */
 .tabs-bar { display: flex; border-bottom: 1px solid var(--bg-border); padding: 0 var(--space-6); }

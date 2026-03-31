@@ -65,6 +65,16 @@ export const router = createRouter({
       component: () => import('../views/SearchView.vue'),
     },
     {
+      path: '/tautulli',
+      name: 'tautulli',
+      component: () => import('../views/TautulliView.vue'),
+    },
+    {
+      path: '/overseerr',
+      name: 'overseerr',
+      component: () => import('../views/OverseerrView.vue'),
+    },
+    {
       path: '/settings',
       name: 'settings',
       component: () => import('../views/SettingsView.vue'),
