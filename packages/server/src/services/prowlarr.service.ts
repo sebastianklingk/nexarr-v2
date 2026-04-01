@@ -31,8 +31,10 @@ export async function search(
   return (data ?? []) as ProwlarrResult[];
 }
 
-export async function grab(guid: string, indexerId: number): Promise<void> {
-  await client().post('/release', { guid, indexerId });
+export async function grab(body: Record<string, unknown>): Promise<unknown> {
+  // Prowlarr erwartet POST /api/v1/search (nicht /release) für Grabs
+  const { data } = await client().post('/search', body);
+  return data;
 }
 
 export async function getIndexers(): Promise<unknown[]> {

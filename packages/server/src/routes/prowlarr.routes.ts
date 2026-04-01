@@ -20,12 +20,11 @@ router.get('/search', requireAuth, async (req: Request, res: Response, next: Nex
   } catch (err) { next(err); }
 });
 
-// POST /api/prowlarr/grab  { guid, indexerId }
+// POST /api/prowlarr/grab  – kompletten Release-Body weiterleiten (wie v1)
 router.post('/grab', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { guid, indexerId } = req.body as { guid: string; indexerId: number };
-    await prowlarrService.grab(guid, indexerId);
-    res.json({ ok: true });
+    const result = await prowlarrService.grab(req.body as Record<string, unknown>);
+    res.json(result ?? { ok: true });
   } catch (err) { next(err); }
 });
 
