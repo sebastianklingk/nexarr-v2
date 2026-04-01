@@ -3,66 +3,83 @@ import { requireAuth } from '../middleware/auth.js';
 import * as radarrService from '../services/radarr.service.js';
 
 const router = Router();
+const H = (fn: (req: Request, res: Response, next: NextFunction) => Promise<void>) =>
+  (req: Request, res: Response, next: NextFunction) => fn(req, res, next).catch(next);
 
-router.get('/movies', requireAuth, async (_req: Request, res: Response, next: NextFunction) => {
-  try {
-    const movies = await radarrService.getMovies();
-    res.json(movies);
-  } catch (err) {
-    next(err);
-  }
-});
+// ── Read ──────────────────────────────────────────────────────────────────────
 
-router.get('/movies/:id', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const movie = await radarrService.getMovie(Number(req.params.id));
-    res.json(movie);
-  } catch (err) {
-    next(err);
-  }
-});
+router.get('/movies', requireAuth, H(async (_req, res) => {
+  res.json(await radarrService.getMovies());
+}));
 
-router.get('/queue', requireAuth, async (_req: Request, res: Response, next: NextFunction) => {
-  try {
-    const queue = await radarrService.getQueue();
-    res.json(queue);
-  } catch (err) {
-    next(err);
-  }
-});
+router.get('/movies/:id', requireAuth, H(async (req, res) => {
+  res.json(await radarrService.getMovie(Number(req.params.id)));
+}));
 
-router.get('/lookup', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const term = (req.query.term as string)?.trim();
-    if (!term) { res.json([]); return; }
-    res.json(await radarrService.lookup(term));
-  } catch (err) { next(err); }
-});
+router.get('/queue', requireAuth, H(async (_req, res) => {
+  res.json(await radarrService.getQueue());
+}));
 
-router.post('/movies', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    res.json(await radarrService.addMovie(req.body as Record<string, unknown>));
-  } catch (err) { next(err); }
-});
+router.get('/lookup', requireAuth, H(async (req, res) => {
+  const term = (req.query.term as string)?.trim();
+  if (!term) { res.json([]); return; }
+  res.json(await radarrService.lookup(term));
+}));
 
-router.post('/movies/:id/search', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    await radarrService.triggerSearch([Number(req.params.id)]);
-    res.json({ ok: true });
-  } catch (err) { next(err); }
-});
+router.get('/rootfolders', requireAuth, H(async (_req, res) => {
+  res.json(await radarrService.getRootFolders());
+}));
 
-router.get('/rootfolders', requireAuth, async (_req: Request, res: Response, next: NextFunction) => {
-  try { res.json(await radarrService.getRootFolders()); } catch (err) { next(err); }
-});
+router.get('/status', requireAuth, H(async (_req, res) => {
+  res.json(await radarrService.getStatus());
+}));
 
-router.get('/status', requireAuth, async (_req: Request, res: Response, next: NextFunction) => {
-  try {
-    const status = await radarrService.getStatus();
-    res.json(status);
-  } catch (err) {
-    next(err);
-  }
-});
+// Besetzung (für MovieDetailView-Fallback wenn TMDB nicht verfügbar)
+router.get('/credits/:metaId', requireAuth, H(async (req, res) => {
+  res.json(await radarrService.getCredits(Number(req.params.metaId)));
+}));
+
+// Interactive Search: Releases für einen Film laden
+router.get('/release', requireAuth, H(async (req, res) => {
+  const movieId = Number(req.query.movieId);
+  if (!movieId) { res.status(400).json({ error: 'movieId required' }); return; }
+  res.json(await radarrService.getReleases(movieId));
+}));
+
+// ── Write / Actions ───────────────────────────────────────────────────────────
+
+router.post('/movies', requireAuth, H(async (req, res) => {
+  res.json(await radarrService.addMovie(req.body as Record<string, unknown>));
+}));
+
+// Generischer Command-Endpoint (MoviesSearch, RescanMovie, etc.)
+router.post('/command', requireAuth, H(async (req, res) => {
+  res.json(await radarrService.sendCommand(req.body as Record<string, unknown>));
+}));
+
+// Kurzform: Automatische Suche für einen Film
+router.post('/movies/:id/search', requireAuth, H(async (req, res) => {
+  await radarrService.triggerSearch([Number(req.params.id)]);
+  res.json({ ok: true });
+}));
+
+// Release herunterladen (Interactive Search)
+router.post('/release', requireAuth, H(async (req, res) => {
+  const { guid, indexerId } = req.body as { guid: string; indexerId: number };
+  if (!guid || !indexerId) { res.status(400).json({ error: 'guid and indexerId required' }); return; }
+  res.json(await radarrService.downloadRelease({ guid, indexerId }));
+}));
+
+// monitored-Toggle + sonstige Updates
+router.put('/movies/:id', requireAuth, H(async (req, res) => {
+  res.json(await radarrService.updateMovie(Number(req.params.id), req.body));
+}));
+
+// Film löschen
+router.delete('/movies/:id', requireAuth, H(async (req, res) => {
+  const deleteFiles = req.query.deleteFiles === 'true';
+  await radarrService.deleteMovie(Number(req.params.id), deleteFiles);
+  res.json({ ok: true });
+}));
 
 export default router;

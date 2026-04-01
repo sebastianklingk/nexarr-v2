@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { env } from '../config/env.js';
-import { C, } from '../cache/cache.js';
+import { C } from '../cache/cache.js';
 import { TTL } from '../config/constants.js';
 import type { RadarrMovie } from '@nexarr/shared';
 
@@ -14,6 +14,8 @@ function client() {
     timeout: 10_000,
   });
 }
+
+// ── Read ──────────────────────────────────────────────────────────────────────
 
 export async function getMovies(): Promise<RadarrMovie[]> {
   return C.fetch('radarr_movies', async () => {
@@ -29,11 +31,11 @@ export async function getMovie(id: number): Promise<RadarrMovie> {
   }, TTL.DETAIL);
 }
 
-export async function getQueue(): Promise<unknown> {
-  return C.fetch('radarr_queue', async () => {
-    const { data } = await client().get('/queue', { params: { pageSize: 100 } });
+export async function getRootFolders(): Promise<Array<{ id: number; path: string; freeSpace: number }>> {
+  return C.fetch('radarr_rootfolders', async () => {
+    const { data } = await client().get('/rootfolder');
     return data;
-  }, TTL.QUEUE);
+  }, TTL.LONG);
 }
 
 export async function getCalendar(start: string, end: string): Promise<unknown[]> {
@@ -42,6 +44,66 @@ export async function getCalendar(start: string, end: string): Promise<unknown[]
     const { data } = await client().get('/calendar', { params: { start, end } });
     return data as unknown[];
   }, TTL.CALENDAR);
+}
+
+export async function getQueue(): Promise<unknown> {
+  return C.fetch('radarr_queue', async () => {
+    const { data } = await client().get('/queue', { params: { pageSize: 100 } });
+    return data;
+  }, TTL.QUEUE);
+}
+
+export async function getStatus(): Promise<unknown> {
+  return C.fetch('radarr_status', async () => {
+    const { data } = await client().get('/system/status');
+    return data;
+  }, TTL.LONG);
+}
+
+// Besetzung direkt aus Radarr (via movieMetadataId aus alternateTitles[0])
+export async function getCredits(movieMetadataId: number): Promise<unknown[]> {
+  return C.fetch(`radarr_credits_${movieMetadataId}`, async () => {
+    const { data } = await client().get('/credit', {
+      params: { movieMetadataId },
+    });
+    return data as unknown[];
+  }, TTL.DETAIL);
+}
+
+// Releases für Interactive Search (kein Cache – immer live, kann 10-30s dauern)
+export async function getReleases(movieId: number): Promise<unknown[]> {
+  const { data } = await client().get('/release', {
+    params: { movieId },
+    timeout: 60_000, // Indexer-Suche kann dauern
+  });
+  return data as unknown[];
+}
+
+// ── Write / Actions ───────────────────────────────────────────────────────────
+
+export async function updateMovie(id: number, body: RadarrMovie): Promise<RadarrMovie> {
+  const { data } = await client().put<RadarrMovie>(`/movie/${id}`, body);
+  C.invalidate(`radarr_movie_${id}`);
+  C.invalidate('radarr_movies');
+  return data;
+}
+
+export async function deleteMovie(id: number, deleteFiles = false): Promise<void> {
+  await client().delete(`/movie/${id}`, {
+    params: { deleteFiles, addImportExclusion: false },
+  });
+  C.invalidate(`radarr_movie_${id}`);
+  C.invalidate('radarr_movies');
+}
+
+export async function sendCommand(body: Record<string, unknown>): Promise<unknown> {
+  const { data } = await client().post('/command', body);
+  return data;
+}
+
+export async function downloadRelease(body: { guid: string; indexerId: number }): Promise<unknown> {
+  const { data } = await client().post('/release', body);
+  return data;
 }
 
 export async function lookup(term: string): Promise<unknown[]> {
@@ -57,18 +119,4 @@ export async function addMovie(body: Record<string, unknown>): Promise<unknown> 
 
 export async function triggerSearch(movieIds: number[]): Promise<void> {
   await client().post('/command', { name: 'MoviesSearch', movieIds });
-}
-
-export async function getRootFolders(): Promise<Array<{ id: number; path: string; freeSpace: number }>> {
-  return C.fetch('radarr_rootfolders', async () => {
-    const { data } = await client().get('/rootfolder');
-    return data;
-  }, TTL.LONG);
-}
-
-export async function getStatus(): Promise<unknown> {
-  return C.fetch('radarr_status', async () => {
-    const { data } = await client().get('/system/status');
-    return data;
-  }, TTL.LONG);
 }

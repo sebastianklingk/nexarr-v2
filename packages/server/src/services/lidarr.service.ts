@@ -15,6 +15,8 @@ function client() {
   });
 }
 
+// ── Read ──────────────────────────────────────────────────────────────────────
+
 export async function getArtists(): Promise<LidarrArtist[]> {
   return C.fetch('lidarr_artists', async () => {
     const { data } = await client().get<LidarrArtist[]>('/artist');
@@ -29,6 +31,7 @@ export async function getArtist(id: number): Promise<LidarrArtist> {
   }, TTL.DETAIL);
 }
 
+// Alle Alben (für Dashboard / MusicView)
 export async function getAlbums(): Promise<LidarrAlbum[]> {
   return C.fetch('lidarr_albums', async () => {
     const { data } = await client().get<LidarrAlbum[]>('/album');
@@ -36,9 +39,28 @@ export async function getAlbums(): Promise<LidarrAlbum[]> {
   }, TTL.COLLECTION);
 }
 
+// Alben eines bestimmten Artists (für ArtistDetailView)
+export async function getAlbumsByArtist(artistId: number): Promise<LidarrAlbum[]> {
+  return C.fetch(`lidarr_albums_artist_${artistId}`, async () => {
+    const { data } = await client().get<LidarrAlbum[]>('/album', {
+      params: { artistId, includeAllArtistAlbums: false },
+    });
+    return data;
+  }, TTL.DETAIL);
+}
+
+// Tracks eines Albums – albumId allein reicht für Lidarr
 export async function getAlbumTracks(albumId: number): Promise<unknown[]> {
   return C.fetch(`lidarr_tracks_${albumId}`, async () => {
     const { data } = await client().get('/track', { params: { albumId } });
+    return data as unknown[];
+  }, TTL.DETAIL);
+}
+
+// Tracks über artistId+albumId (v1-kompatibel)
+export async function getTracksByArtistAlbum(artistId: number, albumId: number): Promise<unknown[]> {
+  return C.fetch(`lidarr_tracks_${artistId}_${albumId}`, async () => {
+    const { data } = await client().get('/track', { params: { artistId, albumId } });
     return data as unknown[];
   }, TTL.DETAIL);
 }
@@ -50,14 +72,39 @@ export async function getQueue(): Promise<unknown> {
   }, TTL.QUEUE);
 }
 
-export async function triggerSearch(artistId: number): Promise<void> {
-  await client().post('/command', { name: 'ArtistSearch', artistId });
-}
-
 export async function getCalendar(start: string, end: string): Promise<unknown[]> {
   const key = `lidarr_calendar_${start}_${end}`;
   return C.fetch(key, async () => {
     const { data } = await client().get('/calendar', { params: { start, end } });
     return data as unknown[];
   }, TTL.CALENDAR);
+}
+
+// ── Write / Actions ───────────────────────────────────────────────────────────
+
+export async function updateAlbum(id: number, body: LidarrAlbum): Promise<LidarrAlbum> {
+  const { data } = await client().put<LidarrAlbum>(`/album/${id}`, body);
+  // Artist-Alben-Cache invalidieren
+  if (body.artistId) C.invalidate(`lidarr_albums_artist_${body.artistId}`);
+  C.invalidate('lidarr_albums');
+  return data;
+}
+
+export async function deleteArtist(id: number, deleteFiles = false): Promise<void> {
+  await client().delete(`/artist/${id}`, {
+    params: { deleteFiles, addImportExclusion: false },
+  });
+  C.invalidate(`lidarr_artist_${id}`);
+  C.invalidate('lidarr_artists');
+  C.invalidate('lidarr_albums');
+  C.invalidatePattern('lidarr_albums_artist_');
+}
+
+export async function sendCommand(body: Record<string, unknown>): Promise<unknown> {
+  const { data } = await client().post('/command', body);
+  return data;
+}
+
+export async function triggerSearch(artistId: number): Promise<void> {
+  await client().post('/command', { name: 'ArtistSearch', artistId });
 }
