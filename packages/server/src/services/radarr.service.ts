@@ -59,6 +59,13 @@ export async function triggerSearch(movieIds: number[]): Promise<void> {
   await client().post('/command', { name: 'MoviesSearch', movieIds });
 }
 
+export async function getRootFolders(): Promise<Array<{ id: number; path: string; freeSpace: number }>> {
+  return C.fetch('radarr_rootfolders', async () => {
+    const { data } = await client().get('/rootfolder');
+    return data;
+  }, TTL.LONG);
+}
+
 export async function getStatus(): Promise<unknown> {
   return C.fetch('radarr_status', async () => {
     const { data } = await client().get('/system/status');

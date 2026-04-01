@@ -49,4 +49,8 @@ router.post('/series/:id/search', requireAuth, async (req: Request, res: Respons
   } catch (err) { next(err); }
 });
 
+router.get('/rootfolders', requireAuth, async (_req: Request, res: Response, next: NextFunction) => {
+  try { res.json(await sonarrService.getRootFolders()); } catch (err) { next(err); }
+});
+
 export default router;

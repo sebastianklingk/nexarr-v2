@@ -20,6 +20,10 @@ router.get('/queue', requireAuth, async (_req, res, next) => {
   try { res.json(await lidarrService.getQueue()); } catch (e) { next(e); }
 });
 
+router.get('/albums/:id/tracks', requireAuth, async (req, res, next) => {
+  try { res.json(await lidarrService.getAlbumTracks(Number(req.params.id))); } catch (e) { next(e); }
+});
+
 router.post('/artists/:id/search', requireAuth, async (req, res, next) => {
   try {
     await lidarrService.triggerSearch(Number(req.params.id));

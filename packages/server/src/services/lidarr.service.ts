@@ -36,6 +36,13 @@ export async function getAlbums(): Promise<LidarrAlbum[]> {
   }, TTL.COLLECTION);
 }
 
+export async function getAlbumTracks(albumId: number): Promise<unknown[]> {
+  return C.fetch(`lidarr_tracks_${albumId}`, async () => {
+    const { data } = await client().get('/track', { params: { albumId } });
+    return data as unknown[];
+  }, TTL.DETAIL);
+}
+
 export async function getQueue(): Promise<unknown> {
   return C.fetch('lidarr_queue', async () => {
     const { data } = await client().get('/queue', { params: { pageSize: 100 } });

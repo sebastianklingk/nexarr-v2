@@ -28,6 +28,8 @@ export interface RadarrMovie {
   digitalRelease?: string;
   physicalRelease?: string;
   inCinemas?: string;
+  rootFolderPath?: string;
+  path?: string;
 }
 
 export interface RadarrMovieFile {
@@ -39,6 +41,8 @@ export interface RadarrMovieFile {
     audioCodec: string;
     audioChannels: number;
     resolution: string;
+    videoDynamicRangeType?: string;
+    videoDynamicRange?: string;
   };
 }
 
@@ -67,6 +71,8 @@ export interface SonarrSeries {
   episodeCount?: number;
   episodeFileCount?: number;
   added: string;
+  rootFolderPath?: string;
+  path?: string;
 }
 
 export interface SonarrSeason {

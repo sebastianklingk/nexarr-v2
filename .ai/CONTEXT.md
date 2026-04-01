@@ -88,9 +88,9 @@ Reihenfolge:
 Jede Seite wird vollständig polished: alle Daten anzeigen, alles klickbar, gute Empty-States, Loading-States, Fehlerhandling.
 
 - [ ] 10.1 – Dashboard (Widgets, Live-Daten, Plex Sessions, Schnellzugriff)
-- [ ] 10.2 – Filme / MoviesView (Filter, Sortierung, Suche, Stats)
+- [x] 10.2 – Filme / MoviesView: Alpha-Gruppen, Alphabet-Nav, Bibliotheks-Filter, Hover-Tooltip mit Tech-Badges, Rating unter Poster, Status-Dot, Quality-Badge
 - [ ] 10.3 – MovieDetailView (alle Tabs gefüllt, Aktionen, Bazarr)
-- [ ] 10.4 – Serien / SeriesView (Filter, Sortierung, Stats)
+- [x] 10.4 – Serien / SeriesView: identisch wie Movies + Serien-spezifische Features (Fortschritt, Staffeln, Network)
 - [ ] 10.5 – SeriesDetailView (Staffeln, Episoden, Cast, Bazarr)
 - [ ] 10.6 – Musik / MusicView + ArtistDetailView
 - [ ] 10.7 – Downloads (Queue-Aktionen, Pause/Resume/Delete)

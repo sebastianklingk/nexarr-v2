@@ -52,6 +52,10 @@ router.post('/movies/:id/search', requireAuth, async (req: Request, res: Respons
   } catch (err) { next(err); }
 });
 
+router.get('/rootfolders', requireAuth, async (_req: Request, res: Response, next: NextFunction) => {
+  try { res.json(await radarrService.getRootFolders()); } catch (err) { next(err); }
+});
+
 router.get('/status', requireAuth, async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const status = await radarrService.getStatus();
