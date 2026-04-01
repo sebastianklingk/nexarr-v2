@@ -43,6 +43,9 @@ const integrationMeta: Record<string, { label: string; color: string; icon: stri
   tautulli:  { label: 'Tautulli',  color: 'var(--tautulli)',  icon: '📊' },
   overseerr: { label: 'Overseerr', color: 'var(--overseerr)', icon: '🙋' },
   bazarr:    { label: 'Bazarr',    color: 'var(--bazarr)',    icon: '💬' },
+  gotify:    { label: 'Gotify',    color: 'var(--gotify)',    icon: '🔔' },
+  plex:      { label: 'Plex',      color: 'var(--plex)',      icon: '🎞️' },
+  abs:       { label: 'Audiobookshelf', color: '#F0A500',    icon: '📚' },
 };
 
 // ── Load ──────────────────────────────────────────────────────────────────────
@@ -142,7 +145,7 @@ function statusLabel(status: IntegrationStatus['status']): string {
 
       <!-- Skeleton -->
       <div v-if="loadingInteg" class="integ-grid">
-        <div v-for="i in 8" :key="i" class="integ-card skeleton-card">
+        <div v-for="i in 11" :key="i" class="integ-card skeleton-card">
           <div class="skeleton skeleton-icon" />
           <div class="skeleton-text">
             <div class="skeleton skeleton-title" />

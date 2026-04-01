@@ -66,17 +66,34 @@ sleep 3 && echo "OK"
 - [x] 8.2 – Gotify: Service, Routes, gotify.store.ts, ToastContainer.vue, GotifyView.vue, Sidebar-Eintrag + Badge
 - [x] 8.3 – Bazarr: Service, Routes, BazarrSubtitle Type, MovieDetailView Untertitel-Tab (vorhanden/fehlend, suchen, löschen)
 - [x] 8.4 – TMDB: Service, Routes, TMDBCredits/Video Types, Trailer-Button + Cast-Grid in Movie+SeriesDetailView, tvdbId-Lookup für Sonarr
-- [x] 8.5 – Plex: Service, Routes, env.ts (PLEX_URL/TOKEN), „In Plex öffnen“-Button in Movie+SeriesDetailView
+- [x] 8.5 – Plex: Service, Routes, env.ts (PLEX_URL/TOKEN), „In Plex öffnen"-Button in Movie+SeriesDetailView
 - [x] 8.6 – ABS: Service, Routes, ABSLibrary/Item/Progress Types, abs.store.ts, AbsView.vue (Grid, Library-Switcher, Suche, Pagination), Sidebar-Eintrag
 
 ### Phase 8 – VOLLSTÄNDIG ABGESCHLOSSEN ✅
 
-### Offene Ideen (Phase 9)
-- [ ] ABS: Detail-Ansicht pro Buch/Podcast (Fortschrittsbalken, Episodenliste)
-- [ ] Dashboard-Widget: ABS „Zuletzt gehört“
-- [ ] Plex: Live-Sessions-Widget im Dashboard (via plex.service.getSessions)
-- [ ] Bazarr: Untertitel-Tab auch in SeriesDetailView
-- [ ] Settings: Gotify + ABS + Plex Status-Check ergänzen
+### Phase 9 – Integrationen wirklich zum Laufen bringen (eine nach der anderen)
+
+Reihenfolge:
+- [x] 9.1 – Gotify: Client-Token korrigiert, Nachrichten werden angezeigt, Toasts funktionieren ✅
+- [x] 9.2 – Bazarr: API-Format bestätigt, Service korrekt, eingebettete Subs zeigen path=null (erwartet) ✅
+- [x] 9.3 – TMDB: API bestätigt, Cast/Crew werden in MovieDetailView angezeigt ✅
+- [x] 9.4 – Plex: API bestätigt (0 aktive Sessions), Deep-Link-Button funktioniert ✅
+- [x] 9.5 – ABS: Library-Switcher (Podcasts/Hörbücher), Grid, Cover-Proxy funktioniert. Fehlende Cover = ABS hat keine hinterlegt (korrekt) ✅
+- [x] 9.6 – Settings: Gotify, Plex, ABS im Integrations-Grid ergänzt (Backend + Frontend) ✅
+
+### Phase 9 – VOLLSTÄNDIG ABGESCHLOSSEN ✅
+
+### Offene Ideen (Phase 10)
+- [ ] ABS Detail-Ansicht pro Buch/Podcast
+- [ ] Plex Sessions-Widget im Dashboard
+- [ ] Bazarr Untertitel-Tab in SeriesDetailView
+- [ ] TMDB Trailer-Vorschau embedded
+
+### Vorgehen pro Integration
+1. Backend-Route direkt testen (curl gegen API)
+2. Response-Format mit tatsächlicher API-Antwort abgleichen
+3. Frontend anpassen bis Daten wirklich angezeigt werden
+4. Edge Cases (nicht konfiguriert, leer, Fehler) sauber behandeln
 
 ---
 
@@ -112,17 +129,18 @@ OLLAMA_URL=http://192.168.188.42:11434
 OLLAMA_MODEL=qwen3:32b
 
 OVERSEERR_URL=http://192.168.188.69:5055
-OVERSEERR_API_KEY=
+OVERSEERR_API_KEY=MTc0ODE2ODc4NzAxNDM2NDhkZDMyLTMxNjMtNGZmNC05ZWYwLTY1MTRhNTJjZTdkZQ==
 
 BAZARR_URL=http://192.168.188.69:6767
-BAZARR_API_KEY=
+BAZARR_API_KEY=176a878f96c8b6747a8b9b9d720e5310
 
-GOTIFY_URL=
-GOTIFY_TOKEN=
+GOTIFY_URL=http://192.168.188.69:8070
+GOTIFY_TOKEN=At.6VXHHOfJeyvW
 
-TMDB_API_KEY=
-ABS_URL=
-ABS_TOKEN=
+TMDB_API_KEY=b28a462ee85f857197dae4a37857e959
+
+ABS_URL=http://192.168.188.69:13378
+ABS_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlJZCI6IjNkODQxYWM3LTMwMTQtNDdiOS05OTNmLTQ0N2VjMDlkODFlNSIsIm5hbWUiOiJuZXhhcnItdjIiLCJ0eXBlIjoiYXBpIiwiaWF0IjoxNzc0OTkyNzE4fQ.jd8cjUNVUpfCdU6imQwTn9QUTe1uTqP4YkGPApA6sFk
 ```
 
 ---
@@ -221,9 +239,36 @@ docs(ai): update session log
 ## Was Claude Code IMMER als erstes tun soll
 
 1. `.ai/CONTEXT.md` lesen (dieser Abschnitt)
-2. `.ai/CONVENTIONS.md` lesen
-3. Bei neuen Integrationen: `.ai/INTEGRATIONS.md` lesen
-4. Bei unklaren Patterns: Referenz-Implementierung lesen
+2. `.ai/LESSONS.md` lesen (Fehler-Muster aus vergangenen Sessions)
+3. `.ai/CONVENTIONS.md` lesen
+4. Bei neuen Integrationen: `.ai/INTEGRATIONS.md` lesen
+5. Bei unklaren Patterns: Referenz-Implementierung lesen
    - Backend: `packages/server/src/routes/radarr.routes.ts`
    - Frontend: `packages/client/src/views/MoviesView.vue`
-5. Am Ende: `npx tsc --noEmit` – muss fehlerfrei sein vor dem Commit
+
+---
+
+## Arbeitsweise (Claude Code)
+
+### Plan-Mode
+Bei nicht-trivialen Tasks (3+ Schritte oder Architektur-Entscheidung): erst planen, dann bauen.
+Geht etwas schief → sofort stoppen und neu planen, nicht weiter drücken.
+
+### Subagents
+Subagents gezielt einsetzen um den Haupt-Kontext sauber zu halten:
+- **Exploration/Research:** Subagent liest und analysiert, Hauptagent baut
+- **3+ unabhängige Dateien** die gleichzeitig verstanden werden müssen → parallel via Subagent
+- **Kein Subagent** für lineare Single-Feature-Tasks (z.B. neue Integration nach bekanntem Muster)
+- Faustregel: Subagent für „verstehen", Hauptagent für „bauen"
+
+### Eleganz-Check
+Vor nicht-trivialen Änderungen kurz fragen: „Passt das zum bestehenden Pattern?"
+Referenz: `radarr.routes.ts` (Backend), `MoviesView.vue` (Frontend).
+Keine Über-Engineering bei einfachen, offensichtlichen Fixes.
+
+### Done-Checkliste (vor jedem Commit)
+- [ ] `npx tsc --noEmit` – fehlerfrei
+- [ ] Smoke-Test im Browser (http://192.168.188.42:3000)
+- [ ] `CONTEXT.md` aktualisiert (Stand, Phase, offene TODOs)
+- [ ] `LESSONS.md` ergänzt falls eine Korrektur nötig war
+- [ ] Commit gepusht (gitea + github)

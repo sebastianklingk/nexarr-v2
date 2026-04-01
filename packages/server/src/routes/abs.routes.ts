@@ -37,14 +37,27 @@ router.get('/items/:itemId', requireAuth, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// Cover-URL (Redirect zum ABS-Server)
+// Cover-Proxy (leitet Cover-Bild von ABS weiter, mit Auth-Header)
 router.get('/items/:itemId/cover', requireAuth, async (req, res, next) => {
   try {
     const itemId = req.params.itemId as string;
-    const url = absService.coverUrl(itemId);
-    if (!url) { res.status(503).json({ error: 'ABS nicht konfiguriert' }); return; }
-    res.redirect(url);
-  } catch (e) { next(e); }
+    const { env } = await import('../config/env.js');
+    if (!env.ABS_URL || !env.ABS_TOKEN) { res.status(503).end(); return; }
+    const axios = (await import('axios')).default;
+    const upstream = await axios.get(
+      `${env.ABS_URL}/api/items/${itemId}/cover`,
+      {
+        headers: { Authorization: `Bearer ${env.ABS_TOKEN}` },
+        responseType: 'stream',
+        timeout: 8000,
+      }
+    );
+    res.setHeader('Content-Type', upstream.headers['content-type'] ?? 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    upstream.data.pipe(res);
+  } catch {
+    res.status(404).end();
+  }
 });
 
 // Fortschritt

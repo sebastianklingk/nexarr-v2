@@ -64,6 +64,9 @@ router.get('/integrations', requireAuth, async (_req: Request, res: Response) =>
     { name: 'tautulli', url: env.TAUTULLI_URL,  apiKey: env.TAUTULLI_API_KEY,  testPath: '/api/v2',                params: { apikey: env.TAUTULLI_API_KEY ?? '', cmd: 'get_server_info' } },
     { name: 'overseerr',url: env.OVERSEERR_URL, apiKey: env.OVERSEERR_API_KEY, testPath: '/api/v1/status',         headers: { 'X-Api-Key': env.OVERSEERR_API_KEY ?? '' } },
     { name: 'bazarr',   url: env.BAZARR_URL,    apiKey: env.BAZARR_API_KEY,    testPath: '/api/system/status',     headers: { 'X-Api-Key': env.BAZARR_API_KEY ?? '' } },
+    { name: 'gotify',   url: env.GOTIFY_URL,    apiKey: env.GOTIFY_TOKEN,      testPath: '/health',                headers: { 'X-Gotify-Key': env.GOTIFY_TOKEN ?? '' } },
+    { name: 'plex',     url: env.PLEX_URL,      apiKey: env.PLEX_TOKEN,        testPath: '/',                      params: { 'X-Plex-Token': env.PLEX_TOKEN ?? '' } },
+    { name: 'abs',      url: env.ABS_URL,       apiKey: env.ABS_TOKEN,         testPath: '/ping',                  headers: { Authorization: `Bearer ${env.ABS_TOKEN ?? ''}` } },
   ];
 
   const results = await Promise.all(
@@ -77,7 +80,14 @@ router.get('/integrations', requireAuth, async (_req: Request, res: Response) =>
           params:  i.params,
           timeout: 5_000,
         });
-        const version = data?.version ?? data?.response?.data?.version ?? null;
+        // Verschiedene Version-Felder je nach Service
+        const version =
+          data?.version ??                          // Radarr/Sonarr/Lidarr/Prowlarr/Bazarr
+          data?.response?.data?.version ??          // Tautulli
+          data?.MediaContainer?.version ??          // Plex
+          (data?.health ? 'OK' : null) ??           // Gotify
+          (data?.success ? 'OK' : null) ??          // ABS
+          null;
         return { name: i.name, status: 'online' as const, version, url: i.url };
       } catch {
         return { name: i.name, status: 'offline' as const, version: null, url: i.url };

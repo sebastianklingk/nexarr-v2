@@ -61,10 +61,9 @@ export async function getItem(itemId: string): Promise<ABSLibraryItem> {
 
 // ── Cover URL ───────────────────────────────────────────────────────────────
 
-export function coverUrl(itemId: string): string {
-  if (!env.ABS_URL) return '';
-  return `${env.ABS_URL}/api/items/${itemId}/cover?token=${env.ABS_TOKEN}&width=200`;
-}
+// Cover wird über den nexarr-Proxy geladen (/api/abs/items/{id}/cover)
+// damit der ABS-Token nicht ans Frontend geht
+export function coverUrl(_itemId: string): string { return ''; }
 
 // ── Progress ────────────────────────────────────────────────────────────────
 
