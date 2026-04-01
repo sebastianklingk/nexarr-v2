@@ -389,8 +389,16 @@ Features:
 - Farbe: `var(--prowlarr)` (#e66000) durchgängig
 - Sidebar: Indexer-Eintrag + Package-Icon
 
-### Schritt 4: CalendarView Wochenansicht + Optionen-Panel ⏳ (nächstes)
-### Schritt 4: CalendarView Wochenansicht + Optionen-Panel
+### Schritt 4: CalendarView Wochenansicht + Optionen-Panel ✅
+- Drei Ansichten: Woche | Monat | Liste (Tabs, via localStorage persistiert)
+- Wochenansicht: 7-Spalten-Grid, Tag-Headers mit Heute-Highlight, Events mit Farb-Akzent, Finale-★, Uhrzeit aus airDateUtc
+- Monatsansicht: 42-Zellen-Grid, 3 Events/Tag + "+N weitere", Heute-Kreis
+- Optionen-Panel (slide-down): Filter Radarr/Sonarr/Lidarr, Release-Typen, Wochenstart Mo/So, Vollfarb-Modus
+- Radarr: separate Einträge pro Release-Typ (Kino/Digital/Physisch) mit emoji
+- Sonarr: airDateUtc → lokale Uhrzeit, Finale-Erkennung aus finaleType/episodeType
+- Alle Einstellungen in localStorage (cal_view, cal_weekStartMon, etc.)
+
+### Schritt 5: DownloadsView kombinierte Queue + History + Fehlend ⏳ (nächstes)
 ### Schritt 5: DownloadsView kombinierte Queue + History + Fehlend
 
 ---

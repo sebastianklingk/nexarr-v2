@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useApi } from '../composables/useApi.js';
 
@@ -16,91 +16,201 @@ interface CalendarEntry {
   episodeNumber?: number;
   overview?: string;
   hasFile: boolean;
+  isFinale: boolean;
+  isSeasonPack: boolean;
   app: 'radarr' | 'sonarr' | 'lidarr';
-  color: string;
-  dateKey: string;
-  navPath: string;    // Route zum Navigieren
+  releaseType?: 'inCinemas' | 'digital' | 'physical';
+  airTime?: string;       // Lokale Uhrzeit aus airDateUtc
+  dateKey: string;        // YYYY-MM-DD
+  navPath: string;
 }
+
+// ── Settings (persistiert via localStorage) ────────────────────────────────────
+
+function ls<T>(key: string, def: T): T {
+  try { const v = localStorage.getItem('cal_' + key); return v !== null ? JSON.parse(v) : def; } catch { return def; }
+}
+function lsSet(key: string, val: unknown) { try { localStorage.setItem('cal_' + key, JSON.stringify(val)); } catch {} }
+
+type ViewMode = 'week' | 'month' | 'list';
+
+const viewMode    = ref<ViewMode>(ls('view', 'week'));
+const weekStartMon = ref<boolean>(ls('weekStartMon', true));
+const fullColor    = ref<boolean>(ls('fullColor', false));
+const showRadarr   = ref<boolean>(ls('showRadarr', true));
+const showSonarr   = ref<boolean>(ls('showSonarr', true));
+const showLidarr   = ref<boolean>(ls('showLidarr', true));
+const showCinemas  = ref<boolean>(ls('showCinemas', true));
+const showDigital  = ref<boolean>(ls('showDigital', true));
+const showPhysical = ref<boolean>(ls('showPhysical', true));
+const showOptions  = ref(false);
+
+watch(viewMode,    v => lsSet('view', v));
+watch(weekStartMon, v => lsSet('weekStartMon', v));
+watch(fullColor,   v => lsSet('fullColor', v));
+watch(showRadarr,  v => lsSet('showRadarr', v));
+watch(showSonarr,  v => lsSet('showSonarr', v));
+watch(showLidarr,  v => lsSet('showLidarr', v));
+watch(showCinemas, v => lsSet('showCinemas', v));
+watch(showDigital, v => lsSet('showDigital', v));
+watch(showPhysical,v => lsSet('showPhysical', v));
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
-const isLoading  = ref(true);
-const error      = ref<string | null>(null);
-const entries    = ref<CalendarEntry[]>([]);
+const isLoading = ref(true);
+const entries   = ref<CalendarEntry[]>([]);
 const hoverEntry = ref<CalendarEntry | null>(null);
 const hoverPos   = ref({ x: 0, y: 0 });
 
-// Offset: 0 = aktuelle Woche/-zeitraum, -1 = zurück, +1 = vorwärts
-const offsetDays = ref(0);
-const WINDOW = 30; // Tage anzeigen
-
+// Anchor: erster Tag des sichtbaren Bereichs
 const today = new Date();
 today.setHours(0, 0, 0, 0);
 const todayKey = today.toISOString().slice(0, 10);
+const anchor  = ref(new Date(today));
 
-const startDate = computed(() => {
-  const d = new Date(today);
-  d.setDate(d.getDate() + offsetDays.value - 3);
+// ── Navigation ────────────────────────────────────────────────────────────────
+
+function goToday() {
+  anchor.value = new Date(today);
+}
+function goPrev() {
+  const d = new Date(anchor.value);
+  if (viewMode.value === 'week')  d.setDate(d.getDate() - 7);
+  if (viewMode.value === 'month') d.setMonth(d.getMonth() - 1);
+  if (viewMode.value === 'list')  d.setDate(d.getDate() - 30);
+  anchor.value = d;
+}
+function goNext() {
+  const d = new Date(anchor.value);
+  if (viewMode.value === 'week')  d.setDate(d.getDate() + 7);
+  if (viewMode.value === 'month') d.setMonth(d.getMonth() + 1);
+  if (viewMode.value === 'list')  d.setDate(d.getDate() + 30);
+  anchor.value = d;
+}
+
+// ── Datum-Berechnungen ────────────────────────────────────────────────────────
+
+function getWeekStart(date: Date): Date {
+  const d = new Date(date);
+  const dow = d.getDay(); // 0=So, 1=Mo,...
+  const diff = weekStartMon.value
+    ? (dow === 0 ? -6 : 1 - dow)
+    : -dow;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+const weekDays = computed(() => {
+  const start = getWeekStart(anchor.value);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i);
+    return d;
+  });
+});
+
+const monthDays = computed(() => {
+  const d = new Date(anchor.value.getFullYear(), anchor.value.getMonth(), 1);
+  const start = getWeekStart(d);
+  const days: Date[] = [];
+  const cur = new Date(start);
+  while (days.length < 42) {
+    days.push(new Date(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return days;
+});
+
+const listStart = computed(() => {
+  const d = new Date(anchor.value);
+  d.setDate(d.getDate() - 3);
+  return d;
+});
+const listEnd = computed(() => {
+  const d = new Date(listStart.value);
+  d.setDate(d.getDate() + 36);
   return d;
 });
 
-const endDate = computed(() => {
-  const d = new Date(startDate.value);
-  d.setDate(d.getDate() + WINDOW + 3);
-  return d;
-});
+function fmtKey(d: Date) { return d.toISOString().slice(0, 10); }
 
-const fmt = (d: Date) => d.toISOString().slice(0, 10);
+const loadStart = computed(() => {
+  if (viewMode.value === 'week')  return weekDays.value[0];
+  if (viewMode.value === 'month') return monthDays.value[0];
+  return listStart.value;
+});
+const loadEnd = computed(() => {
+  if (viewMode.value === 'week')  return weekDays.value[6];
+  if (viewMode.value === 'month') return monthDays.value[41];
+  return listEnd.value;
+});
 
 // ── Laden ─────────────────────────────────────────────────────────────────────
 
 async function load() {
   isLoading.value = true;
-  error.value = null;
   try {
     const data = await get<{
       radarr: Record<string, unknown>[];
       sonarr: Record<string, unknown>[];
       lidarr: Record<string, unknown>[];
-    }>(`/api/calendar?start=${fmt(startDate.value)}&end=${fmt(endDate.value)}`);
+    }>(`/api/calendar?start=${fmtKey(loadStart.value)}&end=${fmtKey(loadEnd.value)}`);
 
     const mapped: CalendarEntry[] = [];
 
+    // Radarr – je Release-Typ eine eigene Karte
     for (const m of data.radarr) {
-      const date = (m.digitalRelease ?? m.inCinemas ?? m.physicalRelease) as string | undefined;
-      if (!date) continue;
-      mapped.push({
-        id: m.id as number, title: m.title as string, hasFile: m.hasFile as boolean,
-        app: 'radarr', color: 'var(--radarr)',
-        dateKey: date.slice(0, 10),
-        navPath: `/movies/${m.id}`,
-        overview: m.overview as string | undefined,
-      });
+      const types: { type: 'inCinemas' | 'digital' | 'physical'; date: string }[] = [];
+      if (m.inCinemas)        types.push({ type: 'inCinemas', date: m.inCinemas as string });
+      if (m.digitalRelease)   types.push({ type: 'digital',  date: m.digitalRelease as string });
+      if (m.physicalRelease)  types.push({ type: 'physical', date: m.physicalRelease as string });
+      if (!types.length)      continue;
+      for (const { type, date } of types) {
+        mapped.push({
+          id: m.id as number, title: m.title as string, hasFile: m.hasFile as boolean,
+          isFinale: false, isSeasonPack: false,
+          app: 'radarr', releaseType: type,
+          dateKey: date.slice(0, 10),
+          navPath: `/movies/${m.id}`,
+          overview: m.overview as string | undefined,
+        });
+      }
     }
 
+    // Sonarr
     for (const e of data.sonarr) {
-      const date = (e.airDate ?? e.airDateUtc) as string | undefined;
-      if (!date) continue;
+      const dateUtc = (e.airDateUtc ?? e.airDate) as string | undefined;
+      if (!dateUtc) continue;
       const ser = e.series as Record<string, unknown> | undefined;
+      const isFinale = ['seasonFinale', 'seriesFinale', 'midSeasonFinale'].includes(
+        (e.finaleType as string) ?? (e.episodeType as string) ?? ''
+      );
+      const sn = e.seasonNumber as number;
       mapped.push({
         id: e.id as number, title: e.title as string, hasFile: e.hasFile as boolean,
         seriesTitle: ser?.title as string | undefined,
-        seasonNumber: e.seasonNumber as number, episodeNumber: e.episodeNumber as number,
-        app: 'sonarr', color: 'var(--sonarr)',
-        dateKey: (date as string).slice(0, 10),
+        seasonNumber: sn, episodeNumber: e.episodeNumber as number,
+        isFinale,
+        isSeasonPack: sn === 0,
+        app: 'sonarr',
+        airTime: dateUtc.includes('T') ? new Date(dateUtc).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : undefined,
+        dateKey: dateUtc.slice(0, 10),
         navPath: `/series/${ser?.id ?? 0}`,
         overview: e.overview as string | undefined,
       });
     }
 
+    // Lidarr
     for (const a of data.lidarr) {
       const date = a.releaseDate as string | undefined;
       if (!date) continue;
       mapped.push({
         id: a.id as number, title: a.title as string,
         hasFile: ((a.statistics as Record<string, unknown>)?.trackFileCount as number ?? 0) > 0,
-        app: 'lidarr', color: 'var(--lidarr)',
-        dateKey: (date as string).slice(0, 10),
+        isFinale: false, isSeasonPack: false,
+        app: 'lidarr',
+        dateKey: date.slice(0, 10),
         navPath: `/music`,
         overview: undefined,
       });
@@ -108,36 +218,68 @@ async function load() {
 
     mapped.sort((a, b) => a.dateKey.localeCompare(b.dateKey));
     entries.value = mapped;
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Kalender konnte nicht geladen werden';
-  } finally {
-    isLoading.value = false;
-  }
+  } catch { entries.value = []; }
+  finally { isLoading.value = false; }
 }
 
 onMounted(load);
+watch([anchor, viewMode, weekStartMon], load);
 
-// ── Gruppierung ───────────────────────────────────────────────────────────────
+// ── Filter ────────────────────────────────────────────────────────────────────
 
-const grouped = computed(() => {
+const filtered = computed(() => entries.value.filter(e => {
+  if (e.app === 'radarr' && !showRadarr.value) return false;
+  if (e.app === 'sonarr' && !showSonarr.value) return false;
+  if (e.app === 'lidarr' && !showLidarr.value) return false;
+  if (e.app === 'radarr') {
+    if (e.releaseType === 'inCinemas' && !showCinemas.value)  return false;
+    if (e.releaseType === 'digital'   && !showDigital.value)  return false;
+    if (e.releaseType === 'physical'  && !showPhysical.value) return false;
+  }
+  return true;
+}));
+
+function entriesForDay(dateKey: string) {
+  return filtered.value.filter(e => e.dateKey === dateKey);
+}
+
+// ── Gruppierung für Listenansicht ─────────────────────────────────────────────
+
+const listGrouped = computed(() => {
   const map = new Map<string, CalendarEntry[]>();
-  for (const e of entries.value) {
-    if (e.dateKey < fmt(startDate.value) || e.dateKey > fmt(endDate.value)) continue;
+  for (const e of filtered.value) {
+    if (e.dateKey < fmtKey(listStart.value) || e.dateKey > fmtKey(listEnd.value)) continue;
     if (!map.has(e.dateKey)) map.set(e.dateKey, []);
     map.get(e.dateKey)!.push(e);
   }
   return map;
 });
+const listDates = computed(() => [...listGrouped.value.keys()].sort());
 
-const sortedDates = computed(() => [...grouped.value.keys()].sort());
+// ── Range Label ───────────────────────────────────────────────────────────────
 
-// ── Navigation ────────────────────────────────────────────────────────────────
-
-function goToday() { offsetDays.value = 0; load(); }
-function goPrev()  { offsetDays.value -= WINDOW; load(); }
-function goNext()  { offsetDays.value += WINDOW; load(); }
+const rangeLabel = computed(() => {
+  if (viewMode.value === 'week') {
+    const s = weekDays.value[0].toLocaleDateString('de-DE', { day: 'numeric', month: 'short' });
+    const e = weekDays.value[6].toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' });
+    return `${s} – ${e}`;
+  }
+  if (viewMode.value === 'month') {
+    return anchor.value.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+  }
+  const s = listStart.value.toLocaleDateString('de-DE', { day: '2-digit', month: 'short' });
+  const e = listEnd.value.toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' });
+  return `${s} – ${e}`;
+});
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+const DAY_NAMES_SHORT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+const DAY_NAMES_FULL  = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+
+function isPast(dk: string)    { return dk < todayKey; }
+function isToday(dk: string)   { return dk === todayKey; }
+function isCurMonth(d: Date)   { return d.getMonth() === anchor.value.getMonth(); }
 
 function formatDateHeader(dateStr: string): string {
   const d = new Date(dateStr + 'T12:00:00');
@@ -148,76 +290,70 @@ function formatDateHeader(dateStr: string): string {
   return d.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
-function fmtDate(dateStr: string) {
-  return new Date(dateStr + 'T12:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
-
-function isPast(dateStr: string) { return dateStr < todayKey; }
-function isToday(dateStr: string) { return dateStr === todayKey; }
-
-function appLabel(app: CalendarEntry['app']): string {
+function appLabel(app: CalendarEntry['app']) {
   return app === 'radarr' ? 'Film' : app === 'sonarr' ? 'Serie' : 'Album';
 }
-
-function episodeLabel(entry: CalendarEntry): string {
-  if (entry.seasonNumber !== undefined && entry.episodeNumber !== undefined) {
-    return `S${String(entry.seasonNumber).padStart(2,'0')}E${String(entry.episodeNumber).padStart(2,'0')}`;
-  }
+function releaseTypeLabel(t?: string) {
+  if (t === 'inCinemas') return '🎬';
+  if (t === 'digital')   return '💻';
+  if (t === 'physical')  return '📀';
   return '';
 }
 
-function navigateTo(entry: CalendarEntry) {
-  if (entry.navPath && entry.navPath !== '/music') {
-    router.push(entry.navPath);
-  }
+function episodeLabel(e: CalendarEntry) {
+  if (e.seasonNumber !== undefined && e.episodeNumber !== undefined)
+    return `S${String(e.seasonNumber).padStart(2,'0')}E${String(e.episodeNumber).padStart(2,'0')}`;
+  return '';
+}
+
+function navigateTo(e: CalendarEntry) {
+  if (e.navPath && e.navPath !== '/music') router.push(e.navPath);
+}
+
+function cardStyle(e: CalendarEntry) {
+  return fullColor.value
+    ? `background:color-mix(in srgb,${e.app === 'radarr' ? 'var(--radarr)' : e.app === 'sonarr' ? 'var(--sonarr)' : 'var(--lidarr)'} 10%,var(--bg-surface));border-color:color-mix(in srgb,${e.app === 'radarr' ? 'var(--radarr)' : e.app === 'sonarr' ? 'var(--sonarr)' : 'var(--lidarr)'} 25%,transparent)`
+    : '';
+}
+
+function appColor(app: CalendarEntry['app']) {
+  return app === 'radarr' ? 'var(--radarr)' : app === 'sonarr' ? 'var(--sonarr)' : 'var(--lidarr)';
 }
 
 // ── Hover Tooltip ─────────────────────────────────────────────────────────────
 
-function onCardMouseEnter(e: MouseEvent, entry: CalendarEntry) {
+function onEnter(e: MouseEvent, entry: CalendarEntry) {
   hoverEntry.value = entry;
-  updateHoverPos(e);
+  updatePos(e);
 }
-
-function onCardMouseMove(e: MouseEvent) {
-  if (hoverEntry.value) updateHoverPos(e);
-}
-
-function onCardMouseLeave() {
-  hoverEntry.value = null;
-}
-
-function updateHoverPos(e: MouseEvent) {
-  const x = e.clientX + 16;
-  const y = e.clientY - 8;
+function onMove(e: MouseEvent)  { if (hoverEntry.value) updatePos(e); }
+function onLeave()               { hoverEntry.value = null; }
+function updatePos(e: MouseEvent) {
   hoverPos.value = {
-    x: Math.min(x, window.innerWidth - 260),
-    y: Math.min(y, window.innerHeight - 160),
+    x: Math.min(e.clientX + 16, window.innerWidth - 268),
+    y: Math.min(e.clientY - 8,  window.innerHeight - 180),
   };
 }
-
-// ── Date Range Label ──────────────────────────────────────────────────────────
-const rangeLabel = computed(() => {
-  const s = startDate.value.toLocaleDateString('de-DE', { day: '2-digit', month: 'short' });
-  const e = endDate.value.toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' });
-  return `${s} – ${e}`;
-});
 </script>
 
 <template>
-  <div class="calendar-view page-context" style="--context-color: var(--text-tertiary)">
+  <div class="calendar-view">
 
     <!-- Hover Tooltip -->
     <Teleport to="body">
       <div v-if="hoverEntry" class="hover-tooltip"
-        :style="{ left: hoverPos.x + 'px', top: hoverPos.y + 'px', '--ec': hoverEntry.color }">
+        :style="`left:${hoverPos.x}px;top:${hoverPos.y}px;--ec:${appColor(hoverEntry.app)}`">
         <div class="ht-top">
-          <span class="ht-app-badge">{{ appLabel(hoverEntry.app) }}</span>
+          <span class="ht-badge" :style="`background:color-mix(in srgb,var(--ec) 12%,transparent);color:var(--ec);border:1px solid color-mix(in srgb,var(--ec) 25%,transparent)`">
+            {{ appLabel(hoverEntry.app) }}
+          </span>
           <span v-if="episodeLabel(hoverEntry)" class="ht-ep">{{ episodeLabel(hoverEntry) }}</span>
+          <span v-if="hoverEntry.isFinale" class="ht-finale">★ Finale</span>
+          <span v-if="hoverEntry.airTime" class="ht-time">{{ hoverEntry.airTime }}</span>
         </div>
         <p class="ht-title">{{ hoverEntry.seriesTitle ?? hoverEntry.title }}</p>
         <p v-if="hoverEntry.seriesTitle" class="ht-sub">{{ hoverEntry.title }}</p>
-        <p v-if="hoverEntry.overview" class="ht-overview">{{ hoverEntry.overview.slice(0, 160) }}{{ hoverEntry.overview.length > 160 ? '…' : '' }}</p>
+        <p v-if="hoverEntry.overview" class="ht-overview">{{ hoverEntry.overview.slice(0, 180) }}{{ hoverEntry.overview.length > 180 ? '…' : '' }}</p>
         <div class="ht-status" :class="hoverEntry.hasFile ? 'ht-ok' : 'ht-miss'">
           {{ hoverEntry.hasFile ? '✓ Vorhanden' : '○ Ausstehend' }}
         </div>
@@ -225,74 +361,196 @@ const rangeLabel = computed(() => {
     </Teleport>
 
     <!-- Header -->
-    <div class="view-header">
+    <div class="cal-header">
       <div class="header-left">
-        <h1 class="view-title">
-          <span class="title-bar" />
-          Kalender
-        </h1>
+        <h1 class="view-title">Kalender</h1>
         <p class="view-sub">{{ rangeLabel }}</p>
       </div>
-
-      <!-- Navigation -->
-      <div class="nav-controls">
-        <button class="nav-btn" @click="goPrev">‹ Zurück</button>
-        <button class="today-btn" @click="goToday">Heute</button>
-        <button class="nav-btn" @click="goNext">Weiter ›</button>
+      <div class="header-right">
+        <!-- View Mode -->
+        <div class="view-tabs">
+          <button v-for="m in (['week','month','list'] as const)" :key="m"
+            :class="['vtab', { active: viewMode === m }]"
+            @click="viewMode = m">
+            {{ m === 'week' ? 'Woche' : m === 'month' ? 'Monat' : 'Liste' }}
+          </button>
+        </div>
+        <!-- Navigation -->
+        <div class="nav-group">
+          <button class="nav-btn" @click="goPrev">‹</button>
+          <button class="today-btn" @click="goToday">Heute</button>
+          <button class="nav-btn" @click="goNext">›</button>
+        </div>
+        <!-- Options Toggle -->
+        <button :class="['opt-toggle', { active: showOptions }]" @click="showOptions = !showOptions">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="18" y2="18"/></svg>
+          Optionen
+        </button>
       </div>
     </div>
+
+    <!-- Options Panel -->
+    <Transition name="slide-down">
+      <div v-if="showOptions" class="options-panel">
+        <div class="opt-group">
+          <span class="opt-lbl">Anzeigen</span>
+          <label class="opt-chip" :class="{ active: showRadarr }" @click="showRadarr = !showRadarr">
+            <span class="opt-dot" style="background:var(--radarr)" />Radarr
+          </label>
+          <label class="opt-chip" :class="{ active: showSonarr }" @click="showSonarr = !showSonarr">
+            <span class="opt-dot" style="background:var(--sonarr)" />Sonarr
+          </label>
+          <label class="opt-chip" :class="{ active: showLidarr }" @click="showLidarr = !showLidarr">
+            <span class="opt-dot" style="background:var(--lidarr)" />Lidarr
+          </label>
+        </div>
+        <div class="opt-sep" />
+        <div class="opt-group">
+          <span class="opt-lbl">Radarr Release-Typ</span>
+          <label class="opt-chip" :class="{ active: showCinemas }"  @click="showCinemas  = !showCinemas">🎬 Kino</label>
+          <label class="opt-chip" :class="{ active: showDigital }"  @click="showDigital  = !showDigital">💻 Digital</label>
+          <label class="opt-chip" :class="{ active: showPhysical }" @click="showPhysical = !showPhysical">📀 Physisch</label>
+        </div>
+        <div class="opt-sep" />
+        <div class="opt-group">
+          <span class="opt-lbl">Wochenstart</span>
+          <label class="opt-chip" :class="{ active: weekStartMon }"  @click="weekStartMon = true">Mo</label>
+          <label class="opt-chip" :class="{ active: !weekStartMon }" @click="weekStartMon = false">So</label>
+        </div>
+        <div class="opt-sep" />
+        <div class="opt-group">
+          <span class="opt-lbl">Darstellung</span>
+          <label class="opt-chip" :class="{ active: fullColor }" @click="fullColor = !fullColor">
+            Vollfarbe
+          </label>
+        </div>
+      </div>
+    </Transition>
 
     <!-- Loading -->
-    <div v-if="isLoading" class="skeleton-list">
-      <div v-for="i in 8" :key="i" class="skeleton-group">
-        <div class="skeleton skeleton-date" />
-        <div class="skeleton skeleton-entry" />
-        <div v-if="i % 3 !== 0" class="skeleton skeleton-entry" />
+    <div v-if="isLoading" class="loading-grid">
+      <div v-for="i in 7" :key="i" class="skeleton-col">
+        <div class="skeleton" style="height:36px;border-radius:6px" />
+        <div v-if="i % 2 === 0" class="skeleton" style="height:52px;border-radius:8px;margin-top:6px" />
+        <div v-if="i % 3 !== 0" class="skeleton" style="height:52px;border-radius:8px;margin-top:6px" />
       </div>
     </div>
 
-    <!-- Error -->
-    <div v-else-if="error" class="error-banner">{{ error }}</div>
-
-    <!-- Empty -->
-    <div v-else-if="sortedDates.length === 0" class="empty-state">
-      <div class="empty-icon">📅</div>
-      <p class="empty-title">Keine Einträge im Zeitraum</p>
-      <p class="empty-sub">Radarr, Sonarr und Lidarr haben keine Releases geplant.</p>
+    <!-- ── Wochenansicht ─────────────────────────────────────────────────── -->
+    <div v-else-if="viewMode === 'week'" class="week-view">
+      <!-- Day Headers -->
+      <div class="week-header-row">
+        <div v-for="day in weekDays" :key="fmtKey(day)"
+          :class="['week-day-hdr', { 'wdh-today': isToday(fmtKey(day)) }]">
+          <span class="wdh-name">{{ DAY_NAMES_SHORT[day.getDay()] }}</span>
+          <span class="wdh-num" :class="{ 'wdh-num-today': isToday(fmtKey(day)) }">{{ day.getDate() }}</span>
+        </div>
+      </div>
+      <!-- Day Columns -->
+      <div class="week-body">
+        <div v-for="day in weekDays" :key="fmtKey(day)"
+          :class="['week-col', { 'wcol-today': isToday(fmtKey(day)), 'wcol-past': isPast(fmtKey(day)) }]">
+          <template v-if="entriesForDay(fmtKey(day)).length">
+            <div v-for="entry in entriesForDay(fmtKey(day))" :key="`${entry.app}-${entry.id}-${entry.releaseType}`"
+              class="week-event"
+              :class="[`evt-${entry.app}`, { 'evt-clickable': entry.navPath !== '/music', 'evt-has': entry.hasFile }]"
+              :style="cardStyle(entry)"
+              @click="navigateTo(entry)"
+              @mouseenter="(e) => onEnter(e, entry)"
+              @mousemove="onMove"
+              @mouseleave="onLeave">
+              <div class="evt-accent" :style="`background:${appColor(entry.app)}`" />
+              <div class="evt-body">
+                <div class="evt-top">
+                  <span class="evt-type-icon">{{ releaseTypeLabel(entry.releaseType) || (entry.app === 'sonarr' ? '📺' : entry.app === 'lidarr' ? '🎵' : '') }}</span>
+                  <span v-if="entry.isFinale" class="evt-finale">★</span>
+                  <span v-if="entry.airTime" class="evt-time">{{ entry.airTime }}</span>
+                  <span v-if="entry.hasFile" class="evt-check">✓</span>
+                </div>
+                <p class="evt-title">{{ entry.seriesTitle ?? entry.title }}</p>
+                <p v-if="entry.seriesTitle" class="evt-ep">{{ episodeLabel(entry) }} {{ entry.title }}</p>
+              </div>
+            </div>
+          </template>
+          <div v-else class="week-col-empty" />
+        </div>
+      </div>
     </div>
 
-    <!-- Calendar -->
-    <div v-else class="calendar-list">
-      <div v-for="dateKey in sortedDates" :key="dateKey"
-        :class="['date-group', { 'is-past': isPast(dateKey), 'is-today': isToday(dateKey) }]">
-
-        <!-- Date Header -->
-        <div class="date-header">
-          <span class="date-label">{{ formatDateHeader(dateKey) }}</span>
-          <span class="date-sub">{{ fmtDate(dateKey) }}</span>
-          <span class="date-count">{{ grouped.get(dateKey)?.length }} Einträge</span>
+    <!-- ── Monatsansicht ─────────────────────────────────────────────────── -->
+    <div v-else-if="viewMode === 'month'" class="month-view">
+      <!-- Wochentag-Header -->
+      <div class="month-hdr-row">
+        <div v-for="i in 7" :key="i" class="month-hdr-cell">
+          {{ DAY_NAMES_SHORT[weekStartMon ? (i % 7) : (i - 1)] }}
         </div>
+      </div>
+      <!-- Tages-Grid -->
+      <div class="month-grid">
+        <div v-for="day in monthDays" :key="fmtKey(day)"
+          :class="['month-cell', {
+            'mc-other': !isCurMonth(day),
+            'mc-today': isToday(fmtKey(day)),
+            'mc-past':  isPast(fmtKey(day)) && isCurMonth(day),
+          }]">
+          <div class="mc-num">{{ day.getDate() }}</div>
+          <template v-for="(entry, idx) in entriesForDay(fmtKey(day))" :key="`${entry.app}-${entry.id}-${entry.releaseType}`">
+            <div v-if="idx < 3"
+              class="mc-event"
+              :style="`background:color-mix(in srgb,${appColor(entry.app)} 15%,var(--bg-elevated));border-left:2px solid ${appColor(entry.app)}`"
+              @click="navigateTo(entry)"
+              @mouseenter="(e) => onEnter(e, entry)"
+              @mousemove="onMove"
+              @mouseleave="onLeave">
+              <span v-if="entry.isFinale" class="mc-finale">★</span>
+              <span class="mc-evt-title">{{ entry.seriesTitle ?? entry.title }}</span>
+              <span v-if="entry.hasFile" class="mc-check">✓</span>
+            </div>
+          </template>
+          <div v-if="entriesForDay(fmtKey(day)).length > 3" class="mc-more">
+            +{{ entriesForDay(fmtKey(day)).length - 3 }} weitere
+          </div>
+        </div>
+      </div>
+    </div>
 
-        <!-- Entries -->
-        <div class="entries">
-          <div v-for="entry in grouped.get(dateKey)" :key="`${entry.app}-${entry.id}`"
-            :class="['entry-card', { 'entry-clickable': entry.navPath && entry.navPath !== '/music' }]"
-            :style="{ '--ec': entry.color }"
-            @click="navigateTo(entry)"
-            @mouseenter="(e) => onCardMouseEnter(e, entry)"
-            @mousemove="onCardMouseMove"
-            @mouseleave="onCardMouseLeave">
-
-            <div class="entry-accent" />
-            <div class="entry-body">
-              <div class="entry-top">
-                <span class="entry-app-badge">{{ appLabel(entry.app) }}</span>
-                <span v-if="entry.seriesTitle" class="entry-series">{{ entry.seriesTitle }}</span>
-                <span v-if="episodeLabel(entry)" class="entry-episode">{{ episodeLabel(entry) }}</span>
-                <span v-if="entry.hasFile" class="entry-available" title="Vorhanden">✓</span>
-                <svg v-if="entry.navPath && entry.navPath !== '/music'" class="entry-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    <!-- ── Listenansicht ─────────────────────────────────────────────────── -->
+    <div v-else class="list-view">
+      <div v-if="listDates.length === 0" class="empty-state">
+        <div class="empty-icon">📅</div>
+        <p class="empty-title">Keine Einträge</p>
+        <p class="empty-sub">Keine Releases im gewählten Zeitraum gefunden.</p>
+      </div>
+      <div v-else class="cal-list">
+        <div v-for="dk in listDates" :key="dk"
+          :class="['date-group', { 'is-past': isPast(dk), 'is-today': isToday(dk) }]">
+          <div class="date-header">
+            <span class="date-label">{{ formatDateHeader(dk) }}</span>
+            <span class="date-count">{{ listGrouped.get(dk)?.length }}</span>
+          </div>
+          <div class="entries">
+            <div v-for="entry in listGrouped.get(dk)" :key="`${entry.app}-${entry.id}-${entry.releaseType}`"
+              :class="['entry-card', { 'entry-clickable': entry.navPath !== '/music' }]"
+              :style="[`--ec:${appColor(entry.app)}`, cardStyle(entry)]"
+              @click="navigateTo(entry)"
+              @mouseenter="(e) => onEnter(e, entry)"
+              @mousemove="onMove"
+              @mouseleave="onLeave">
+              <div class="entry-accent" :style="`background:${appColor(entry.app)}`" />
+              <div class="entry-body">
+                <div class="entry-top">
+                  <span class="entry-app-badge" :style="`background:color-mix(in srgb,var(--ec) 12%,transparent);color:var(--ec);border:1px solid color-mix(in srgb,var(--ec) 25%,transparent)`">
+                    {{ appLabel(entry.app) }}
+                  </span>
+                  <span v-if="releaseTypeLabel(entry.releaseType)" class="entry-reltype">{{ releaseTypeLabel(entry.releaseType) }}</span>
+                  <span v-if="entry.seriesTitle" class="entry-series">{{ entry.seriesTitle }}</span>
+                  <span v-if="episodeLabel(entry)" class="entry-episode">{{ episodeLabel(entry) }}</span>
+                  <span v-if="entry.isFinale" class="entry-finale">★ Finale</span>
+                  <span v-if="entry.airTime" class="entry-time">{{ entry.airTime }}</span>
+                  <span v-if="entry.hasFile" class="entry-available">✓</span>
+                </div>
+                <p class="entry-title">{{ entry.title }}</p>
               </div>
-              <p class="entry-title">{{ entry.title }}</p>
             </div>
           </div>
         </div>
@@ -303,87 +561,141 @@ const rangeLabel = computed(() => {
 </template>
 
 <style scoped>
-.calendar-view { padding: var(--space-6); min-height: 100%; }
+.calendar-view { padding: var(--space-6); min-height: 100%; display: flex; flex-direction: column; gap: var(--space-4); }
 
-/* Header */
-.view-header { margin-bottom: var(--space-6); display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
-.header-left { display: flex; flex-direction: column; gap: var(--space-1); }
-.view-title { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-xl); font-weight: 700; color: var(--text-primary); margin: 0; }
-.title-bar { display: inline-block; width: 3px; height: 1.2em; background: var(--context-color); border-radius: 2px; flex-shrink: 0; }
-.view-sub { font-size: var(--text-sm); color: var(--text-muted); margin: 0; padding-left: calc(3px + var(--space-3)); }
+/* ── Header ──────────────────────────────────────────────────────────────── */
+.cal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
+.header-left { display: flex; flex-direction: column; gap: 3px; }
+.view-title { font-size: var(--text-xl); font-weight: 700; color: var(--text-primary); margin: 0; }
+.view-sub { font-size: var(--text-sm); color: var(--text-muted); margin: 0; }
+.header-right { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+
+/* View Mode Tabs */
+.view-tabs { display: flex; background: var(--bg-elevated); border: 1px solid var(--bg-border); border-radius: var(--radius-md); overflow: hidden; }
+.vtab { padding: 5px 14px; font-size: var(--text-sm); font-weight: 500; color: var(--text-muted); cursor: pointer; transition: all .12s; background: none; border: none; }
+.vtab:hover { color: var(--text-secondary); }
+.vtab.active { background: var(--accent-muted); color: var(--accent); }
 
 /* Navigation */
-.nav-controls { display: flex; align-items: center; gap: var(--space-2); }
-.nav-btn { padding: 5px 14px; border-radius: var(--radius-md); font-size: var(--text-sm); background: var(--bg-elevated); border: 1px solid var(--bg-border); color: var(--text-secondary); cursor: pointer; transition: all .15s; }
+.nav-group { display: flex; align-items: center; gap: var(--space-1); }
+.nav-btn { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md); background: var(--bg-elevated); border: 1px solid var(--bg-border); color: var(--text-secondary); cursor: pointer; font-size: 16px; transition: all .12s; }
 .nav-btn:hover { background: var(--bg-overlay); color: var(--text-primary); }
-.today-btn { padding: 5px 14px; border-radius: var(--radius-md); font-size: var(--text-sm); background: rgba(155,0,69,.12); border: 1px solid rgba(155,0,69,.3); color: var(--accent); cursor: pointer; transition: all .15s; font-weight: 600; }
-.today-btn:hover { background: rgba(155,0,69,.22); }
+.today-btn { padding: 5px 14px; border-radius: var(--radius-md); background: rgba(155,0,69,.1); border: 1px solid rgba(155,0,69,.25); color: var(--accent); font-size: var(--text-sm); font-weight: 600; cursor: pointer; transition: all .12s; }
+.today-btn:hover { background: rgba(155,0,69,.2); }
+.opt-toggle { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: var(--radius-md); background: var(--bg-elevated); border: 1px solid var(--bg-border); color: var(--text-muted); font-size: var(--text-sm); cursor: pointer; transition: all .12s; }
+.opt-toggle:hover, .opt-toggle.active { border-color: var(--accent); color: var(--accent); background: rgba(155,0,69,.08); }
 
-/* Calendar List */
-.calendar-list { display: flex; flex-direction: column; gap: var(--space-6); }
+/* ── Options Panel ───────────────────────────────────────────────────────── */
+.options-panel { background: var(--bg-surface); border: 1px solid var(--bg-border); border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5); display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-5); align-items: center; }
+.opt-group { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.opt-lbl { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .07em; white-space: nowrap; }
+.opt-sep { width: 1px; height: 20px; background: var(--bg-border); }
+.opt-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.opt-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 99px; font-size: var(--text-xs); font-weight: 500; background: var(--bg-elevated); border: 1px solid var(--bg-border); color: var(--text-muted); cursor: pointer; transition: all .12s; user-select: none; }
+.opt-chip:hover { border-color: var(--bg-border-hover); color: var(--text-secondary); }
+.opt-chip.active { background: rgba(155,0,69,.1); border-color: rgba(155,0,69,.3); color: var(--accent); }
 
-/* Date Group */
+.slide-down-enter-active, .slide-down-leave-active { transition: all .2s ease; overflow: hidden; }
+.slide-down-enter-from, .slide-down-leave-to { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; }
+.slide-down-enter-to, .slide-down-leave-from { max-height: 200px; }
+
+/* ── Loading Skeleton ────────────────────────────────────────────────────── */
+.loading-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--space-2); }
+.skeleton-col { display: flex; flex-direction: column; gap: var(--space-2); }
+
+/* ── Week View ───────────────────────────────────────────────────────────── */
+.week-view { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--bg-border); border-radius: var(--radius-lg); overflow: hidden; }
+
+.week-header-row { display: grid; grid-template-columns: repeat(7, 1fr); border-bottom: 1px solid var(--bg-border); }
+.week-day-hdr { display: flex; flex-direction: column; align-items: center; padding: var(--space-2) var(--space-1); gap: 2px; background: var(--bg-surface); border-right: 1px solid var(--bg-border); }
+.week-day-hdr:last-child { border-right: none; }
+.wdh-today { background: rgba(155,0,69,.06); }
+.wdh-name { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: .07em; }
+.wdh-num { font-size: var(--text-base); font-weight: 700; color: var(--text-secondary); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+.wdh-num-today { background: var(--accent); color: #fff; }
+
+.week-body { display: grid; grid-template-columns: repeat(7, 1fr); min-height: 200px; }
+
+.week-col { display: flex; flex-direction: column; gap: 3px; padding: var(--space-2) var(--space-1); border-right: 1px solid var(--bg-border); min-height: 120px; }
+.week-col:last-child { border-right: none; }
+.wcol-today { background: rgba(155,0,69,.03); }
+.wcol-past { opacity: .5; }
+.week-col-empty { flex: 1; }
+
+.week-event { display: flex; gap: 0; border-radius: var(--radius-sm); border: 1px solid var(--bg-border); overflow: hidden; transition: all .12s; background: var(--bg-surface); }
+.week-event.evt-clickable { cursor: pointer; }
+.week-event.evt-clickable:hover { border-color: rgba(255,255,255,.15); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+.evt-accent { width: 3px; flex-shrink: 0; }
+.evt-body { flex: 1; min-width: 0; padding: 4px 5px; }
+.evt-top { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; margin-bottom: 2px; }
+.evt-type-icon { font-size: 10px; line-height: 1; }
+.evt-finale { font-size: 10px; color: var(--sabnzbd); font-weight: 700; }
+.evt-time { font-size: 9px; color: var(--text-muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+.evt-check { font-size: 9px; color: var(--status-success); }
+.evt-title { font-size: 10px; font-weight: 600; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0; line-height: 1.3; }
+.evt-ep { font-size: 9px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0; line-height: 1.3; }
+
+/* ── Month View ──────────────────────────────────────────────────────────── */
+.month-view { display: flex; flex-direction: column; border: 1px solid var(--bg-border); border-radius: var(--radius-lg); overflow: hidden; }
+.month-hdr-row { display: grid; grid-template-columns: repeat(7, 1fr); border-bottom: 1px solid var(--bg-border); background: var(--bg-surface); }
+.month-hdr-cell { padding: var(--space-2); text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: .07em; border-right: 1px solid var(--bg-border); }
+.month-hdr-cell:last-child { border-right: none; }
+.month-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+.month-cell { min-height: 90px; padding: var(--space-1); border-right: 1px solid var(--bg-border); border-bottom: 1px solid var(--bg-border); display: flex; flex-direction: column; gap: 2px; }
+.month-cell:nth-child(7n) { border-right: none; }
+.mc-other { opacity: .3; }
+.mc-today .mc-num { background: var(--accent); color: #fff; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; }
+.mc-past { opacity: .45; }
+.mc-num { font-size: 11px; font-weight: 700; color: var(--text-muted); width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.mc-event { display: flex; align-items: center; gap: 3px; border-radius: 3px; padding: 1px 4px; cursor: pointer; overflow: hidden; transition: opacity .12s; }
+.mc-event:hover { opacity: .75; }
+.mc-finale { font-size: 9px; color: var(--sabnzbd); flex-shrink: 0; }
+.mc-evt-title { font-size: 9px; font-weight: 600; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.mc-check { font-size: 9px; color: var(--status-success); flex-shrink: 0; }
+.mc-more { font-size: 9px; color: var(--text-muted); padding: 1px 4px; cursor: pointer; }
+
+/* ── List View ───────────────────────────────────────────────────────────── */
+.list-view { flex: 1; }
+.cal-list { display: flex; flex-direction: column; gap: var(--space-5); }
 .date-group { display: flex; flex-direction: column; gap: var(--space-2); }
-.date-group.is-past { opacity: 0.5; }
-.date-group.is-today .date-label { color: var(--text-primary); font-weight: 700; }
-.date-group.is-today .date-label::before { content: '● '; color: #22c55e; font-size: 10px; }
-
+.date-group.is-past { opacity: .45; }
 .date-header { display: flex; align-items: baseline; gap: var(--space-3); padding-bottom: var(--space-2); border-bottom: 1px solid var(--bg-border); }
+.date-group.is-today .date-label { color: var(--accent); font-weight: 700; }
 .date-label { font-size: var(--text-sm); font-weight: 600; color: var(--text-secondary); }
-.date-sub { font-size: var(--text-xs); color: var(--text-muted); }
-.date-count { font-size: var(--text-xs); color: var(--text-muted); margin-left: auto; }
-
-/* Entries */
+.date-count { font-size: var(--text-xs); color: var(--text-muted); background: var(--bg-elevated); border: 1px solid var(--bg-border); border-radius: 99px; padding: 0 7px; margin-left: auto; }
 .entries { display: flex; flex-direction: column; gap: var(--space-2); }
-
-.entry-card {
-  display: flex; gap: var(--space-3);
-  background: var(--bg-surface); border: 1px solid var(--bg-border);
-  border-radius: var(--radius-md); overflow: hidden;
-  transition: background .15s, border-color .15s;
-}
+.entry-card { display: flex; background: var(--bg-surface); border: 1px solid var(--bg-border); border-radius: var(--radius-md); overflow: hidden; transition: all .12s; }
 .entry-clickable { cursor: pointer; }
-.entry-clickable:hover { background: var(--bg-elevated); border-color: color-mix(in srgb, var(--ec) 30%, transparent); }
-
-.entry-accent { width: 3px; background: var(--ec, var(--text-muted)); flex-shrink: 0; }
-
-.entry-body { flex: 1; padding: var(--space-3) var(--space-4) var(--space-3) var(--space-1); display: flex; flex-direction: column; gap: var(--space-1); }
-
-.entry-top { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
-.entry-app-badge { font-size: var(--text-xs); font-weight: 600; padding: 1px 6px; border-radius: 4px; background: color-mix(in srgb, var(--ec) 12%, transparent); color: var(--ec); border: 1px solid color-mix(in srgb, var(--ec) 25%, transparent); }
-.entry-series { font-size: var(--text-xs); color: var(--text-tertiary); font-weight: 500; }
+.entry-clickable:hover { background: var(--bg-elevated); border-color: var(--bg-border-hover); }
+.entry-accent { width: 3px; flex-shrink: 0; }
+.entry-body { flex: 1; padding: var(--space-3) var(--space-4) var(--space-3) var(--space-2); }
+.entry-top { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: 3px; }
+.entry-app-badge { font-size: var(--text-xs); font-weight: 600; padding: 1px 6px; border-radius: 4px; }
+.entry-reltype { font-size: 12px; line-height: 1; }
+.entry-series  { font-size: var(--text-xs); color: var(--text-tertiary); font-weight: 500; }
 .entry-episode { font-size: var(--text-xs); color: var(--text-muted); font-variant-numeric: tabular-nums; font-weight: 600; }
-.entry-available { font-size: var(--text-xs); color: #22c55e; margin-left: auto; }
-.entry-arrow { color: var(--text-muted); margin-left: 2px; flex-shrink: 0; }
-.entry-title { font-size: var(--text-sm); color: var(--text-secondary); font-weight: 500; margin: 0; line-height: 1.3; }
+.entry-finale  { font-size: var(--text-xs); color: var(--sabnzbd); font-weight: 700; }
+.entry-time    { font-size: var(--text-xs); color: var(--text-muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+.entry-available { font-size: var(--text-xs); color: var(--status-success); }
+.entry-title   { font-size: var(--text-sm); color: var(--text-secondary); font-weight: 500; margin: 0; }
 
 /* Hover Tooltip */
-.hover-tooltip {
-  position: fixed; z-index: 9999; width: 248px;
-  background: var(--bg-elevated); border: 1px solid color-mix(in srgb, var(--ec) 30%, var(--bg-border));
-  border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4);
-  box-shadow: 0 8px 32px rgba(0,0,0,.7); pointer-events: none;
-  animation: ht-in .1s ease;
-}
-@keyframes ht-in { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
-.ht-top { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; }
-.ht-app-badge { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; background: color-mix(in srgb, var(--ec) 12%, transparent); color: var(--ec); border: 1px solid color-mix(in srgb, var(--ec) 25%, transparent); }
-.ht-ep { font-size: 10px; color: var(--text-muted); font-weight: 600; }
-.ht-title { font-size: var(--text-sm); font-weight: 700; color: var(--text-primary); margin: 0 0 2px; }
-.ht-sub { font-size: 11px; color: var(--text-tertiary); margin: 0 0 5px; }
+.hover-tooltip { position: fixed; z-index: 9999; width: 256px; background: var(--bg-elevated); border: 1px solid color-mix(in srgb, var(--ec) 30%, var(--bg-border)); border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4); box-shadow: 0 8px 32px rgba(0,0,0,.7); pointer-events: none; }
+.ht-top    { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; flex-wrap: wrap; }
+.ht-badge  { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; }
+.ht-ep     { font-size: 10px; color: var(--text-muted); font-weight: 600; }
+.ht-finale { font-size: 10px; color: var(--sabnzbd); font-weight: 700; }
+.ht-time   { font-size: 10px; color: var(--text-muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+.ht-title  { font-size: var(--text-sm); font-weight: 700; color: var(--text-primary); margin: 0 0 2px; }
+.ht-sub    { font-size: 11px; color: var(--text-tertiary); margin: 0 0 4px; }
 .ht-overview { font-size: 11px; color: var(--text-muted); line-height: 1.5; margin: 0 0 6px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .ht-status { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 99px; display: inline-flex; }
-.ht-ok { background: rgba(34,197,94,.12); color: #22c55e; border: 1px solid rgba(34,197,94,.2); }
+.ht-ok   { background: rgba(34,197,94,.12); color: #22c55e; border: 1px solid rgba(34,197,94,.2); }
 .ht-miss { background: rgba(255,255,255,.05); color: var(--text-muted); border: 1px solid var(--bg-border); }
 
-/* Error / Empty / Skeleton */
-.error-banner { padding: var(--space-4); background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.3); border-radius: var(--radius-md); color: var(--status-error); font-size: var(--text-sm); }
+/* Empty */
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-12) var(--space-4); gap: var(--space-3); text-align: center; }
-.empty-icon { font-size: 48px; }
+.empty-icon  { font-size: 48px; }
 .empty-title { font-size: var(--text-lg); color: var(--text-secondary); font-weight: 600; margin: 0; }
-.empty-sub { color: var(--text-muted); font-size: var(--text-sm); margin: 0; }
-.skeleton-list { display: flex; flex-direction: column; gap: var(--space-6); }
-.skeleton-group { display: flex; flex-direction: column; gap: var(--space-2); }
-.skeleton-date { height: 16px; width: 160px; border-radius: 4px; }
-.skeleton-entry { height: 56px; width: 100%; border-radius: var(--radius-md); }
+.empty-sub   { color: var(--text-muted); font-size: var(--text-sm); margin: 0; }
 </style>
