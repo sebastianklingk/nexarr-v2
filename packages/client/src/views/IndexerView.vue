@@ -213,13 +213,16 @@ async function loadStats() {
   isLoadingStats.value = true;
   try {
     const [idxData, statsData] = await Promise.all([
-      get<Indexer[]>('/api/prowlarr/indexer'),
-      get<{ indexers: IndexerStat[] }>('/api/prowlarr/stats'),
+      get<Indexer[]>('/api/prowlarr/indexers'),
+      get<{ indexers: IndexerStat[] }>('/api/prowlarr/stats').catch(() => ({ indexers: [] })),
     ]);
-    indexers.value = idxData ?? [];
-    stats.value    = statsData?.indexers ?? [];
-  } catch { /* Prowlarr nicht konfiguriert */ }
-  finally { isLoadingStats.value = false; }
+    indexers.value = Array.isArray(idxData) ? idxData : [];
+    // Prowlarr /indexerstats liefert { indexers: [...] }
+    const rawStats = statsData as any;
+    stats.value    = rawStats?.indexers ?? rawStats?.data?.indexers ?? [];
+  } catch (e) {
+    console.error('[IndexerView] loadStats error:', e);
+  } finally { isLoadingStats.value = false; }
 }
 
 async function loadHealth() {
@@ -241,15 +244,18 @@ async function switchTab(tab: 'indexer' | 'history' | 'rss') {
 
 async function loadHistory() {
   try {
-    const data = await get<{ records: HistoryRecord[] }>('/api/prowlarr/history?pageSize=100');
-    historyRecords.value = (data?.records ?? []).filter(r => r.eventType === 'releaseGrabbed');
+    const data = await get<any>('/api/prowlarr/history?pageSize=100');
+    // Prowlarr history liefert { records: [...] } oder direkt Array
+    const raw = data as any;
+    const records: HistoryRecord[] = Array.isArray(raw) ? raw : (raw?.records ?? []);
+    historyRecords.value = records.filter(r => r.eventType === 'releaseGrabbed');
   } catch { historyRecords.value = []; }
   historyLoaded.value = true;
 }
 
 async function loadRss() {
   try {
-    const data = await get<Release[]>('/api/prowlarr/search?type=tvsearch&q=&categories=5000&limit=50');
+    const data = await get<Release[]>('/api/prowlarr/rss?categories=5000&limit=50');
     rssResults.value = (data ?? []).sort((a, b) => (a.ageHours ?? 999) - (b.ageHours ?? 999));
   } catch { rssResults.value = []; }
   rssLoaded.value = true;
