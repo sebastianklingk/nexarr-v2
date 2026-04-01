@@ -114,10 +114,11 @@ export async function deleteMovieSubtitle(radarrId: number, language: string, pa
 // ── Episode Subtitles ─────────────────────────────────────────────────────────
 
 // Alle Episode-Untertitel einer Serie (für SeriesDetailView – parallel laden)
+// Bazarr erwartet 'seriesid[]' als Array-Parameter (wie PHP $_GET)
 export async function getEpisodeSubtitlesBySeries(sonarrSeriesId: number): Promise<BazarrEpisodeSubtitles[]> {
   return C.fetch(`bazarr_episodes_series_${sonarrSeriesId}`, async () => {
     const { data } = await client().get('/api/episodes', {
-      params: { seriesid: sonarrSeriesId },
+      params: { 'seriesid[]': sonarrSeriesId },
     });
     return (data?.data ?? []) as BazarrEpisodeSubtitles[];
   }, TTL.QUEUE);
