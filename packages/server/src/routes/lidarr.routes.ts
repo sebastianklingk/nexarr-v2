@@ -33,13 +33,14 @@ router.get('/albums/:id/tracks', requireAuth, H(async (req, res) => {
 
 // Tracks über artistId+albumId (v1-kompatibel: GET /api/lidarr/tracks?artistId=X&albumId=Y)
 router.get('/tracks', requireAuth, H(async (req, res) => {
-  const artistId = Number(req.query.artistId);
   const albumId  = Number(req.query.albumId);
-  if (albumId) {
-    // albumId allein reicht für Lidarr
+  if (!albumId) { res.status(400).json({ error: 'albumId required' }); return; }
+  // artistId optional – wenn nicht angegeben, nur albumId nutzen
+  const artistId = req.query.artistId ? Number(req.query.artistId) : undefined;
+  if (artistId) {
     res.json(await lidarrService.getTracksByArtistAlbum(artistId, albumId));
   } else {
-    res.status(400).json({ error: 'albumId required' });
+    res.json(await lidarrService.getAlbumTracks(albumId));
   }
 }));
 
