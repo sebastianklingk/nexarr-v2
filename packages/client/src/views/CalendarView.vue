@@ -144,9 +144,13 @@ const loadStart = computed(() => {
   return listStart.value;
 });
 const loadEnd = computed(() => {
-  if (viewMode.value === 'week')  return weekDays.value[6];
-  if (viewMode.value === 'month') return monthDays.value[41];
-  return listEnd.value;
+  // +1 Tag: Sonarr/Radarr behandeln 'end' als exklusiv
+  const base = viewMode.value === 'week'  ? weekDays.value[6]
+             : viewMode.value === 'month' ? monthDays.value[41]
+             : listEnd.value;
+  const d = new Date(base);
+  d.setDate(d.getDate() + 1);
+  return d;
 });
 
 // ── Laden ─────────────────────────────────────────────────────────────────────
