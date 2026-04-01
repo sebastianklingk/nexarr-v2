@@ -75,3 +75,13 @@ export async function deleteItem(nzoId: string): Promise<void> {
   await client('queue', { name: 'delete', value: nzoId, del_files: 1 });
   C.invalidate('sabnzbd_queue');
 }
+
+export async function pauseItem(nzoId: string): Promise<void> {
+  await client('queue', { name: 'pause', value: nzoId });
+  C.invalidate('sabnzbd_queue');
+}
+
+export async function resumeItem(nzoId: string): Promise<void> {
+  await client('queue', { name: 'resume', value: nzoId });
+  C.invalidate('sabnzbd_queue');
+}

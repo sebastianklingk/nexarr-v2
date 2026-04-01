@@ -1,12 +1,30 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useGotifyStore } from '../stores/gotify.store.js';
 
 const store = useGotifyStore();
 
+const activeFilter = ref<'all' | 'critical' | 'high' | 'info'>('all');
+
 onMounted(async () => {
   await store.fetchMessages();
 });
+
+const filtered = computed(() => {
+  switch (activeFilter.value) {
+    case 'critical': return store.messages.filter(m => m.priority >= 8);
+    case 'high':     return store.messages.filter(m => m.priority >= 5 && m.priority < 8);
+    case 'info':     return store.messages.filter(m => m.priority < 5);
+    default:         return store.messages;
+  }
+});
+
+const counts = computed(() => ({
+  all:      store.messages.length,
+  critical: store.messages.filter(m => m.priority >= 8).length,
+  high:     store.messages.filter(m => m.priority >= 5 && m.priority < 8).length,
+  info:     store.messages.filter(m => m.priority < 5).length,
+}));
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -18,8 +36,8 @@ function formatDate(iso: string): string {
 
 function priorityLabel(p: number): string {
   if (p >= 8) return 'Kritisch';
-  if (p >= 5) return 'Hoch';
-  return 'Normal';
+  if (p >= 5) return 'Wichtig';
+  return 'Info';
 }
 
 function priorityClass(p: number): string {
@@ -39,12 +57,20 @@ function priorityClass(p: number): string {
         <h1 class="view-title">Benachrichtigungen</h1>
         <span v-if="store.unreadCount" class="count-badge">{{ store.unreadCount }}</span>
       </div>
-      <button
-        v-if="store.messages.length"
-        class="clear-all-btn"
-        @click="store.deleteAll()"
-      >
+      <button v-if="store.messages.length" class="clear-all-btn" @click="store.deleteAll()">
         Alle löschen
+      </button>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div v-if="store.messages.length" class="filter-tabs">
+      <button v-for="f in (['all','critical','high','info'] as const)" :key="f"
+        :class="['filter-tab', { active: activeFilter === f }, `tab-${f}`]"
+        @click="activeFilter = f">
+        <span class="tab-label">
+          {{ f==='all' ? 'Alle' : f==='critical' ? 'Kritisch' : f==='high' ? 'Wichtig' : 'Info' }}
+        </span>
+        <span v-if="counts[f] > 0" class="tab-count">{{ counts[f] }}</span>
       </button>
     </div>
 
@@ -68,14 +94,17 @@ function priorityClass(p: number): string {
       <p class="empty-sub">Gotify ist leer</p>
     </div>
 
+    <!-- Kein Ergebnis für diesen Filter -->
+    <div v-else-if="filtered.length === 0" class="empty-state">
+      <div class="empty-icon">🔍</div>
+      <p class="empty-title">Keine Nachrichten</p>
+      <p class="empty-sub">Keine {{ activeFilter === 'critical' ? 'kritischen' : activeFilter === 'high' ? 'wichtigen' : 'Info-' }}Nachrichten vorhanden.</p>
+    </div>
+
     <!-- Nachrichten-Liste -->
     <div v-else class="messages-list">
       <TransitionGroup name="msg">
-        <div
-          v-for="msg in store.messages"
-          :key="msg.id"
-          class="message-card"
-        >
+        <div v-for="msg in filtered" :key="msg.id" class="message-card">
           <div class="msg-left">
             <span :class="['prio-dot', priorityClass(msg.priority)]" :title="priorityLabel(msg.priority)" />
           </div>
@@ -100,181 +129,62 @@ function priorityClass(p: number): string {
 </template>
 
 <style scoped>
-.gotify-view {
-  padding: var(--space-6);
-  max-width: 800px;
-  margin: 0 auto;
-}
+.gotify-view { padding: var(--space-6); max-width: 800px; margin: 0 auto; }
 
 /* Header */
-.view-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--space-6);
-}
+.view-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-5); }
+.header-left { display: flex; align-items: center; gap: var(--space-3); }
+.app-indicator { width: 4px; height: 28px; background: var(--gotify); border-radius: 2px; }
+.view-title { font-size: var(--text-xl); font-weight: 700; color: var(--text-primary); margin: 0; }
+.count-badge { background: var(--gotify); color: #fff; font-size: var(--text-xs); font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+.clear-all-btn { background: var(--bg-elevated); border: 1px solid var(--bg-border); color: var(--text-tertiary); font-size: var(--text-sm); padding: 6px 14px; border-radius: var(--radius-md); cursor: pointer; transition: all .15s ease; }
+.clear-all-btn:hover { border-color: #ef4444; color: #ef4444; }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.app-indicator {
-  width: 4px;
-  height: 28px;
-  background: var(--gotify);
-  border-radius: 2px;
-}
-
-.view-title {
-  font-size: var(--text-xl);
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.count-badge {
-  background: var(--gotify);
-  color: #fff;
-  font-size: var(--text-xs);
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 99px;
-}
-
-.clear-all-btn {
-  background: var(--bg-elevated);
-  border: 1px solid var(--bg-border);
-  color: var(--text-tertiary);
-  font-size: var(--text-sm);
-  padding: 6px 14px;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all .15s ease;
-}
-
-.clear-all-btn:hover {
-  border-color: #ef4444;
-  color: #ef4444;
-}
+/* Filter Tabs */
+.filter-tabs { display: flex; gap: 2px; background: var(--bg-elevated); border-radius: var(--radius-lg); padding: 3px; border: 1px solid var(--bg-border); margin-bottom: var(--space-5); }
+.filter-tab { flex: 1; display: flex; align-items: center; justify-content: center; gap: var(--space-2); padding: 7px 12px; border-radius: calc(var(--radius-lg) - 2px); font-size: var(--text-sm); font-weight: 500; color: var(--text-muted); cursor: pointer; transition: all .15s; }
+.filter-tab:hover { color: var(--text-secondary); }
+.filter-tab.active { color: var(--text-primary); background: var(--bg-overlay); }
+.filter-tab.active.tab-critical { background: rgba(239,68,68,.12); color: #ef4444; }
+.filter-tab.active.tab-high { background: rgba(245,158,11,.12); color: #f59e0b; }
+.filter-tab.active.tab-info { background: rgba(0,96,168,.12); color: var(--gotify); }
+.tab-label { }
+.tab-count { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 99px; background: rgba(255,255,255,.08); }
+.filter-tab.active.tab-critical .tab-count { background: rgba(239,68,68,.2); }
+.filter-tab.active.tab-high .tab-count { background: rgba(245,158,11,.2); }
+.filter-tab.active.tab-info .tab-count { background: rgba(0,96,168,.2); }
 
 /* Empty */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 50vh;
-  gap: var(--space-3);
-  text-align: center;
-}
-
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 40vh; gap: var(--space-3); text-align: center; }
 .empty-icon { font-size: 48px; }
-
-.empty-title {
-  font-size: var(--text-lg);
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.empty-sub {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
+.empty-title { font-size: var(--text-lg); font-weight: 600; color: var(--text-secondary); margin: 0; }
+.empty-sub { font-size: var(--text-sm); color: var(--text-muted); margin: 0; }
 
 /* Messages */
 .messages-list { display: flex; flex-direction: column; gap: var(--space-3); }
-
-.message-card {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  background: var(--bg-surface);
-  border: 1px solid var(--bg-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-  transition: border-color .15s ease;
-}
-
+.message-card { display: flex; align-items: flex-start; gap: var(--space-3); background: var(--bg-surface); border: 1px solid var(--bg-border); border-radius: var(--radius-lg); padding: var(--space-4); transition: border-color .15s ease; }
 .message-card:hover { border-color: var(--gotify); }
-
 .msg-left { padding-top: 4px; }
-
-.prio-dot {
-  display: block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
+.prio-dot { display: block; width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .prio-critical { background: #ef4444; }
-.prio-high     { background: #f59e0b; }
-.prio-normal   { background: var(--gotify); }
-
+.prio-high { background: #f59e0b; }
+.prio-normal { background: var(--gotify); }
 .msg-body { flex: 1; min-width: 0; }
-
-.msg-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-1);
-}
-
-.msg-title {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.prio-badge {
-  font-size: 10px;
-  font-weight: 600;
-  padding: 1px 7px;
-  border-radius: 99px;
-  flex-shrink: 0;
-}
-
+.msg-header { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-1); }
+.msg-title { font-size: var(--text-sm); font-weight: 600; color: var(--text-primary); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0; }
+.prio-badge { font-size: 10px; font-weight: 600; padding: 1px 7px; border-radius: 99px; flex-shrink: 0; }
 .prio-badge.prio-critical { background: rgba(239,68,68,.15); color: #ef4444; }
-.prio-badge.prio-high     { background: rgba(245,158,11,.15); color: #f59e0b; }
-.prio-badge.prio-normal   { background: rgba(0,96,168,.15); color: var(--gotify); }
-
-.msg-text {
-  font-size: var(--text-sm);
-  color: var(--text-tertiary);
-  line-height: 1.6;
-  word-break: break-word;
-}
-
-.msg-date {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-  margin-top: var(--space-2);
-}
-
-.msg-delete {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: var(--space-1);
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  transition: color .15s ease;
-  flex-shrink: 0;
-}
-
+.prio-badge.prio-high { background: rgba(245,158,11,.15); color: #f59e0b; }
+.prio-badge.prio-normal { background: rgba(0,96,168,.15); color: var(--gotify); }
+.msg-text { font-size: var(--text-sm); color: var(--text-tertiary); line-height: 1.6; word-break: break-word; margin: 0; }
+.msg-date { font-size: var(--text-xs); color: var(--text-muted); margin-top: var(--space-2); margin-bottom: 0; }
+.msg-delete { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: var(--space-1); border-radius: var(--radius-sm); display: flex; align-items: center; transition: color .15s ease; flex-shrink: 0; }
 .msg-delete:hover { color: #ef4444; }
 
 /* TransitionGroup */
 .msg-enter-active { transition: all 0.25s ease; }
 .msg-leave-active { transition: all 0.2s ease; position: absolute; width: 100%; }
-.msg-enter-from   { opacity: 0; transform: translateY(-8px); }
-.msg-leave-to     { opacity: 0; transform: translateX(20px); }
-.msg-move         { transition: transform 0.25s ease; }
+.msg-enter-from { opacity: 0; transform: translateY(-8px); }
+.msg-leave-to { opacity: 0; transform: translateX(20px); }
+.msg-move { transition: transform 0.25s ease; }
 </style>

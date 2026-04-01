@@ -595,25 +595,25 @@ Pro Track-Zeile:
 
 - [x] 10.1 – Dashboard: Health-Bar, Stats-Cards, Zuletzt hinzugefügt, Downloads, Releases, Streams, Gotify/Overseerr/Plex/ABS Widgets, Tautulli History
 - [x] 10.2 – MoviesView: Alpha-Gruppen, Alphabet-Nav, Bibliotheks-Filter, Hover-Tooltip, Rating unten, Status-Dot, Quality-Badge
-- [ ] **10.A1** – Radarr Backend: PUT/DELETE movie, command, release, credits
-- [ ] **10.A2** – Sonarr Backend: PUT/DELETE series, command, release, episodefile, episode, season-monitor
-- [ ] **10.A3** – Lidarr Backend: albums?artistId, tracks, PUT album, command, DELETE artist
-- [ ] **10.A4** – Bazarr Backend: movie/full, episodes, search/movie, search/episode
-- [ ] **10.A5** – Tautulli Backend: movie-history, user-stats, metadata
-- [ ] **10.B1** – InteractiveSearchModal.vue (gemeinsame Komponente)
-- [ ] **10.B2** – ConfirmDialog.vue (gemeinsame Komponente)
-- [ ] **10.3** – MovieDetailView: Action-Bar, alle Detail-Felder, Bazarr-Widget, Tautulli-Tab, Interactive Search
-- [ ] 10.4 – SeriesView ✅ (bereits erledigt)
-- [ ] **10.5** – SeriesDetailView: Action-Bar, Season-Monitor, Episode-Aktionen (Suche/Löschen/Monitor/Bazarr), Batch-System, Interactive Search
-- [ ] **10.6a** – MusicView: Alpha-Gruppen, Filter, Hover-Tooltip
-- [ ] **10.6b** – ArtistDetailView: Action-Bar, Artist-Links, Album-Suche, Album-Monitor, Track-Quality
-- [ ] **10.7** – Downloads: Pause/Resume/Delete pro Item
-- [ ] **10.8** – Kalender: klickbar, Hover-Tooltip, Wochen-Ansicht
+- [x] **10.A1** – Radarr Backend: PUT/DELETE movie, command, release, credits
+- [x] **10.A2** – Sonarr Backend: PUT/DELETE series, command, release, episodefile, episode, season-monitor
+- [x] **10.A3** – Lidarr Backend: albums?artistId, tracks, PUT album, command, DELETE artist
+- [x] **10.A4** – Bazarr Backend: movie/full, episodes, search/movie, search/episode
+- [x] **10.A5** – Tautulli Backend: movie-history, user-stats, metadata
+- [x] **10.B1** – InteractiveSearchModal.vue (gemeinsame Komponente)
+- [x] **10.B2** – ConfirmDialog.vue (gemeinsame Komponente)
+- [x] **10.3** – MovieDetailView: Action-Bar, alle Detail-Felder, Bazarr-Widget, Tautulli-Tab, Interactive Search + Bug-Fix Tautulli title-Param
+- [x] 10.4 – SeriesView ✅ (bereits erledigt)
+- [x] **10.5** – SeriesDetailView: Action-Bar, Season-Monitor, Episode-Aktionen, Batch-System, Interactive Search
+- [x] **10.6a** – MusicView: Alpha-Gruppen, Filter, Hover-Tooltip, Status-Dot, Progress-Bar
+- [x] **10.6b** – ArtistDetailView: Action-Bar (Suchen/Refresh/Delete), Artist-Links, Album-Suche/Monitor, Track-Quality-Badge
+- [x] **10.7** – Downloads: SABnzbd per-Item Pause/Resume/Delete, ConfirmDialog, Arr-Remove
+- [x] **10.8** – Kalender: klickbar (→ Detail-Page), Hover-Tooltip, Navigation (Vor/Zurück/Heute)
 - [ ] **10.9** – Suche: Bibliotheks-Suche verbessern
 - [ ] **10.10** – TautulliView: Charts, Top-10, Timeline
 - [ ] **10.11** – OverseerrView: Request-Details, Approve/Decline
 - [ ] **10.12** – ABS Detail-Ansicht
-- [ ] **10.13** – GotifyView: Prioritäten-Filter
+- [x] **10.13** – GotifyView: Prioritäten-Filter (Alle/Kritisch/Wichtig/Info)
 - [ ] **10.14** – Settings: Connection-Test, vollständige Konfiguration
 
 ---

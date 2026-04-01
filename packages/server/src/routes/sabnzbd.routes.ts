@@ -60,4 +60,22 @@ router.delete('/queue/:nzoId', requireAuth, async (req: Request, res: Response, 
   }
 });
 
+router.post('/queue/:nzoId/pause', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await sabnzbdService.pauseItem(req.params.nzoId as string);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/queue/:nzoId/resume', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await sabnzbdService.resumeItem(req.params.nzoId as string);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
