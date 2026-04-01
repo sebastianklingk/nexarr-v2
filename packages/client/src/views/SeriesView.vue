@@ -9,34 +9,78 @@ const router = useRouter();
 const store  = useSeriesStore();
 
 const search  = ref('');
-const filter  = ref<'all' | 'continuing' | 'ended'>('all');
-const sortBy  = ref<'title' | 'year' | 'episodes'>('title');
+const filter  = ref<'all' | 'continuing' | 'ended' | 'missing' | 'complete' | 'unmonitored'>('all');
+const sortBy  = ref<'title' | 'year' | 'added' | 'episodes' | 'rating'>('title');
 const sortDir = ref<'asc' | 'desc'>('asc');
+const groupBy = ref<'alpha' | 'none'>('alpha');
 
-const filtered = computed(() => {
-  let list: SonarrSeries[] = [...store.series];
+const filtered = computed((): SonarrSeries[] => {
+  let list = [...store.series];
 
   if (search.value.trim()) {
     const q = search.value.toLowerCase();
     list = list.filter(s => s.title.toLowerCase().includes(q));
   }
 
-  if (filter.value === 'continuing') list = list.filter(s => s.status === 'continuing');
-  if (filter.value === 'ended')      list = list.filter(s => s.status === 'ended');
+  switch (filter.value) {
+    case 'continuing':  list = list.filter(s => s.status === 'continuing'); break;
+    case 'ended':       list = list.filter(s => s.status === 'ended'); break;
+    case 'unmonitored': list = list.filter(s => !s.monitored); break;
+    case 'missing':
+      list = list.filter(s => {
+        const pct = seriesProgress(s);
+        return pct < 100 && pct > 0 && s.monitored;
+      }); break;
+    case 'complete':
+      list = list.filter(s => seriesProgress(s) === 100); break;
+  }
 
   list.sort((a, b) => {
     let cmp = 0;
     if (sortBy.value === 'title')    cmp = a.sortTitle.localeCompare(b.sortTitle);
     if (sortBy.value === 'year')     cmp = (a.year ?? 0) - (b.year ?? 0);
+    if (sortBy.value === 'added')    cmp = a.added.localeCompare(b.added);
     if (sortBy.value === 'episodes') cmp = (a.episodeCount ?? 0) - (b.episodeCount ?? 0);
+    if (sortBy.value === 'rating')   cmp = (a.ratings?.value ?? 0) - (b.ratings?.value ?? 0);
     return sortDir.value === 'asc' ? cmp : -cmp;
   });
 
   return list;
 });
 
+const grouped = computed((): Array<{ letter: string; items: SonarrSeries[] }> => {
+  if (groupBy.value === 'none') return [{ letter: '', items: filtered.value }];
+  const map = new Map<string, SonarrSeries[]>();
+  for (const s of filtered.value) {
+    const first = s.sortTitle[0]?.toUpperCase() ?? '#';
+    const key   = /[A-Z]/.test(first) ? first : '#';
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(s);
+  }
+  const sorted = [...map.keys()].sort((a, b) => {
+    if (a === '#') return -1; if (b === '#') return 1;
+    return a.localeCompare(b);
+  });
+  return sorted.map(letter => ({ letter, items: map.get(letter)! }));
+});
+
+const availableLetters = computed(() => new Set(grouped.value.map(g => g.letter)));
+
 function posterUrl(s: SonarrSeries): string | undefined {
   return s.images?.find(i => i.coverType === 'poster')?.remoteUrl;
+}
+
+function seriesProgress(s: SonarrSeries): number {
+  const total = s.episodeCount ?? 0;
+  const has   = s.episodeFileCount ?? 0;
+  if (total === 0) return 0;
+  return Math.round((has / total) * 100);
+}
+
+function episodesLabel(s: SonarrSeries): string {
+  const total = s.episodeCount ?? 0;
+  if (total === 0) return '';
+  return `${total} Ep.`;
 }
 
 function toggleSort(field: typeof sortBy.value) {
@@ -44,63 +88,92 @@ function toggleSort(field: typeof sortBy.value) {
   else { sortBy.value = field; sortDir.value = 'asc'; }
 }
 
+function scrollToLetter(letter: string) {
+  document.getElementById(`alpha-${letter}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 onMounted(() => store.fetchSeries());
+
+// Statistiken
+const statsComplete = computed(() => store.series.filter(s => seriesProgress(s) === 100).length);
+const statsMissing  = computed(() => store.series.filter(s => { const p = seriesProgress(s); return p < 100 && p > 0 && s.monitored; }).length);
+
+const ALPHABET = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
 </script>
 
 <template>
-  <div class="series-view page-context" style="--context-color: var(--sonarr)">
+  <div class="series-view">
 
-    <!-- Header -->
+    <!-- ── Header ── -->
     <div class="view-header">
       <div class="header-left">
-        <h1 class="view-title">
-          <span class="title-bar" />
-          Serien
-          <span v-if="!store.isLoading" class="title-count">{{ store.stats.total }}</span>
-        </h1>
-        <div class="header-stats">
-          <span class="stat-chip stat-continuing">{{ store.stats.continuing }} laufend</span>
-          <span class="stat-chip stat-ended">{{ store.stats.ended }} beendet</span>
+        <div class="header-title-row">
+          <div class="app-bar" />
+          <h1 class="view-title">Serien</h1>
+          <span v-if="!store.isLoading" class="total-count">
+            {{ filtered.length.toLocaleString('de-DE') }} von {{ store.stats.total.toLocaleString('de-DE') }}
+          </span>
+        </div>
+        <div class="header-chips">
+          <span class="chip chip-on">▶ {{ store.stats.continuing }} laufend</span>
+          <span class="chip chip-off">■ {{ store.stats.ended }} beendet</span>
+          <span class="chip chip-ok">✓ {{ statsComplete }} komplett</span>
+          <span v-if="statsMissing > 0" class="chip chip-miss">⚠ {{ statsMissing }} unvollständig</span>
         </div>
       </div>
 
-      <div class="search-wrap">
-        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        <input v-model="search" class="search-input" type="search" placeholder="Serien suchen…" />
+      <div class="header-right">
+        <div class="search-box">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input v-model="search" type="search" class="search-input" placeholder="Serien suchen…" />
+          <button v-if="search" class="search-clear" @click="search = ''">×</button>
+        </div>
+        <button class="add-btn" @click="router.push('/search')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Serie hinzufügen
+        </button>
       </div>
     </div>
 
-    <!-- Toolbar -->
+    <!-- ── Toolbar ── -->
     <div class="toolbar">
-      <div class="filter-group">
-        <button v-for="f in (['all','continuing','ended'] as const)" :key="f"
-          :class="['filter-btn', { active: filter === f }]" @click="filter = f">
-          {{ f === 'all' ? 'Alle' : f === 'continuing' ? 'Laufend' : 'Beendet' }}
+      <div class="btn-group">
+        <button :class="['tbtn', filter==='all' && 'tbtn-on']" @click="filter='all'">Alle</button>
+        <button :class="['tbtn', filter==='continuing' && 'tbtn-on']" @click="filter='continuing'">Laufend</button>
+        <button :class="['tbtn', filter==='ended' && 'tbtn-on']" @click="filter='ended'">Beendet</button>
+        <button :class="['tbtn', filter==='complete' && 'tbtn-on']" @click="filter='complete'">Komplett</button>
+        <button :class="['tbtn', filter==='missing' && 'tbtn-on']" @click="filter='missing'">Fehlend</button>
+        <button :class="['tbtn', filter==='unmonitored' && 'tbtn-on']" @click="filter='unmonitored'">Nicht überwacht</button>
+      </div>
+
+      <div class="toolbar-sep" />
+
+      <div class="btn-group">
+        <button v-for="s in (['title','year','added','episodes','rating'] as const)" :key="s"
+          :class="['tbtn', sortBy===s && 'tbtn-on']" @click="toggleSort(s)">
+          {{ s==='title' ? 'A–Z' : s==='year' ? 'Jahr' : s==='added' ? 'Neu' : s==='episodes' ? 'Episoden' : 'Bewertung' }}
+          <span v-if="sortBy===s">{{ sortDir==='asc'?'↑':'↓' }}</span>
         </button>
       </div>
-      <div class="sort-group">
-        <button v-for="s in (['title','year','episodes'] as const)" :key="s"
-          :class="['sort-btn', { active: sortBy === s }]" @click="toggleSort(s)">
-          {{ s === 'title' ? 'Titel' : s === 'year' ? 'Jahr' : 'Episoden' }}
-          <span v-if="sortBy === s" class="sort-arrow">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
-        </button>
+
+      <div class="toolbar-sep" />
+
+      <div class="btn-group">
+        <button :class="['tbtn', groupBy==='alpha' && 'tbtn-on']" @click="groupBy='alpha'">A–Z Gruppen</button>
+        <button :class="['tbtn', groupBy==='none' && 'tbtn-on']" @click="groupBy='none'">Alle</button>
       </div>
-      <span class="results-count">{{ filtered.length }} Ergebnisse</span>
+
+      <span class="result-count">{{ filtered.length.toLocaleString('de-DE') }} Serien</span>
     </div>
 
     <div v-if="store.error" class="error-banner">{{ store.error }}</div>
 
-    <!-- Skeleton -->
+    <!-- Loading -->
     <div v-if="store.isLoading" class="poster-grid">
-      <div v-for="i in 24" :key="i" class="skeleton-card">
-        <div class="skeleton skeleton-poster" />
-        <div class="skeleton-info">
-          <div class="skeleton skeleton-line" style="width:80%" />
-          <div class="skeleton skeleton-line" style="width:40%;margin-top:4px" />
-        </div>
+      <div v-for="i in 32" :key="i" class="skel-card">
+        <div class="skel-img skeleton" />
+        <div class="skel-line skeleton" style="width:75%;margin-top:6px" />
+        <div class="skel-line skeleton" style="width:40%;margin-top:4px" />
       </div>
     </div>
 
@@ -108,55 +181,112 @@ onMounted(() => store.fetchSeries());
     <div v-else-if="filtered.length === 0" class="empty-state">
       <div class="empty-icon">📺</div>
       <p class="empty-title">Keine Serien gefunden</p>
-      <p class="empty-sub">{{ search ? `Keine Ergebnisse für „${search}"` : 'Sonarr enthält noch keine Serien.' }}</p>
+      <p class="empty-sub">{{ search ? `Keine Treffer für „${search}"` : 'Kein Eintrag entspricht dem Filter.' }}</p>
+      <button v-if="filter !== 'all' || search" class="reset-btn" @click="filter='all'; search=''">Filter zurücksetzen</button>
     </div>
 
-    <!-- Grid -->
-    <div v-else class="poster-grid">
-      <PosterCard
-        v-for="s in filtered" :key="s.id"
-        :title="s.title" :year="s.year"
-        :poster-url="posterUrl(s)"
-        :has-file="(s.episodeFileCount ?? 0) > 0"
-        :monitored="s.monitored"
-        app-color="var(--sonarr)"
-        @click="router.push(`/series/${s.id}`)"
-      />
-    </div>
+    <!-- Content -->
+    <template v-else>
+      <div class="content-wrap">
+        <div class="groups-wrap">
+          <template v-for="group in grouped" :key="group.letter">
+            <div v-if="group.letter" :id="`alpha-${group.letter}`" class="alpha-header">
+              {{ group.letter }}
+            </div>
+            <div class="poster-grid">
+              <PosterCard
+                v-for="s in group.items"
+                :key="s.id"
+                :title="s.title"
+                :year="s.year"
+                :poster-url="posterUrl(s)"
+                :rating="s.ratings?.value"
+                :has-file="(s.episodeFileCount ?? 0) > 0"
+                :monitored="s.monitored"
+                :progress="seriesProgress(s)"
+                :episodes="episodesLabel(s)"
+                app-color="var(--sonarr)"
+                @click="router.push(`/series/${s.id}`)"
+              />
+            </div>
+          </template>
+        </div>
+
+        <!-- Alphabet Nav -->
+        <nav v-if="groupBy === 'alpha'" class="alpha-nav">
+          <button
+            v-for="letter in ALPHABET" :key="letter"
+            :class="['alpha-btn', availableLetters.has(letter) ? 'alpha-btn-on' : 'alpha-btn-off']"
+            :disabled="!availableLetters.has(letter)"
+            @click="scrollToLetter(letter)"
+          >{{ letter }}</button>
+        </nav>
+      </div>
+    </template>
 
   </div>
 </template>
 
 <style scoped>
-.series-view { padding: var(--space-6); min-height: 100%; }
-.view-header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-5); flex-wrap: wrap; }
+.series-view {
+  padding: var(--space-5) var(--space-6) var(--space-6);
+  min-height: 100%;
+}
+
+/* Header */
+.view-header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-4); flex-wrap: wrap; }
 .header-left { display: flex; flex-direction: column; gap: var(--space-2); }
-.view-title  { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-xl); font-weight: 700; color: var(--text-primary); }
-.title-bar   { display: inline-block; width: 3px; height: 1.2em; background: var(--context-color); border-radius: 2px; flex-shrink: 0; }
-.title-count { font-size: var(--text-base); font-weight: 400; color: var(--text-muted); }
-.header-stats { display: flex; gap: var(--space-2); }
-.stat-chip { font-size: var(--text-xs); padding: 2px 8px; border-radius: 99px; font-weight: 500; }
-.stat-continuing { background: rgba(53,197,244,0.12); color: var(--sonarr); border: 1px solid rgba(53,197,244,0.25); }
-.stat-ended      { background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--bg-border); }
-.search-wrap  { position: relative; flex-shrink: 0; }
-.search-icon  { position: absolute; left: var(--space-3); top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
-.search-input { width: 260px; padding: var(--space-2) var(--space-3) var(--space-2) 36px; background: var(--bg-elevated); border: 1px solid var(--bg-border); border-radius: var(--radius-md); color: var(--text-primary); font-size: var(--text-sm); outline: none; transition: border-color .15s ease; }
-.search-input:focus { border-color: var(--sonarr); }
+.header-title-row { display: flex; align-items: center; gap: var(--space-3); }
+.app-bar { width: 3px; height: 24px; background: var(--sonarr); border-radius: 2px; flex-shrink: 0; }
+.view-title { font-size: var(--text-xl); font-weight: 700; color: var(--text-primary); margin: 0; }
+.total-count { font-size: var(--text-sm); color: var(--text-muted); }
+.header-chips { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.chip { font-size: 11px; padding: 2px 8px; border-radius: 99px; font-weight: 500; }
+.chip-on  { background: rgba(53,197,244,.1); color: var(--sonarr); border: 1px solid rgba(53,197,244,.25); }
+.chip-off { background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--bg-border); }
+.chip-ok  { background: rgba(34,197,94,.1); color: #22c55e; border: 1px solid rgba(34,197,94,.25); }
+.chip-miss { background: rgba(245,158,11,.1); color: #f59e0b; border: 1px solid rgba(245,158,11,.25); }
+
+.header-right { display: flex; align-items: center; gap: var(--space-3); flex-shrink: 0; }
+.search-box { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--bg-elevated); border: 1px solid var(--bg-border); border-radius: var(--radius-md); color: var(--text-muted); transition: border-color .15s; }
+.search-box:focus-within { border-color: var(--sonarr); color: var(--text-secondary); }
+.search-input { background: none; border: none; outline: none; font-size: var(--text-sm); color: var(--text-primary); width: 200px; }
+.search-input::placeholder { color: var(--text-muted); }
+.search-clear { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; padding: 0; }
+.add-btn { display: inline-flex; align-items: center; gap: var(--space-2); padding: 7px 14px; background: var(--sonarr); border: none; border-radius: var(--radius-md); color: #000; font-size: var(--text-sm); font-weight: 600; cursor: pointer; transition: opacity .15s; }
+.add-btn:hover { opacity: .85; }
+
+/* Toolbar */
 .toolbar { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-5); flex-wrap: wrap; }
-.filter-group, .sort-group { display: flex; gap: 2px; background: var(--bg-elevated); border-radius: var(--radius-md); padding: 2px; border: 1px solid var(--bg-border); }
-.filter-btn, .sort-btn { padding: var(--space-1) var(--space-3); border-radius: calc(var(--radius-md) - 2px); font-size: var(--text-sm); color: var(--text-tertiary); transition: background .15s ease, color .15s ease; white-space: nowrap; }
-.filter-btn:hover, .sort-btn:hover { color: var(--text-secondary); }
-.filter-btn.active, .sort-btn.active { background: var(--bg-overlay); color: var(--text-primary); }
-.sort-arrow { margin-left: 2px; opacity: .7; }
-.results-count { font-size: var(--text-sm); color: var(--text-muted); margin-left: auto; }
-.error-banner { padding: var(--space-4); background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.3); border-radius: var(--radius-md); color: var(--status-error); margin-bottom: var(--space-5); font-size: var(--text-sm); }
-.poster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: var(--space-3); }
-.skeleton-card { border-radius: var(--radius-md); overflow: hidden; background: var(--bg-surface); border: 1px solid var(--bg-border); }
-.skeleton-poster { aspect-ratio: 2/3; width: 100%; }
-.skeleton-info { padding: var(--space-2); }
-.skeleton-line { height: 12px; border-radius: 4px; }
-.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-12) var(--space-4); gap: var(--space-3); text-align: center; }
-.empty-icon  { font-size: 48px; line-height: 1; }
-.empty-title { font-size: var(--text-lg); color: var(--text-secondary); font-weight: 600; }
-.empty-sub   { color: var(--text-muted); font-size: var(--text-sm); }
+.btn-group { display: flex; gap: 2px; background: var(--bg-elevated); border: 1px solid var(--bg-border); border-radius: var(--radius-md); padding: 2px; }
+.tbtn { padding: 5px 12px; border-radius: calc(var(--radius-md) - 2px); font-size: var(--text-xs); color: var(--text-muted); transition: background .12s, color .12s; white-space: nowrap; cursor: pointer; }
+.tbtn:hover { color: var(--text-secondary); }
+.tbtn-on { background: var(--bg-overlay); color: var(--text-primary); font-weight: 500; }
+.toolbar-sep { width: 1px; height: 20px; background: var(--bg-border); flex-shrink: 0; }
+.result-count { font-size: var(--text-xs); color: var(--text-muted); margin-left: auto; }
+.error-banner { padding: var(--space-4); background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.25); border-radius: var(--radius-md); color: #ef4444; margin-bottom: var(--space-5); font-size: var(--text-sm); }
+
+/* Content */
+.content-wrap { display: flex; gap: var(--space-4); align-items: flex-start; }
+.groups-wrap  { flex: 1; min-width: 0; }
+.alpha-header { font-size: var(--text-sm); font-weight: 700; color: var(--text-muted); padding: var(--space-3) 0 var(--space-2); border-bottom: 1px solid var(--bg-border); margin-bottom: var(--space-3); scroll-margin-top: 80px; }
+.poster-grid  { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-5); }
+
+/* Alpha Nav */
+.alpha-nav { position: sticky; top: var(--space-4); display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
+.alpha-btn { width: 22px; height: 22px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 600; text-align: center; transition: background .1s, color .1s; cursor: pointer; line-height: 22px; padding: 0; }
+.alpha-btn-on { color: var(--text-secondary); }
+.alpha-btn-on:hover { background: var(--bg-elevated); color: var(--sonarr); }
+.alpha-btn-off { color: var(--text-muted); opacity: .35; cursor: default; }
+
+/* Skeleton */
+.skel-card { border-radius: var(--radius-md); overflow: hidden; background: var(--bg-surface); border: 1px solid var(--bg-border); padding: 0 0 var(--space-2); }
+.skel-img  { aspect-ratio: 2/3; width: 100%; }
+.skel-line { height: 10px; border-radius: 3px; margin: 0 var(--space-2); }
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-12) var(--space-4); gap: var(--space-3); text-align: center; min-height: 40vh; }
+.empty-icon  { font-size: 48px; }
+.empty-title { font-size: var(--text-lg); color: var(--text-secondary); font-weight: 600; margin: 0; }
+.empty-sub   { color: var(--text-muted); font-size: var(--text-sm); margin: 0; }
+.reset-btn   { padding: 7px 16px; background: var(--bg-elevated); border: 1px solid var(--bg-border); border-radius: var(--radius-md); color: var(--text-secondary); font-size: var(--text-sm); cursor: pointer; }
+.reset-btn:hover { background: var(--bg-overlay); }
 </style>

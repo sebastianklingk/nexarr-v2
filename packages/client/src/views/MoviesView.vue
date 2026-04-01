@@ -8,30 +8,29 @@ import type { RadarrMovie } from '@nexarr/shared';
 const router = useRouter();
 const store  = useMoviesStore();
 
-// ── Filter & Sort State ──────────────────────────────────────────────────────
+// ── State ─────────────────────────────────────────────────────────────────────
 const search   = ref('');
-const filter   = ref<'all' | 'available' | 'missing'>('all');
+const filter   = ref<'all' | 'available' | 'missing' | 'monitored' | 'unmonitored'>('all');
 const sortBy   = ref<'title' | 'year' | 'added' | 'rating'>('title');
 const sortDir  = ref<'asc' | 'desc'>('asc');
+const groupBy  = ref<'alpha' | 'none'>('alpha');
 
-// ── Computed ─────────────────────────────────────────────────────────────────
-const filtered = computed(() => {
-  let list: RadarrMovie[] = [...store.movies];
+// ── Filtered + Sorted ─────────────────────────────────────────────────────────
+const filtered = computed((): RadarrMovie[] => {
+  let list = [...store.movies];
 
-  // Suche
   if (search.value.trim()) {
     const q = search.value.toLowerCase();
-    list = list.filter(m =>
-      m.title.toLowerCase().includes(q) ||
-      m.originalTitle?.toLowerCase().includes(q)
-    );
+    list = list.filter(m => m.title.toLowerCase().includes(q) || m.originalTitle?.toLowerCase().includes(q));
   }
 
-  // Status-Filter
-  if (filter.value === 'available') list = list.filter(m => m.hasFile);
-  if (filter.value === 'missing')   list = list.filter(m => !m.hasFile && m.monitored);
+  switch (filter.value) {
+    case 'available':   list = list.filter(m => m.hasFile); break;
+    case 'missing':     list = list.filter(m => !m.hasFile && m.monitored); break;
+    case 'monitored':   list = list.filter(m => m.monitored); break;
+    case 'unmonitored': list = list.filter(m => !m.monitored); break;
+  }
 
-  // Sortierung
   list.sort((a, b) => {
     let cmp = 0;
     if (sortBy.value === 'title')  cmp = a.sortTitle.localeCompare(b.sortTitle);
@@ -44,354 +43,315 @@ const filtered = computed(() => {
   return list;
 });
 
-// Proxy URL für Poster (Server proxied Radarr Images)
-function posterUrl(movie: RadarrMovie): string | undefined {
-  const poster = movie.images?.find(i => i.coverType === 'poster');
-  if (!poster) return undefined;
-  // Direkt Radarr-URL verwenden (CORS geht über Proxy)
-  return poster.remoteUrl;
+// ── Alphabetische Gruppen ─────────────────────────────────────────────────────
+const grouped = computed((): Array<{ letter: string; items: RadarrMovie[] }> => {
+  if (groupBy.value === 'none') return [{ letter: '', items: filtered.value }];
+
+  const map = new Map<string, RadarrMovie[]>();
+  for (const m of filtered.value) {
+    const first = m.sortTitle[0]?.toUpperCase() ?? '#';
+    const key   = /[A-Z]/.test(first) ? first : '#';
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(m);
+  }
+  // Sortierte Keys: # zuerst, dann A-Z
+  const sorted = [...map.keys()].sort((a, b) => {
+    if (a === '#') return -1;
+    if (b === '#') return 1;
+    return a.localeCompare(b);
+  });
+  return sorted.map(letter => ({ letter, items: map.get(letter)! }));
+});
+
+// Alle vorhandenen Buchstaben für die Alphabet-Navigation
+const availableLetters = computed(() => new Set(grouped.value.map(g => g.letter)));
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function posterUrl(m: RadarrMovie): string | undefined {
+  return m.images?.find(i => i.coverType === 'poster')?.remoteUrl;
 }
 
-function openMovie(movie: RadarrMovie) {
-  router.push(`/movies/${movie.id}`);
+function qualityLabel(m: RadarrMovie): string | undefined {
+  if (!m.movieFile) return undefined;
+  const res = m.movieFile.quality?.quality?.resolution;
+  if (res === 2160) return '4K';
+  if (res === 1080) return '1080p';
+  if (res === 720)  return '720p';
+  return m.movieFile.quality?.quality?.name?.split('-')[0];
 }
 
 function toggleSort(field: typeof sortBy.value) {
-  if (sortBy.value === field) {
-    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc';
-  } else {
-    sortBy.value = field;
-    sortDir.value = 'asc';
-  }
+  if (sortBy.value === field) sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc';
+  else { sortBy.value = field; sortDir.value = 'asc'; }
 }
 
+function scrollToLetter(letter: string) {
+  const el = document.getElementById(`alpha-${letter}`);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function openMovie(m: RadarrMovie) { router.push(`/movies/${m.id}`); }
+
 onMounted(() => store.fetchMovies());
+
+const ALPHABET = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
 </script>
 
 <template>
-  <div class="movies-view page-context" style="--context-color: var(--radarr)">
+  <div class="movies-view">
 
-    <!-- Header -->
+    <!-- ── Header ── -->
     <div class="view-header">
       <div class="header-left">
-        <h1 class="view-title">
-          <span class="title-bar" />
-          Filme
-          <span v-if="!store.isLoading" class="title-count">{{ store.stats.total }}</span>
-        </h1>
-        <div class="header-stats">
-          <span class="stat-chip stat-available">{{ store.stats.available }} vorhanden</span>
-          <span v-if="store.stats.missing > 0" class="stat-chip stat-missing">
-            {{ store.stats.missing }} fehlen
+        <div class="header-title-row">
+          <div class="app-bar" style="background: var(--radarr)" />
+          <h1 class="view-title">Filme</h1>
+          <span v-if="!store.isLoading" class="total-count">
+            {{ filtered.length.toLocaleString('de-DE') }} von {{ store.stats.total.toLocaleString('de-DE') }}
           </span>
         </div>
-      </div>
-
-      <!-- Suche -->
-      <div class="search-wrap">
-        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        <input
-          v-model="search"
-          class="search-input"
-          type="search"
-          placeholder="Filme suchen…"
-        />
-      </div>
-    </div>
-
-    <!-- Toolbar -->
-    <div class="toolbar">
-      <!-- Status Filter -->
-      <div class="filter-group">
-        <button
-          v-for="f in (['all', 'available', 'missing'] as const)"
-          :key="f"
-          :class="['filter-btn', { active: filter === f }]"
-          @click="filter = f"
-        >
-          {{ f === 'all' ? 'Alle' : f === 'available' ? 'Vorhanden' : 'Fehlen' }}
-        </button>
-      </div>
-
-      <!-- Sort -->
-      <div class="sort-group">
-        <button
-          v-for="s in (['title', 'year', 'added', 'rating'] as const)"
-          :key="s"
-          :class="['sort-btn', { active: sortBy === s }]"
-          @click="toggleSort(s)"
-        >
-          {{ s === 'title' ? 'Titel' : s === 'year' ? 'Jahr' : s === 'added' ? 'Hinzugefügt' : 'Bewertung' }}
-          <span v-if="sortBy === s" class="sort-arrow">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
-        </button>
-      </div>
-
-      <span class="results-count">{{ filtered.length }} Ergebnisse</span>
-    </div>
-
-    <!-- Error -->
-    <div v-if="store.error" class="error-banner">
-      {{ store.error }}
-    </div>
-
-    <!-- Skeleton loading -->
-    <div v-if="store.isLoading" class="poster-grid">
-      <div v-for="i in 24" :key="i" class="skeleton-card">
-        <div class="skeleton skeleton-poster" />
-        <div class="skeleton-info">
-          <div class="skeleton skeleton-line" style="width: 80%" />
-          <div class="skeleton skeleton-line" style="width: 40%; margin-top: 4px" />
+        <div class="header-chips">
+          <span class="chip chip-ok">✓ {{ store.stats.available.toLocaleString('de-DE') }} vorhanden</span>
+          <span v-if="store.stats.missing > 0" class="chip chip-miss">✗ {{ store.stats.missing.toLocaleString('de-DE') }} fehlen</span>
+          <span class="chip chip-neutral">{{ store.stats.total - store.stats.available - store.stats.missing }} nicht überwacht</span>
         </div>
       </div>
+
+      <div class="header-right">
+        <!-- Suche -->
+        <div class="search-box">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input v-model="search" type="search" class="search-input" placeholder="Filme suchen…" />
+          <button v-if="search" class="search-clear" @click="search = ''">×</button>
+        </div>
+        <!-- Hinzufügen -->
+        <button class="add-btn" @click="router.push('/search')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Film hinzufügen
+        </button>
+      </div>
     </div>
 
-    <!-- Empty State -->
-    <div v-else-if="!store.isLoading && filtered.length === 0" class="empty-state">
+    <!-- ── Toolbar ── -->
+    <div class="toolbar">
+      <!-- Filter -->
+      <div class="btn-group">
+        <button :class="['tbtn', filter==='all' && 'tbtn-on']" @click="filter='all'">Alle</button>
+        <button :class="['tbtn', filter==='available' && 'tbtn-on']" @click="filter='available'">Vorhanden</button>
+        <button :class="['tbtn', filter==='missing' && 'tbtn-on']" @click="filter='missing'">Fehlend</button>
+        <button :class="['tbtn', filter==='monitored' && 'tbtn-on']" @click="filter='monitored'">Überwacht</button>
+        <button :class="['tbtn', filter==='unmonitored' && 'tbtn-on']" @click="filter='unmonitored'">Nicht überwacht</button>
+      </div>
+
+      <div class="toolbar-sep" />
+
+      <!-- Sortierung -->
+      <div class="btn-group">
+        <button v-for="s in (['title','year','added','rating'] as const)" :key="s"
+          :class="['tbtn', sortBy===s && 'tbtn-on']" @click="toggleSort(s)">
+          {{ s==='title' ? 'A–Z' : s==='year' ? 'Jahr' : s==='added' ? 'Neu' : 'Bewertung' }}
+          <span v-if="sortBy===s">{{ sortDir==='asc' ? '↑' : '↓' }}</span>
+        </button>
+      </div>
+
+      <div class="toolbar-sep" />
+
+      <!-- Gruppierung -->
+      <div class="btn-group">
+        <button :class="['tbtn', groupBy==='alpha' && 'tbtn-on']" @click="groupBy='alpha'">A–Z Gruppen</button>
+        <button :class="['tbtn', groupBy==='none' && 'tbtn-on']" @click="groupBy='none'">Alle</button>
+      </div>
+
+      <span class="result-count">{{ filtered.length.toLocaleString('de-DE') }} Filme</span>
+    </div>
+
+    <!-- ── Error ── -->
+    <div v-if="store.error" class="error-banner">{{ store.error }}</div>
+
+    <!-- ── Loading ── -->
+    <div v-if="store.isLoading" class="poster-grid">
+      <div v-for="i in 32" :key="i" class="skel-card">
+        <div class="skel-img skeleton" />
+        <div class="skel-line skeleton" style="width:75%;margin-top:6px" />
+        <div class="skel-line skeleton" style="width:40%;margin-top:4px" />
+      </div>
+    </div>
+
+    <!-- ── Empty ── -->
+    <div v-else-if="filtered.length === 0" class="empty-state">
       <div class="empty-icon">🎬</div>
       <p class="empty-title">Keine Filme gefunden</p>
-      <p class="empty-sub">
-        {{ search ? `Keine Ergebnisse für „${search}"` : 'Radarr enthält noch keine Filme.' }}
-      </p>
+      <p class="empty-sub">{{ search ? `Keine Treffer für „${search}"` : 'Kein Film entspricht dem Filter.' }}</p>
+      <button v-if="filter !== 'all' || search" class="reset-btn" @click="filter='all'; search=''">Filter zurücksetzen</button>
     </div>
 
-    <!-- Grid -->
-    <div v-else class="poster-grid">
-      <PosterCard
-        v-for="movie in filtered"
-        :key="movie.id"
-        :title="movie.title"
-        :year="movie.year"
-        :poster-url="posterUrl(movie)"
-        :rating="movie.ratings?.tmdb?.value"
-        :has-file="movie.hasFile"
-        :monitored="movie.monitored"
-        app-color="var(--radarr)"
-        @click="openMovie(movie)"
-      />
-    </div>
+    <!-- ── Content ── -->
+    <template v-else>
+      <div class="content-wrap">
+
+        <!-- Poster Grid mit Alphabet-Gruppen -->
+        <div class="groups-wrap">
+          <template v-for="group in grouped" :key="group.letter">
+            <!-- Letter Header -->
+            <div v-if="group.letter" :id="`alpha-${group.letter}`" class="alpha-header">
+              {{ group.letter }}
+            </div>
+
+            <!-- Grid -->
+            <div class="poster-grid">
+              <PosterCard
+                v-for="m in group.items"
+                :key="m.id"
+                :title="m.title"
+                :year="m.year"
+                :poster-url="posterUrl(m)"
+                :rating="m.ratings?.tmdb?.value ?? m.ratings?.imdb?.value"
+                :has-file="m.hasFile"
+                :monitored="m.monitored"
+                :quality="qualityLabel(m)"
+                app-color="var(--radarr)"
+                @click="openMovie(m)"
+              />
+            </div>
+          </template>
+        </div>
+
+        <!-- Alphabet-Navigation (rechts) -->
+        <nav v-if="groupBy === 'alpha'" class="alpha-nav">
+          <button
+            v-for="letter in ALPHABET"
+            :key="letter"
+            :class="['alpha-btn', availableLetters.has(letter) ? 'alpha-btn-on' : 'alpha-btn-off']"
+            :disabled="!availableLetters.has(letter)"
+            @click="scrollToLetter(letter)"
+          >
+            {{ letter }}
+          </button>
+        </nav>
+      </div>
+    </template>
 
   </div>
 </template>
 
 <style scoped>
 .movies-view {
-  padding: var(--space-6);
+  padding: var(--space-5) var(--space-6) var(--space-6);
   min-height: 100%;
+  position: relative;
 }
 
 /* Header */
 .view-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-  margin-bottom: var(--space-5);
-  flex-wrap: wrap;
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: var(--space-4); margin-bottom: var(--space-4); flex-wrap: wrap;
 }
+.header-left { display: flex; flex-direction: column; gap: var(--space-2); }
+.header-title-row { display: flex; align-items: center; gap: var(--space-3); }
+.app-bar { width: 3px; height: 24px; border-radius: 2px; flex-shrink: 0; }
+.view-title { font-size: var(--text-xl); font-weight: 700; color: var(--text-primary); margin: 0; }
+.total-count { font-size: var(--text-sm); color: var(--text-muted); font-weight: 400; }
+.header-chips { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.chip { font-size: 11px; padding: 2px 8px; border-radius: 99px; font-weight: 500; }
+.chip-ok      { background: rgba(34,197,94,.1); color: #22c55e; border: 1px solid rgba(34,197,94,.25); }
+.chip-miss    { background: rgba(239,68,68,.1); color: #ef4444; border: 1px solid rgba(239,68,68,.25); }
+.chip-neutral { background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--bg-border); }
 
-.header-left {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
+.header-right { display: flex; align-items: center; gap: var(--space-3); flex-shrink: 0; }
 
-.view-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  font-size: var(--text-xl);
-  font-weight: 700;
-  color: var(--text-primary);
+.search-box {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-elevated); border: 1px solid var(--bg-border);
+  border-radius: var(--radius-md); color: var(--text-muted);
+  transition: border-color .15s;
 }
+.search-box:focus-within { border-color: var(--radarr); color: var(--text-secondary); }
+.search-input { background: none; border: none; outline: none; font-size: var(--text-sm); color: var(--text-primary); width: 200px; }
+.search-input::placeholder { color: var(--text-muted); }
+.search-clear { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; padding: 0; }
 
-.title-bar {
-  display: inline-block;
-  width: 3px;
-  height: 1.2em;
-  background: var(--context-color);
-  border-radius: 2px;
-  flex-shrink: 0;
+.add-btn {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: 7px 14px; background: var(--radarr); border: none;
+  border-radius: var(--radius-md); color: #000; font-size: var(--text-sm);
+  font-weight: 600; cursor: pointer; transition: opacity .15s;
 }
-
-.title-count {
-  font-size: var(--text-base);
-  font-weight: 400;
-  color: var(--text-muted);
-}
-
-.header-stats {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.stat-chip {
-  font-size: var(--text-xs);
-  padding: 2px 8px;
-  border-radius: 99px;
-  font-weight: 500;
-}
-
-.stat-available {
-  background: rgba(34, 197, 94, 0.12);
-  color: var(--status-success);
-  border: 1px solid rgba(34, 197, 94, 0.25);
-}
-
-.stat-missing {
-  background: rgba(248, 113, 113, 0.12);
-  color: var(--status-error);
-  border: 1px solid rgba(248, 113, 113, 0.25);
-}
-
-/* Search */
-.search-wrap {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.search-icon {
-  position: absolute;
-  left: var(--space-3);
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-muted);
-  pointer-events: none;
-}
-
-.search-input {
-  width: 260px;
-  padding: var(--space-2) var(--space-3) var(--space-2) 36px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--bg-border);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: var(--text-sm);
-  outline: none;
-  transition: border-color 0.15s ease;
-}
-
-.search-input:focus {
-  border-color: var(--radarr);
-}
+.add-btn:hover { opacity: .85; }
 
 /* Toolbar */
 .toolbar {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-5);
-  flex-wrap: wrap;
+  display: flex; align-items: center; gap: var(--space-3);
+  margin-bottom: var(--space-5); flex-wrap: wrap;
 }
-
-.filter-group,
-.sort-group {
-  display: flex;
-  gap: 2px;
-  background: var(--bg-elevated);
-  border-radius: var(--radius-md);
-  padding: 2px;
-  border: 1px solid var(--bg-border);
+.btn-group {
+  display: flex; gap: 2px;
+  background: var(--bg-elevated); border: 1px solid var(--bg-border);
+  border-radius: var(--radius-md); padding: 2px;
 }
-
-.filter-btn,
-.sort-btn {
-  padding: var(--space-1) var(--space-3);
-  border-radius: calc(var(--radius-md) - 2px);
-  font-size: var(--text-sm);
-  color: var(--text-tertiary);
-  transition: background 0.15s ease, color 0.15s ease;
-  white-space: nowrap;
+.tbtn {
+  padding: 5px 12px; border-radius: calc(var(--radius-md) - 2px);
+  font-size: var(--text-xs); color: var(--text-muted);
+  transition: background .12s, color .12s; white-space: nowrap; cursor: pointer;
 }
-
-.filter-btn:hover,
-.sort-btn:hover {
-  color: var(--text-secondary);
-}
-
-.filter-btn.active,
-.sort-btn.active {
-  background: var(--bg-overlay);
-  color: var(--text-primary);
-}
-
-.sort-arrow {
-  margin-left: 2px;
-  opacity: 0.7;
-}
-
-.results-count {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-  margin-left: auto;
-}
+.tbtn:hover { color: var(--text-secondary); }
+.tbtn-on { background: var(--bg-overlay); color: var(--text-primary); font-weight: 500; }
+.toolbar-sep { width: 1px; height: 20px; background: var(--bg-border); flex-shrink: 0; }
+.result-count { font-size: var(--text-xs); color: var(--text-muted); margin-left: auto; }
 
 /* Error */
 .error-banner {
-  padding: var(--space-4);
-  background: rgba(248, 113, 113, 0.1);
-  border: 1px solid rgba(248, 113, 113, 0.3);
-  border-radius: var(--radius-md);
-  color: var(--status-error);
-  margin-bottom: var(--space-5);
-  font-size: var(--text-sm);
+  padding: var(--space-4); background: rgba(239,68,68,.08);
+  border: 1px solid rgba(239,68,68,.25); border-radius: var(--radius-md);
+  color: #ef4444; margin-bottom: var(--space-5); font-size: var(--text-sm);
 }
 
-/* Grid */
+/* Content Wrap */
+.content-wrap { display: flex; gap: var(--space-4); align-items: flex-start; }
+.groups-wrap  { flex: 1; min-width: 0; }
+
+/* Alpha Header */
+.alpha-header {
+  font-size: var(--text-sm); font-weight: 700; color: var(--text-muted);
+  padding: var(--space-3) 0 var(--space-2);
+  border-bottom: 1px solid var(--bg-border); margin-bottom: var(--space-3);
+  scroll-margin-top: 80px;
+}
+
+/* Poster Grid */
 .poster-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: var(--space-3);
+  margin-bottom: var(--space-5);
 }
+
+/* Alphabet Nav (rechts) */
+.alpha-nav {
+  position: sticky; top: var(--space-4);
+  display: flex; flex-direction: column; gap: 1px;
+  flex-shrink: 0;
+}
+.alpha-btn {
+  width: 22px; height: 22px; border-radius: var(--radius-sm);
+  font-size: 11px; font-weight: 600; text-align: center;
+  transition: background .1s, color .1s; cursor: pointer;
+  line-height: 22px; padding: 0;
+}
+.alpha-btn-on  { color: var(--text-secondary); }
+.alpha-btn-on:hover { background: var(--bg-elevated); color: var(--radarr); }
+.alpha-btn-off { color: var(--text-muted); opacity: .35; cursor: default; }
 
 /* Skeleton */
-.skeleton-card {
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background: var(--bg-surface);
-  border: 1px solid var(--bg-border);
-}
+.skel-card { border-radius: var(--radius-md); overflow: hidden; background: var(--bg-surface); border: 1px solid var(--bg-border); padding: 0 0 var(--space-2); }
+.skel-img  { aspect-ratio: 2/3; width: 100%; }
+.skel-line { height: 10px; border-radius: 3px; margin: 0 var(--space-2); }
 
-.skeleton-poster {
-  aspect-ratio: 2 / 3;
-  width: 100%;
-}
-
-.skeleton-info {
-  padding: var(--space-2);
-}
-
-.skeleton-line {
-  height: 12px;
-  border-radius: 4px;
-}
-
-/* Empty State */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-12) var(--space-4);
-  gap: var(--space-3);
-  text-align: center;
-}
-
-.empty-icon {
-  font-size: 48px;
-  line-height: 1;
-}
-
-.empty-title {
-  font-size: var(--text-lg);
-  color: var(--text-secondary);
-  font-weight: 600;
-}
-
-.empty-sub {
-  color: var(--text-muted);
-  font-size: var(--text-sm);
-}
+/* Empty */
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-12) var(--space-4); gap: var(--space-3); text-align: center; min-height: 40vh; }
+.empty-icon  { font-size: 48px; }
+.empty-title { font-size: var(--text-lg); color: var(--text-secondary); font-weight: 600; margin: 0; }
+.empty-sub   { color: var(--text-muted); font-size: var(--text-sm); margin: 0; }
+.reset-btn   { padding: 7px 16px; background: var(--bg-elevated); border: 1px solid var(--bg-border); border-radius: var(--radius-md); color: var(--text-secondary); font-size: var(--text-sm); cursor: pointer; transition: background .15s; }
+.reset-btn:hover { background: var(--bg-overlay); }
 </style>
