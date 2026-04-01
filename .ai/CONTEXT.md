@@ -83,11 +83,27 @@ Reihenfolge:
 
 ### Phase 9 – VOLLSTÄNDIG ABGESCHLOSSEN ✅
 
-### Offene Ideen (Phase 10)
-- [ ] ABS Detail-Ansicht pro Buch/Podcast
-- [ ] Plex Sessions-Widget im Dashboard
-- [ ] Bazarr Untertitel-Tab in SeriesDetailView
-- [ ] TMDB Trailer-Vorschau embedded
+### Phase 10 – Polish & Vollständigkeit (Menü von oben nach unten)
+
+Jede Seite wird vollständig polished: alle Daten anzeigen, alles klickbar, gute Empty-States, Loading-States, Fehlerhandling.
+
+- [ ] 10.1 – Dashboard (Widgets, Live-Daten, Plex Sessions, Schnellzugriff)
+- [ ] 10.2 – Filme / MoviesView (Filter, Sortierung, Suche, Stats)
+- [ ] 10.3 – MovieDetailView (alle Tabs gefüllt, Aktionen, Bazarr)
+- [ ] 10.4 – Serien / SeriesView (Filter, Sortierung, Stats)
+- [ ] 10.5 – SeriesDetailView (Staffeln, Episoden, Cast, Bazarr)
+- [ ] 10.6 – Musik / MusicView + ArtistDetailView
+- [ ] 10.7 – Downloads (Queue-Aktionen, Pause/Resume/Delete)
+- [ ] 10.8 – Kalender (Klickbar, Detail-Popups)
+- [ ] 10.9 – Suche (Prowlarr + Bibliothek verbessern)
+- [ ] 10.10 – Statistiken / TautulliView (mehr Charts)
+- [ ] 10.11 – Anfragen / OverseerrView (Request-Detail, Status)
+- [ ] 10.12 – Audiobookshelf (Detail-Ansicht, Fortschritt)
+- [ ] 10.13 – Benachrichtigungen / GotifyView (Prioritäten-Filter)
+- [ ] 10.14 – Einstellungen (kompletter Polish)
+
+### Aktive Phase
+- **Phase 10.1** – Dashboard
 
 ### Vorgehen pro Integration
 1. Backend-Route direkt testen (curl gegen API)
