@@ -11,7 +11,7 @@ function client() {
   return axios.create({
     baseURL: `${env.SONARR_URL}/api/v3`,
     headers: { 'X-Api-Key': env.SONARR_API_KEY },
-    timeout: 10_000,
+    timeout: 30_000,
   });
 }
 
