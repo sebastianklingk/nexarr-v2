@@ -67,7 +67,7 @@ export async function getRootFolders(): Promise<Array<{ id: number; path: string
 export async function getCalendar(start: string, end: string): Promise<unknown[]> {
   const key = `sonarr_calendar_${start}_${end}`;
   return C.fetch(key, async () => {
-    const { data } = await client().get('/calendar', { params: { start, end, includeSeries: true } });
+    const { data } = await client().get('/calendar', { params: { start, end, includeSeries: true, includeEpisodeFile: true } });
     return data as unknown[];
   }, TTL.CALENDAR);
 }
