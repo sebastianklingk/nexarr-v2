@@ -65,7 +65,10 @@ const hoverPos   = ref({ x: 0, y: 0 });
 // Anchor: erster Tag des sichtbaren Bereichs
 const today = new Date();
 today.setHours(0, 0, 0, 0);
-const todayKey = today.toISOString().slice(0, 10);
+function fmtDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+const todayKey = fmtDate(today);
 const anchor  = ref(new Date(today));
 
 // ── Navigation ────────────────────────────────────────────────────────────────
@@ -133,7 +136,7 @@ const listEnd = computed(() => {
   return d;
 });
 
-function fmtKey(d: Date) { return d.toISOString().slice(0, 10); }
+
 
 const loadStart = computed(() => {
   if (viewMode.value === 'week')  return weekDays.value[0];
@@ -155,7 +158,7 @@ async function load() {
       radarr: Record<string, unknown>[];
       sonarr: Record<string, unknown>[];
       lidarr: Record<string, unknown>[];
-    }>(`/api/calendar?start=${fmtKey(loadStart.value)}&end=${fmtKey(loadEnd.value)}`);
+    }>(`/api/calendar?start=${fmtDate(loadStart.value)}&end=${fmtDate(loadEnd.value)}`);
 
     const mapped: CalendarEntry[] = [];
 
@@ -248,7 +251,7 @@ function entriesForDay(dateKey: string) {
 const listGrouped = computed(() => {
   const map = new Map<string, CalendarEntry[]>();
   for (const e of filtered.value) {
-    if (e.dateKey < fmtKey(listStart.value) || e.dateKey > fmtKey(listEnd.value)) continue;
+    if (e.dateKey < fmtDate(listStart.value) || e.dateKey > fmtDate(listEnd.value)) continue;
     if (!map.has(e.dateKey)) map.set(e.dateKey, []);
     map.get(e.dateKey)!.push(e);
   }
@@ -440,18 +443,18 @@ function updatePos(e: MouseEvent) {
     <div v-else-if="viewMode === 'week'" class="week-view">
       <!-- Day Headers -->
       <div class="week-header-row">
-        <div v-for="day in weekDays" :key="fmtKey(day)"
-          :class="['week-day-hdr', { 'wdh-today': isToday(fmtKey(day)) }]">
+        <div v-for="day in weekDays" :key="fmtDate(day)"
+          :class="['week-day-hdr', { 'wdh-today': isToday(fmtDate(day)) }]">
           <span class="wdh-name">{{ DAY_NAMES_SHORT[day.getDay()] }}</span>
-          <span class="wdh-num" :class="{ 'wdh-num-today': isToday(fmtKey(day)) }">{{ day.getDate() }}</span>
+          <span class="wdh-num" :class="{ 'wdh-num-today': isToday(fmtDate(day)) }">{{ day.getDate() }}</span>
         </div>
       </div>
       <!-- Day Columns -->
       <div class="week-body">
-        <div v-for="day in weekDays" :key="fmtKey(day)"
-          :class="['week-col', { 'wcol-today': isToday(fmtKey(day)), 'wcol-past': isPast(fmtKey(day)) }]">
-          <template v-if="entriesForDay(fmtKey(day)).length">
-            <div v-for="entry in entriesForDay(fmtKey(day))" :key="`${entry.app}-${entry.id}-${entry.releaseType}`"
+        <div v-for="day in weekDays" :key="'col-'+fmtDate(day)"
+          :class="['week-col', { 'wcol-today': isToday(fmtDate(day)), 'wcol-past': isPast(fmtDate(day)) }]">
+          <template v-if="entriesForDay(fmtDate(day)).length">
+            <div v-for="entry in entriesForDay(fmtDate(day))" :key="`${entry.app}-${entry.id}-${entry.releaseType}`"
               class="week-event"
               :class="[`evt-${entry.app}`, { 'evt-clickable': entry.navPath !== '/music', 'evt-has': entry.hasFile }]"
               :style="cardStyle(entry)"
@@ -487,14 +490,14 @@ function updatePos(e: MouseEvent) {
       </div>
       <!-- Tages-Grid -->
       <div class="month-grid">
-        <div v-for="day in monthDays" :key="fmtKey(day)"
+        <div v-for="day in monthDays" :key="fmtDate(day)"
           :class="['month-cell', {
             'mc-other': !isCurMonth(day),
-            'mc-today': isToday(fmtKey(day)),
-            'mc-past':  isPast(fmtKey(day)) && isCurMonth(day),
+            'mc-today': isToday(fmtDate(day)),
+            'mc-past':  isPast(fmtDate(day)) && isCurMonth(day),
           }]">
           <div class="mc-num">{{ day.getDate() }}</div>
-          <template v-for="(entry, idx) in entriesForDay(fmtKey(day))" :key="`${entry.app}-${entry.id}-${entry.releaseType}`">
+          <template v-for="(entry, idx) in entriesForDay(fmtDate(day))" :key="`${entry.app}-${entry.id}-${entry.releaseType}`">
             <div v-if="idx < 3"
               class="mc-event"
               :style="`background:color-mix(in srgb,${appColor(entry.app)} 15%,var(--bg-elevated));border-left:2px solid ${appColor(entry.app)}`"
@@ -507,8 +510,8 @@ function updatePos(e: MouseEvent) {
               <span v-if="entry.hasFile" class="mc-check">✓</span>
             </div>
           </template>
-          <div v-if="entriesForDay(fmtKey(day)).length > 3" class="mc-more">
-            +{{ entriesForDay(fmtKey(day)).length - 3 }} weitere
+          <div v-if="entriesForDay(fmtDate(day)).length > 3" class="mc-more">
+            +{{ entriesForDay(fmtDate(day)).length - 3 }} weitere
           </div>
         </div>
       </div>
