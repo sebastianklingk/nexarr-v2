@@ -566,7 +566,7 @@ function updatePos(e: MouseEvent) {
 </template>
 
 <style scoped>
-.calendar-view { padding: var(--space-6); height: 100%; display: flex; flex-direction: column; gap: var(--space-4); overflow: hidden; }
+.calendar-view { padding: var(--space-6); min-height: 100%; display: flex; flex-direction: column; gap: var(--space-4); }
 
 /* ── Header ──────────────────────────────────────────────────────────────── */
 .cal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
@@ -609,9 +609,9 @@ function updatePos(e: MouseEvent) {
 .skeleton-col { display: flex; flex-direction: column; gap: var(--space-2); }
 
 /* ── Week View ───────────────────────────────────────────────────────────── */
-.week-view { display: flex; flex-direction: column; border: 1px solid var(--bg-border); border-radius: var(--radius-lg); overflow: hidden; flex: 1; min-height: 0; }
+.week-view { border: 1px solid var(--bg-border); border-radius: var(--radius-lg); overflow: hidden; }
 
-.week-header-row { display: grid; grid-template-columns: repeat(7, 1fr); border-bottom: 1px solid var(--bg-border); flex-shrink: 0; }
+.week-header-row { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-bottom: 1px solid var(--bg-border); }
 .week-day-hdr { display: flex; flex-direction: column; align-items: center; padding: var(--space-2) var(--space-1); gap: 2px; background: var(--bg-surface); border-right: 1px solid var(--bg-border); }
 .week-day-hdr:last-child { border-right: none; }
 .wdh-today { background: rgba(155,0,69,.06); }
@@ -619,9 +619,9 @@ function updatePos(e: MouseEvent) {
 .wdh-num { font-size: var(--text-base); font-weight: 700; color: var(--text-secondary); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
 .wdh-num-today { background: var(--accent); color: #fff; }
 
-.week-body { display: grid; grid-template-columns: repeat(7, 1fr); overflow-y: auto; flex: 1; }
+.week-body { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
 
-.week-col { display: flex; flex-direction: column; gap: 3px; padding: var(--space-2) var(--space-1); border-right: 1px solid var(--bg-border); }
+.week-col { display: flex; flex-direction: column; gap: 3px; padding: var(--space-2) var(--space-1); border-right: 1px solid var(--bg-border); min-width: 0; overflow: hidden; }
 .week-col:last-child { border-right: none; }
 .wcol-today { background: rgba(155,0,69,.03); }
 .wcol-past { opacity: .5; }
@@ -641,8 +641,8 @@ function updatePos(e: MouseEvent) {
 .evt-ep { font-size: 9px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0; line-height: 1.3; }
 
 /* ── Month View ──────────────────────────────────────────────────────────── */
-.month-view { display: flex; flex-direction: column; border: 1px solid var(--bg-border); border-radius: var(--radius-lg); overflow: hidden; flex: 1; min-height: 0; }
-.month-grid { display: grid; grid-template-columns: repeat(7, 1fr); overflow-y: auto; flex: 1; }
+.month-view { border: 1px solid var(--bg-border); border-radius: var(--radius-lg); overflow: hidden; }
+.month-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
 .month-hdr-row { display: grid; grid-template-columns: repeat(7, 1fr); border-bottom: 1px solid var(--bg-border); background: var(--bg-surface); }
 .month-hdr-cell { padding: var(--space-2); text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: .07em; border-right: 1px solid var(--bg-border); }
 .month-hdr-cell:last-child { border-right: none; }
@@ -660,7 +660,7 @@ function updatePos(e: MouseEvent) {
 .mc-more { font-size: 9px; color: var(--text-muted); padding: 1px 4px; cursor: pointer; }
 
 /* ── List View ───────────────────────────────────────────────────────────── */
-.list-view { flex: 1; overflow-y: auto; }
+.list-view { flex: 1; }
 .cal-list { display: flex; flex-direction: column; gap: var(--space-5); }
 .date-group { display: flex; flex-direction: column; gap: var(--space-2); }
 .date-group.is-past { opacity: .45; }
