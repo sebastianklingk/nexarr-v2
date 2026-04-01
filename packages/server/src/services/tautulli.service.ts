@@ -107,6 +107,27 @@ export async function getMetadata(ratingKey: string): Promise<unknown> {
   }, TTL.DETAIL);
 }
 
+// Plays per Tag für Timeline-Chart
+export interface PlaysByDay { date: string; movies: number; tv: number; music: number }
+export async function getPlaysByDate(timeRange = 30): Promise<PlaysByDay[]> {
+  return C.fetch(`tautulli_plays_by_date_${timeRange}`, async () => {
+    const { data } = await api('get_plays_by_date', { time_range: String(timeRange) });
+    const r = data?.response?.data;
+    // Tautulli liefert: { categories: ['2026-03-01', ...], series: [{name, data: [n,n,...]}, ...] }
+    const categories: string[] = r?.categories ?? [];
+    const series: Array<{ name: string; data: number[] }> = r?.series ?? [];
+    const moviesData = series.find(s => s.name === 'Movies')?.data ?? [];
+    const tvData     = series.find(s => s.name === 'TV')?.data ?? [];
+    const musicData  = series.find(s => s.name === 'Music')?.data ?? [];
+    return categories.map((date, i) => ({
+      date,
+      movies: moviesData[i] ?? 0,
+      tv:     tvData[i]     ?? 0,
+      music:  musicData[i]  ?? 0,
+    }));
+  }, TTL.STATS);
+}
+
 // Rating Key für einen Film anhand des Titels finden
 export async function findMovieRatingKey(title: string): Promise<string | null> {
   try {

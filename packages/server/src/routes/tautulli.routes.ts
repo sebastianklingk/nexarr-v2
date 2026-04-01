@@ -59,4 +59,11 @@ router.get('/find-key', requireAuth, H(async (req, res) => {
   res.json({ rating_key: key });
 }));
 
+// Plays per Tag (letzte N Tage) für Timeline-Chart
+// GET /api/tautulli/plays-by-date?time_range=30
+router.get('/plays-by-date', requireAuth, H(async (req, res) => {
+  const timeRange = Number(req.query.time_range) || 30;
+  res.json(await tautulliService.getPlaysByDate(timeRange));
+}));
+
 export default router;

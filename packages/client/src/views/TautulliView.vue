@@ -56,7 +56,11 @@ const isLoadingStats   = ref(true);
 const isLoadingHistory = ref(true);
 const errorStats   = ref<string | null>(null);
 const errorHistory = ref<string | null>(null);
-const activeTab    = ref<'top' | 'history'>('top');
+const activeTab    = ref<'top' | 'history' | 'timeline'>('top');
+
+interface PlaysByDay { date: string; movies: number; tv: number; music: number }
+const playsByDate       = ref<PlaysByDay[]>([]);
+const isLoadingTimeline = ref(true);
 
 // ── Computed ─────────────────────────────────────────────────────────────────
 
@@ -140,7 +144,32 @@ onMounted(async () => {
   } finally {
     isLoadingHistory.value = false;
   }
+
+  // Timeline
+  try {
+    playsByDate.value = await get<PlaysByDay[]>('/api/tautulli/plays-by-date?time_range=30');
+  } catch { /* Tautulli nicht konfiguriert */ }
+  finally { isLoadingTimeline.value = false; }
 });
+
+// ── Timeline Helpers ──────────────────────────────────────────────────────────────────────
+
+const timelineMax = computed(() =>
+  Math.max(1, ...playsByDate.value.map(d => d.movies + d.tv + d.music))
+);
+
+const timelineTotal = computed(() =>
+  playsByDate.value.reduce((s, d) => s + d.movies + d.tv + d.music, 0)
+);
+
+function tlBarHeight(val: number, max: number, maxPx = 80): string {
+  return `${Math.round((val / max) * maxPx)}px`;
+}
+
+function fmtDayLabel(dateStr: string): string {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+}
 </script>
 
 <template>
@@ -160,13 +189,14 @@ onMounted(async () => {
     <!-- Tabs -->
     <div class="tabs-bar">
       <button
-        v-for="tab in (['top', 'history'] as const)"
+        v-for="tab in (['top', 'timeline', 'history'] as const)"
         :key="tab"
         :class="['tab-btn', { active: activeTab === tab }]"
         @click="activeTab = tab"
       >
-        {{ tab === 'top' ? 'Top-Inhalte' : 'Verlauf' }}
+        {{ tab === 'top' ? 'Top-Inhalte' : tab === 'timeline' ? 'Timeline' : 'Verlauf' }}
         <span v-if="tab === 'history' && historyTotal" class="tab-count">{{ historyTotal }}</span>
+        <span v-if="tab === 'timeline' && timelineTotal > 0" class="tab-count">{{ timelineTotal }}</span>
       </button>
     </div>
 
