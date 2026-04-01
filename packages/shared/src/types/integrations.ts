@@ -58,6 +58,7 @@ export interface SonarrSeries {
   runtime: number;
   tvdbId: number;
   tvMazeId?: number;
+  tmdbId?: number;
   imdbId?: string;
   genres: string[];
   ratings: { value: number; votes: number };

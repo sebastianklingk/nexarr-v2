@@ -28,18 +28,35 @@
   --accent-muted:    rgba(155, 0, 69, 0.15);
 
   /* App-Farben – NUR als Akzente, nie als Fließtext */
-  --radarr:          #F4A54A;
-  --sonarr:          #35C5F4;
-  --lidarr:          #22C65B;
-  --prowlarr:        #FF7F50;
-  --sabnzbd:         #F5C518;
-  --tautulli:        #E5C06D;
-  --overseerr:       #7C4DFF;
-  --bazarr:          #A78BFA;
-  --gotify:          #0060A8;
+  --radarr:          #ffc230;
+  --sonarr:          #2193b5;
+  --lidarr:          #00a65b;
+  --prowlarr:        #e66000;
+  --sabnzbd:         #ffca28;
+  --tautulli:        #e5a00d;
+  --overseerr:       #4942c0;
+  --bazarr:          #9c36b5;
+  --gotify:          #90caf9;
   --plex:            #E5A00D;
-  --tmdb:            #01B4E4;
-  --abs:             #F0A500;
+  --tmdb:            #19a98d;
+  --abs:             #c19243;
+  --transmission:    #c10303;
+
+  /* App-Farben als RGB-Tripel (für rgba()-Verwendung) */
+  --radarr-rgb:      255, 194, 48;
+  --sonarr-rgb:      33, 147, 181;
+  --lidarr-rgb:      0, 166, 91;
+  --prowlarr-rgb:    230, 96, 0;
+  --sabnzbd-rgb:     255, 202, 40;
+  --tautulli-rgb:    229, 160, 13;
+  --overseerr-rgb:   73, 66, 192;
+  --bazarr-rgb:      156, 54, 181;
+  --gotify-rgb:      144, 202, 249;
+  --plex-rgb:        229, 160, 13;
+  --tmdb-rgb:        25, 169, 141;
+  --abs-rgb:         193, 146, 67;
+  --transmission-rgb: 193, 3, 3;
+  --accent-rgb:      155, 0, 69;
 
   /* Status-Farben */
   --status-success:  #22c55e;

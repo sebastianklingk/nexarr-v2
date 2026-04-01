@@ -50,6 +50,16 @@ export const router = createRouter({
       component: () => import('../views/ArtistDetailView.vue'),
     },
     {
+      path: '/discover',
+      name: 'discover',
+      component: () => import('../views/DiscoverView.vue'),
+    },
+    {
+      path: '/indexer',
+      name: 'indexer',
+      component: () => import('../views/IndexerView.vue'),
+    },
+    {
       path: '/downloads',
       name: 'downloads',
       component: () => import('../views/DownloadsView.vue'),

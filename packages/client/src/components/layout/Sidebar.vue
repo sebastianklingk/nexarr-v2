@@ -24,12 +24,14 @@ const navItems = [
   { name: 'Filme',         path: '/movies',      icon: 'film',     color: 'var(--radarr)' },
   { name: 'Serien',        path: '/series',      icon: 'tv',       color: 'var(--sonarr)' },
   { name: 'Musik',         path: '/music',       icon: 'music',    color: 'var(--lidarr)' },
+  { name: 'Entdecken',     path: '/discover',    icon: 'compass',  color: 'var(--tmdb)' },
+  { name: 'Indexer',       path: '/indexer',     icon: 'indexer',  color: 'var(--prowlarr)' },
   { name: 'Downloads',     path: '/downloads',   icon: 'download', color: 'var(--sabnzbd)' },
   { name: 'Kalender',      path: '/calendar',    icon: 'calendar', color: 'var(--text-tertiary)' },
   { name: 'Suche',         path: '/search',      icon: 'search',   color: 'var(--text-tertiary)' },
   { name: 'Statistiken',   path: '/tautulli',    icon: 'chart',    color: 'var(--tautulli)' },
   { name: 'Anfragen',           path: '/overseerr',       icon: 'inbox',  color: 'var(--overseerr)' },
-  { name: 'Audiobookshelf',     path: '/audiobookshelf',  icon: 'book',   color: 'var(--abs, #F0A500)' },
+  { name: 'Audiobookshelf',     path: '/audiobookshelf',  icon: 'book',   color: 'var(--abs)' },
   { name: 'Benachrichtigungen', path: '/gotify',           icon: 'bell',   color: 'var(--gotify)' },
   { name: 'Einstellungen',      path: '/settings',    icon: 'settings', color: 'var(--text-tertiary)' },
 ];
@@ -117,6 +119,8 @@ function getIcon(name: string): string {
     bell:     `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>`,
     book:     `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`,
     logout:   `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
+    compass:  `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>`,
+    indexer:  `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`,
   };
   return icons[name] ?? '';
 }

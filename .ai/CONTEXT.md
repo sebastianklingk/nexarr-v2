@@ -379,8 +379,17 @@ Features:
 - Lidarr: `getMissingAlbums`, `getHistory`
 - Neue Routes: `*/qualityprofiles`, `*/health`, `*/indexer/testall`, `*/missing`, `*/history`
 
-### Schritt 2: DiscoverView ⏳ (nächstes)
-### Schritt 3: IndexerView + Sidebar
+### Schritt 2: DiscoverView ✅
+- `DiscoverView.vue` – Hero, Trending-Grid, Genre-Pillen, Genre-Grid, Detail-Modal, Add-Config (Root-Folder + Qualitätsprofil + Optionen), Library-Check via Pinia-Stores, Ähnliche-Inhalte
+- Route `/discover` + Sidebar-Eintrag (Kompass-Icon, TMDB-Farbe)
+- Sidebar: `compass`-Icon erganzt
+
+### Schritt 3: IndexerView + Sidebar ✅
+- `IndexerView.vue` – Stats-Row (5 Karten), Health-Widget (Radarr/Sonarr), Prowlarr Release-Suche mit Tech-Badges + Filter/Sort, Indexer-Grid (Usenet/Torrent-Gruppen), History-Tab, RSS-Tab
+- Farbe: `var(--prowlarr)` (#e66000) durchgängig
+- Sidebar: Indexer-Eintrag + Package-Icon
+
+### Schritt 4: CalendarView Wochenansicht + Optionen-Panel ⏳ (nächstes)
 ### Schritt 4: CalendarView Wochenansicht + Optionen-Panel
 ### Schritt 5: DownloadsView kombinierte Queue + History + Fehlend
 
@@ -462,14 +471,17 @@ ABS_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlJZCI6IjNkODQxYWM3LTMwMTQtN
 
 ## Design System (IMMER einhalten)
 
-### App-Farben
+### App-Farben (Stand 01.04.2026)
 ```
-Radarr:      #F4A54A    Sonarr:      #35C5F4    Lidarr:      #22C65B
-Prowlarr:    #FF7F50    SABnzbd:     #F5C518    Tautulli:    #E5C06D
-Overseerr:   #7C4DFF    Bazarr:      #A78BFA    Gotify:      #0060A8
-Plex:        #E5A00D    TMDB:        #01B4E4    ABS:         #F0A500
-nexarr:      #9b0045
+Radarr:       #ffc230    Sonarr:       #2193b5    Lidarr:       #00a65b
+Prowlarr:     #e66000    SABnzbd:      #ffca28    Tautulli:     #e5a00d
+Overseerr:    #4942c0    Bazarr:       #9c36b5    Gotify:       #90caf9
+Plex:         #E5A00D    TMDB:         #19a98d    ABS:          #c19243
+Transmission: #c10303    nexarr:       #9b0045
 ```
+
+Alle Farben zentral in `packages/client/src/assets/styles/main.css` als CSS-Variablen.
+Zusätzlich als RGB-Tripel verfügbar: `--radarr-rgb`, `--sonarr-rgb` etc. für `rgba(var(--radarr-rgb), 0.12)`.
 
 ### Text-Hierarchie (WCAG AA)
 ```
