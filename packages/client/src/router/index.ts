@@ -80,6 +80,11 @@ export const router = createRouter({
       component: () => import('../views/AbsView.vue'),
     },
     {
+      path: '/audiobookshelf/:id',
+      name: 'abs-detail',
+      component: () => import('../views/AbsDetailView.vue'),
+    },
+    {
       path: '/gotify',
       name: 'gotify',
       component: () => import('../views/GotifyView.vue'),

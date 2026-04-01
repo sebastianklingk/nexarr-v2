@@ -33,25 +33,49 @@ onMounted(async () => {
 const localFilter = ref<'all' | 'movies' | 'series' | 'music'>('all');
 const q = computed(() => query.value.trim().toLowerCase());
 
+// Fuzzy-Score: 0=Exakt, 1=Beginnt mit, 2=Enthält, 3=Alle Wörter, 4=Teilmatch, 99=kein Match
+function fuzzyScore(text: string, term: string): number {
+  const t = text.toLowerCase().trim();
+  if (!t) return 99;
+  if (t === term)          return 0;
+  if (t.startsWith(term)) return 1;
+  if (t.includes(term))   return 2;
+  const words = term.split(/\s+/).filter(Boolean);
+  if (words.length > 1 && words.every(w => t.includes(w))) return 3;
+  let hits = 0, pos = 0;
+  for (const ch of term) { const idx = t.indexOf(ch, pos); if (idx !== -1) { hits++; pos = idx + 1; } }
+  return hits / term.length >= 0.65 ? 4 : 99;
+}
+
+function bestScore(candidates: string[], term: string): number {
+  return Math.min(...candidates.filter(Boolean).map(c => fuzzyScore(c, term)));
+}
+
 const movieResults = computed<RadarrMovie[]>(() => {
   if (!q.value || localFilter.value === 'series' || localFilter.value === 'music') return [];
   return movies.movies
-    .filter(m => m.title.toLowerCase().includes(q.value) || m.originalTitle?.toLowerCase().includes(q.value) || String(m.year).includes(q.value))
-    .slice(0, 20);
+    .map(m => ({ item: m, score: bestScore([m.title, m.originalTitle ?? '', String(m.year)], q.value) }))
+    .filter(r => r.score < 99)
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 20).map(r => r.item);
 });
 
 const seriesResults = computed<SonarrSeries[]>(() => {
   if (!q.value || localFilter.value === 'movies' || localFilter.value === 'music') return [];
   return series.series
-    .filter(s => s.title.toLowerCase().includes(q.value) || s.network?.toLowerCase().includes(q.value))
-    .slice(0, 20);
+    .map(s => ({ item: s, score: bestScore([s.title, s.network ?? '', String(s.year ?? '')], q.value) }))
+    .filter(r => r.score < 99)
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 20).map(r => r.item);
 });
 
 const artistResults = computed<LidarrArtist[]>(() => {
   if (!q.value || localFilter.value === 'movies' || localFilter.value === 'series') return [];
   return music.artists
-    .filter(a => a.artistName.toLowerCase().includes(q.value))
-    .slice(0, 20);
+    .map(a => ({ item: a, score: bestScore([a.artistName, ...(a.genres ?? [])], q.value) }))
+    .filter(r => r.score < 99)
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 20).map(r => r.item);
 });
 
 const localTotal = computed(() => movieResults.value.length + seriesResults.value.length + artistResults.value.length);

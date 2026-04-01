@@ -82,4 +82,32 @@ router.delete('/movies/:id', requireAuth, H(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// Qualitätsprofile (für Discover Hinzufügen-Modal)
+router.get('/qualityprofiles', requireAuth, H(async (_req, res) => {
+  res.json(await radarrService.getQualityProfiles());
+}));
+
+// Health-Status (für IndexerView)
+router.get('/health', requireAuth, H(async (_req, res) => {
+  res.json(await radarrService.getHealth());
+}));
+
+// Alle Indexer testen (für IndexerView)
+router.post('/indexer/testall', requireAuth, H(async (_req, res) => {
+  await radarrService.testAllIndexers();
+  res.json({ ok: true });
+}));
+
+// Fehlende Filme (für Downloads Fehlend-Tab)
+router.get('/missing', requireAuth, H(async (req, res) => {
+  const pageSize = Number(req.query.pageSize) || 100;
+  res.json(await radarrService.getMissingMovies(pageSize));
+}));
+
+// History (für Downloads History-Tab)
+router.get('/history', requireAuth, H(async (req, res) => {
+  const pageSize = Number(req.query.pageSize) || 100;
+  res.json(await radarrService.getHistory(pageSize));
+}));
+
 export default router;

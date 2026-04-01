@@ -1,8 +1,8 @@
 # nexarr v2 – AI Context
 > Dieses Dokument wird am Ende jeder Session aktualisiert.
-> Zuletzt aktualisiert: 01.04.2026 – Phase 10 fast vollständig; Phase 11 Roadmap angelegt
+> Zuletzt aktualisiert: 01.04.2026 – Phase 10 vollständig abgeschlossen; Phase 11 geplant
 > Aktualisiert von: Chat-Claude
-> Stand: Phase 10 aktiv – 10.A–10.8 + 10.13 ✅ · offen: 10.9/10.10/10.11/10.12/10.14
+> Stand: Phase 10 ✅ KOMPLETT · Phase 11 als nächstes (IndexerView, DiscoverView, Kalender-Woche, Downloads-Ausbau)
 
 ---
 
@@ -370,15 +370,36 @@ Features:
 
 ---
 
-## Verbleibende Phase-10-Aufgaben
+## Phase 11 – Stand
 
+### Schritt 1: Backend-Batch ✅
+- TMDB: `getTrending`, `discover`, `getMovieDetails`, `getTvDetails`, `getSimilarMovies`, `getSimilarTv`
+- TMDB Routes: `/api/tmdb/trending`, `/api/tmdb/discover`, `/api/tmdb/movie/:id`, `/api/tmdb/movie/:id/similar`, `/api/tmdb/tv/:id`, `/api/tmdb/tv/:id/similar`
+- Radarr/Sonarr: `getQualityProfiles`, `getHealth`, `testAllIndexers`, `getMissing*`, `getHistory`
+- Lidarr: `getMissingAlbums`, `getHistory`
+- Neue Routes: `*/qualityprofiles`, `*/health`, `*/indexer/testall`, `*/missing`, `*/history`
+
+### Schritt 2: DiscoverView ⏳ (nächstes)
+### Schritt 3: IndexerView + Sidebar
+### Schritt 4: CalendarView Wochenansicht + Optionen-Panel
+### Schritt 5: DownloadsView kombinierte Queue + History + Fehlend
+
+---
+
+## Phase 10 – ABGESCHLOSSEN ✅
+
+Alle Items erledigt:
 ```
-10.9  – SearchView: Bibliotheks-Suche Fuzzy-Matching, Kategorie-Filter
-10.10 – TautulliView: Charts, Top-10, Timeline
-10.11 – OverseerrView: Request-Details, Approve/Decline
-10.12 – ABS Detail-Ansicht (AbsDetailView.vue neu)
-10.14 – Settings: Connection-Test-Button pro Integration, Toast
+10.9  ✅ SearchView: Fuzzy-Score (5 Stufen: Exakt/Beginnt/Enthält/Alle-Wörter/Teilmatch), Relevanz-Sort
+10.10 ✅ TautulliView: Timeline-Tab mit Balkendiagramm (Filme/Serien/Musik), plays-by-date Backend
+10.11 ✅ OverseerrView: war bereits vollständig (Poster, Status-Badges, Approve/Decline, Filter-Tabs)
+10.12 ✅ AbsDetailView.vue: Cover, Metadaten, Progress-Bar, Kapitel-Liste, Podcast-Episoden; Route /audiobookshelf/:id; AbsView klickbar
+10.14 ✅ SettingsView: Per-Integration Test-Button + Toast-System (Teleport, TransitionGroup)
 ```
+
+### Neue Backend-Endpoints (Phase 10 letzte Session)
+- `GET /api/system/integrations/:name` – Einzel-Integration testen
+- `GET /api/tautulli/plays-by-date?time_range=30` – Tages-Statistiken für Timeline-Chart
 
 ---
 
@@ -400,12 +421,12 @@ Features:
 - [x] **10.6b** – ArtistDetailView: Action-Bar (Suchen/Refresh/Delete), Artist-Links, Album-Suche/Monitor, Track-Quality-Badge
 - [x] **10.7** – Downloads: SABnzbd per-Item Pause/Resume/Delete, ConfirmDialog, Arr-Remove
 - [x] **10.8** – Kalender: klickbar (→ Detail-Page), Hover-Tooltip, Navigation (Vor/Zurück/Heute)
-- [ ] **10.9** – Suche: Bibliotheks-Suche verbessern
-- [ ] **10.10** – TautulliView: Charts, Top-10, Timeline
-- [ ] **10.11** – OverseerrView: Request-Details, Approve/Decline
-- [ ] **10.12** – ABS Detail-Ansicht
+- [x] **10.9** – SearchView: Fuzzy-Scoring (5 Stufen), Relevanz-Sortierung
+- [x] **10.10** – TautulliView: Timeline-Tab, plays-by-date Balkendiagramm
+- [x] **10.11** – OverseerrView: war bereits vollständig
+- [x] **10.12** – AbsDetailView.vue: Cover, Meta, Progress, Kapitel, Episoden; Route /audiobookshelf/:id
 - [x] **10.13** – GotifyView: Prioritäten-Filter (Alle/Kritisch/Wichtig/Info)
-- [ ] **10.14** – Settings: Connection-Test, vollständige Konfiguration
+- [x] **10.14** – SettingsView: Per-Integration Test-Button + Toast-System
 
 ---
 

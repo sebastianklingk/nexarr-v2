@@ -59,6 +59,86 @@ export async function getSeriesCredits(tmdbId: number): Promise<TMDBCredits> {
   }, TTL.DETAIL);
 }
 
+// ── Discover / Trending ──────────────────────────────────────────────────────
+
+export async function getTrending(
+  type: 'movie' | 'tv',
+  window: 'week' | 'day' = 'week',
+): Promise<unknown[]> {
+  return C.fetch(`tmdb_trending_${type}_${window}`, async () => {
+    const { data } = await client().get<{ results: unknown[] }>(`/trending/${type}/${window}`);
+    return data.results ?? [];
+  }, TTL.STATS); // TTL.STATS = kurz, Trending ändert sich täglich
+}
+
+export async function discover(
+  type: 'movie' | 'tv',
+  params: {
+    genre?: string;
+    min_rating?: number;
+    min_votes?: number;
+    sort_by?: string;
+    page?: number;
+  } = {},
+): Promise<unknown[]> {
+  const key = `tmdb_discover_${type}_${JSON.stringify(params)}`;
+  return C.fetch(key, async () => {
+    const qParams: Record<string, string | number> = {
+      'vote_average.gte': params.min_rating ?? 0,
+      'vote_count.gte':   params.min_votes  ?? 50,
+      sort_by:            params.sort_by    ?? 'popularity.desc',
+      page:               params.page       ?? 1,
+    };
+    if (params.genre) qParams['with_genres'] = params.genre;
+    const { data } = await client().get<{ results: unknown[] }>(`/discover/${type}`, { params: qParams });
+    return data.results ?? [];
+  }, TTL.LONG);
+}
+
+export async function getMovieDetails(tmdbId: number): Promise<unknown> {
+  return C.fetch(`tmdb_movie_detail_${tmdbId}`, async () => {
+    const { data } = await client().get(`/movie/${tmdbId}`, {
+      params: { append_to_response: 'credits' },
+    });
+    if (data.credits) {
+      data.credits.cast  = (data.credits.cast  ?? []).slice(0, 20);
+      data.credits.crew  = (data.credits.crew  ?? [])
+        .filter((c: { job: string }) => ['Director','Producer','Screenplay','Writer','Director of Photography'].includes(c.job))
+        .slice(0, 10);
+    }
+    return data;
+  }, TTL.DETAIL);
+}
+
+export async function getTvDetails(tmdbId: number): Promise<unknown> {
+  return C.fetch(`tmdb_tv_detail_${tmdbId}`, async () => {
+    const { data } = await client().get(`/tv/${tmdbId}`, {
+      params: { append_to_response: 'credits' },
+    });
+    if (data.credits) {
+      data.credits.cast = (data.credits.cast ?? []).slice(0, 20);
+      data.credits.crew = (data.credits.crew ?? [])
+        .filter((c: { job: string }) => ['Creator','Executive Producer','Director'].includes(c.job))
+        .slice(0, 8);
+    }
+    return data;
+  }, TTL.DETAIL);
+}
+
+export async function getSimilarMovies(tmdbId: number): Promise<unknown[]> {
+  return C.fetch(`tmdb_movie_similar_${tmdbId}`, async () => {
+    const { data } = await client().get<{ results: unknown[] }>(`/movie/${tmdbId}/similar`);
+    return data.results ?? [];
+  }, TTL.LONG);
+}
+
+export async function getSimilarTv(tmdbId: number): Promise<unknown[]> {
+  return C.fetch(`tmdb_tv_similar_${tmdbId}`, async () => {
+    const { data } = await client().get<{ results: unknown[] }>(`/tv/${tmdbId}/similar`);
+    return data.results ?? [];
+  }, TTL.LONG);
+}
+
 // TMDB-ID via TVDB-ID ermitteln (für Sonarr-Integration)
 export async function findTmdbIdByTvdbId(tvdbId: number): Promise<number | null> {
   return C.fetch(`tmdb_find_tvdb_${tvdbId}`, async () => {

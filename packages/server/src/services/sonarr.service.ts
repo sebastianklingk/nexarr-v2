@@ -155,3 +155,31 @@ export async function addSeries(body: Record<string, unknown>): Promise<unknown>
 export async function triggerSearch(seriesId: number): Promise<void> {
   await client().post('/command', { name: 'SeriesSearch', seriesId });
 }
+
+export async function getQualityProfiles(): Promise<unknown[]> {
+  return C.fetch('sonarr_qualityprofiles', async () => {
+    const { data } = await client().get('/qualityprofile');
+    return data;
+  }, TTL.LONG);
+}
+
+export async function getHealth(): Promise<unknown[]> {
+  const { data } = await client().get('/health');
+  return data;
+}
+
+export async function testAllIndexers(): Promise<void> {
+  await client().post('/indexer/testall');
+}
+
+export async function getMissingEpisodes(pageSize = 100): Promise<unknown> {
+  const { data } = await client().get('/wanted/missing', {
+    params: { pageSize, monitored: true },
+  });
+  return data;
+}
+
+export async function getHistory(pageSize = 100): Promise<unknown> {
+  const { data } = await client().get('/history', { params: { pageSize } });
+  return data;
+}

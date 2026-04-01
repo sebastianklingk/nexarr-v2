@@ -102,4 +102,32 @@ router.delete('/episodefile/:id', requireAuth, H(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// Qualitätsprofile (für Discover Hinzufügen-Modal)
+router.get('/qualityprofiles', requireAuth, H(async (_req, res) => {
+  res.json(await sonarrService.getQualityProfiles());
+}));
+
+// Health-Status (für IndexerView)
+router.get('/health', requireAuth, H(async (_req, res) => {
+  res.json(await sonarrService.getHealth());
+}));
+
+// Alle Indexer testen (für IndexerView)
+router.post('/indexer/testall', requireAuth, H(async (_req, res) => {
+  await sonarrService.testAllIndexers();
+  res.json({ ok: true });
+}));
+
+// Fehlende Episoden (für Downloads Fehlend-Tab)
+router.get('/missing', requireAuth, H(async (req, res) => {
+  const pageSize = Number(req.query.pageSize) || 100;
+  res.json(await sonarrService.getMissingEpisodes(pageSize));
+}));
+
+// History (für Downloads History-Tab)
+router.get('/history', requireAuth, H(async (req, res) => {
+  const pageSize = Number(req.query.pageSize) || 100;
+  res.json(await sonarrService.getHistory(pageSize));
+}));
+
 export default router;

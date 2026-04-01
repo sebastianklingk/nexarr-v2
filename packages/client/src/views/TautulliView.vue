@@ -372,6 +372,41 @@ function fmtDayLabel(dateStr: string): string {
 
     </div>
 
+    <!-- Timeline Tab -->
+    <div v-if="activeTab === 'timeline'" class="tab-content">
+      <div v-if="isLoadingTimeline" class="skeleton tl-skeleton" />
+      <div v-else-if="!playsByDate.length" class="empty-state">
+        <p class="empty-title">Keine Timeline-Daten</p>
+        <p class="empty-sub">Tautulli liefert keine Tages-Statistiken.</p>
+      </div>
+      <template v-else>
+        <div class="tl-summary">
+          <span class="tl-total">{{ timelineTotal }} Wiedergaben</span>
+          <span class="tl-sep">·</span>
+          <span class="tl-period">letzte 30 Tage</span>
+          <div class="tl-legend">
+            <span class="tl-dot" style="background:var(--radarr)" /><span>Filme</span>
+            <span class="tl-dot" style="background:var(--sonarr)" /><span>Serien</span>
+            <span class="tl-dot" style="background:var(--lidarr)" /><span>Musik</span>
+          </div>
+        </div>
+        <div class="tl-chart-wrap">
+          <div class="tl-chart">
+            <div v-for="day in playsByDate" :key="day.date" class="tl-col"
+              :title="`${fmtDayLabel(day.date)}: ${day.movies + day.tv + day.music} Plays`">
+              <div class="tl-bars">
+                <div v-if="day.music  > 0" class="tl-bar tl-music"  :style="{ height: tlBarHeight(day.music,  timelineMax) }" />
+                <div v-if="day.tv    > 0" class="tl-bar tl-tv"     :style="{ height: tlBarHeight(day.tv,    timelineMax) }" />
+                <div v-if="day.movies > 0" class="tl-bar tl-movie"  :style="{ height: tlBarHeight(day.movies, timelineMax) }" />
+                <div v-if="!day.movies && !day.tv && !day.music" class="tl-bar tl-zero" />
+              </div>
+              <div class="tl-label">{{ fmtDayLabel(day.date).split('.')[0] }}</div>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+
   </div>
 </template>
 
@@ -701,5 +736,71 @@ function fmtDayLabel(dateStr: string): string {
   margin-top: var(--space-2);
   font-size: var(--text-sm);
   color: var(--text-muted);
+}
+
+/* ── Timeline ───────────────────────────────────────────────────────────────────────── */
+.tl-skeleton { height: 180px; width: 100%; border-radius: var(--radius-lg); }
+
+.tl-summary { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-5); }
+.tl-total   { font-size: var(--text-lg); font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.tl-sep     { color: var(--text-muted); }
+.tl-period  { font-size: var(--text-sm); color: var(--text-muted); }
+.tl-legend  { display: flex; align-items: center; gap: var(--space-2); margin-left: auto; font-size: var(--text-xs); color: var(--text-muted); flex-wrap: wrap; }
+.tl-dot     { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+.tl-chart-wrap {
+  background: var(--bg-surface);
+  border: 1px solid var(--bg-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-3) var(--space-2);
+  overflow-x: auto;
+}
+
+.tl-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  min-height: 100px;
+  min-width: min-content;
+}
+
+.tl-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 14px;
+  cursor: default;
+}
+
+.tl-bars {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 1px;
+  width: 100%;
+}
+
+.tl-bar {
+  width: 100%;
+  border-radius: 2px 2px 0 0;
+  min-height: 2px;
+  transition: height 0.4s cubic-bezier(0.4,0,0.2,1), opacity .15s;
+}
+.tl-movie { background: var(--radarr); opacity: .85; }
+.tl-tv    { background: var(--sonarr); opacity: .85; }
+.tl-music { background: var(--lidarr); opacity: .85; }
+.tl-zero  { background: var(--bg-border); height: 2px; opacity: .5; }
+
+.tl-col:hover .tl-bar { opacity: 1; }
+
+.tl-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  line-height: 1;
+  user-select: none;
 }
 </style>

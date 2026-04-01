@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { useAbsStore } from '../stores/abs.store.js';
 import type { ABSLibraryItem, ABSBookMetadata, ABSPodcastMetadata } from '@nexarr/shared';
 
+const router = useRouter();
 const store = useAbsStore();
 const searchInput = ref('');
 let   searchTimer: ReturnType<typeof setTimeout> | null = null;
@@ -114,6 +116,7 @@ function absDeepLink(itemId: string): string {
           :key="item.id"
           class="item-card"
           :class="item.mediaType"
+          @click="router.push(`/audiobookshelf/${item.id}`)"
         >
           <!-- Cover -->
           <div class="item-cover">
@@ -297,8 +300,11 @@ function absDeepLink(itemId: string): string {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  cursor: default;
+  cursor: pointer;
+  transition: transform .15s;
 }
+.item-card:hover { transform: translateY(-2px); }
+.item-card:hover .item-cover { border-color: rgba(240,165,0,.4); }
 
 .item-cover {
   position: relative;

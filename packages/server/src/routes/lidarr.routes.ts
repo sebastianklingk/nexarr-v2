@@ -73,4 +73,16 @@ router.delete('/artists/:id', requireAuth, H(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// Fehlende Alben (für Downloads Fehlend-Tab)
+router.get('/missing', requireAuth, H(async (req, res) => {
+  const pageSize = Number(req.query.pageSize) || 100;
+  res.json(await lidarrService.getMissingAlbums(pageSize));
+}));
+
+// History (für Downloads History-Tab)
+router.get('/history', requireAuth, H(async (req, res) => {
+  const pageSize = Number(req.query.pageSize) || 50;
+  res.json(await lidarrService.getHistory(pageSize));
+}));
+
 export default router;

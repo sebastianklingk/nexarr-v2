@@ -108,3 +108,13 @@ export async function sendCommand(body: Record<string, unknown>): Promise<unknow
 export async function triggerSearch(artistId: number): Promise<void> {
   await client().post('/command', { name: 'ArtistSearch', artistId });
 }
+
+export async function getMissingAlbums(pageSize = 100): Promise<unknown> {
+  const { data } = await client().get('/wanted/missing', { params: { pageSize } });
+  return data;
+}
+
+export async function getHistory(pageSize = 50): Promise<unknown> {
+  const { data } = await client().get('/history', { params: { pageSize } });
+  return data;
+}
