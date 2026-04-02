@@ -37,6 +37,10 @@
 4. Commit-Befehl ausgeben: `git add -A && git commit -m "..." && git push gitea main && git push github main`
 **Claude führt diese Befehle NICHT selbst aus – nur ausgeben, User führt aus.**
 
+## 2026-04-02 · MoviesView / SeriesView · Fragment-Root durch Modal außerhalb Root-Div
+**Was passierte:** `<AddToLibraryModal>` stand außerhalb des Root-`<div>` im Template. Das erzeugt ein Vue Fragment (mehrere Root-Nodes). `<Transition mode="out-in">` im Router erwartet genau EINEN Root-Node – bei Fragment bricht die Animation und die Zielseite bleibt leer (schwarze Seite). Erst Seiten-Refresh zeigte den Inhalt.
+**Regel:** JEDE Vue View darf NUR EIN Root-Element haben. Modals, Teleports, ConfirmDialogs etc. IMMER innerhalb des Root-`<div>` platzieren – nie als Geschwister daneben.
+
 ## 2026-04-02 · MovieDetailView / SeriesDetailView · v-else nach v-if mit mehreren SVG-Elementen
 **Was passierte:** In einem SVG-Block mit `<path v-if>` + `<circle v-if>` + `<path v-else>` wirft Vue den Fehler "v-else-if has no adjacent v-if". Das `<circle v-if>` unterbricht die v-if/v-else-Kette.
 **Regel:** In SVGs (und generell) NIEMALS `v-else` verwenden wenn mehrere Geschwister-Elemente mit `v-if` vorhanden sind. Immer `v-if="!condition"` statt `v-else` – dann gibt es keine adjazente Abhängigkeit.

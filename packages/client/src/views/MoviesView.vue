@@ -297,9 +297,8 @@ const ALPHABET = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
         </nav>
       </div>
     </template>
+    <AddToLibraryModal v-model="showAddModal" type="movie" />
   </div>
-
-  <AddToLibraryModal v-model="showAddModal" type="movie" />
 </template>
 
 <style scoped>
