@@ -1,6 +1,6 @@
 # nexarr v2 – AI Context
 > Dieses Dokument wird am Ende jeder Session aktualisiert.
-> Zuletzt aktualisiert: 01.04.2026 – Phase 10 vollständig abgeschlossen; Phase 11 geplant
+> Zuletzt aktualisiert: 02.04.2026 – AddToLibraryModal; Detail-Views Action-Bar Redesign (horizontal, neutral); Cache vollständig
 > Aktualisiert von: Chat-Claude
 > Stand: Phase 10 ✅ KOMPLETT · Phase 11 als nächstes (IndexerView, DiscoverView, Kalender-Woche, Downloads-Ausbau)
 
@@ -398,7 +398,7 @@ Features:
 - Sonarr: airDateUtc → lokale Uhrzeit, Finale-Erkennung aus finaleType/episodeType
 - Alle Einstellungen in localStorage (cal_view, cal_weekStartMon, etc.)
 
-### Schritt 5: DownloadsView kombinierte Queue + History + Fehlend ⏳ (nächstes)
+### Schritt 5: DownloadsView kombinierte Queue + History + Fehlend ✅
 ### Schritt 5: DownloadsView kombinierte Queue + History + Fehlend
 
 ---
@@ -548,36 +548,29 @@ git push gitea main && git push github main
 
 ---
 
-## Phase 11 – v1-Parität + Neue Features (geplant)
+## Phase 11 – Stand (aktiv)
 
 > Vollständige Roadmap: `.ai/ROADMAP_PHASE11.md`
 
-**Kritische fehlende Views (komplett neu):**
-- `DiscoverView.vue` – TMDB Trending, Genre-Entdeckung, Hinzufügen-Modal mit Root-Folder/Qualitätsprofil
-- `IndexerView.vue` – Prowlarr Stats, Indexer-Grid, Release-Suche mit Tech-Badges, History, RSS
+### Schritt 1: Backend-Batch ✅
+TMDB: trending/discover/details/similar; Radarr/Sonarr/Lidarr: qualityprofiles/health/indexertest/missing/history; Prowlarr: stats/history/rss/indexer(s)
 
-**Kalender – was noch fehlt (v1 hat das alles):**
-- Wochenansicht (7-Spalten-Grid) – v2 hat nur Listenansicht
-- Monatsansicht (klassisch mit Tages-Zellen)
-- Kalenderoptionen-Panel (Kino/Digital/Physisch, Episodeninfos, Finale-Icon, Zeitzone, Vollfarbe)
-- Filter-Toggles (Radarr/Sonarr/Lidarr ein-/ausblenden)
-- Ausstrahlungszeit (airDateUtc → Lokalzeit, z.B. "20:15 Uhr")
+### Schritt 2: DiscoverView ✅
+`packages/client/src/views/DiscoverView.vue` – Hero, Trending-Grid, Genre-Pillen, Detail-Modal, Add-Config, Library-Check, Ähnliche-Inhalte. Route `/discover` + Sidebar Kompass-Icon.
 
-**Downloads – was noch fehlt:**
-- Stats-Bar (4 Karten: Radarr/Sonarr/Lidarr/SABnzbd)
-- Kombinierte Queue (SABnzbd-Slot + Arr-Eintrag zusammen: Poster, Medientitel, Format-Badges)
-- History-Tab (Radarr/Sonarr/Lidarr History, paginated)
-- Fehlend-Tab (Missing mit Sofort-Suche)
-- SABnzbd: Priorität-Dropdown + An-Anfang-Button
+### Schritt 3: IndexerView ✅
+`packages/client/src/views/IndexerView.vue` – Stats-Row, Health-Widget, Prowlarr Release-Suche + Filter/Sort, Indexer-Grid, History-Tab, RSS-Tab. Route `/indexer`.
 
-**Neue Backend-Endpoints:**
-- TMDB: trending, discover, tv/:id, similar
-- Radarr/Sonarr: missing, history, qualityprofiles, health, indexer/testall
-- SABnzbd: queue/:id/priority, queue/:id/move
+### Schritt 4: CalendarView ✅
+- **3 Ansichten:** Woche (7-Spalten-Grid, minmax(0,1fr)) | Monat | Liste
+- **Optionen-Drawer:** Side-Panel von rechts, Toggle-Switches für alle Optionen
+- **Daten:** Self-contained aus API-Response (kein Store-Lookup – Sonarr timeout war 10s, jetzt 30s)
+- **Tooltips:** 4 Varianten: Film (PosterCard-Klon mit Poster+Tech-Badges), Episode (Poster+epFile-Daten: Qualität/Größe/Sprachen/Badges), Serien-Bundle, Standard
+- **Option B:** Grüner rechter Rand (2px) bei hasFile=true auf Karten
+- **Bugfixes:** fmtDate() lokal statt toISOString() UTC; loadEnd +1 Tag (exklusiv); minmax(0,1fr) für gleiche Grid-Spalten
+- **Sonarr Calendar-Params:** `includeSeries:true, includeEpisodeFile:true`
 
-**Sidebar ergänzen:**
-- `/indexer` NavItem
-- `/discover` NavItem
+### Schritt 5: DownloadsView ⏳ (nächstes)
 
 ---
 

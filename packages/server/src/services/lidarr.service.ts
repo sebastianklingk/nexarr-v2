@@ -110,11 +110,15 @@ export async function triggerSearch(artistId: number): Promise<void> {
 }
 
 export async function getMissingAlbums(pageSize = 100): Promise<unknown> {
-  const { data } = await client().get('/wanted/missing', { params: { pageSize } });
-  return data;
+  return C.fetch(`lidarr_missing_${pageSize}`, async () => {
+    const { data } = await client().get('/wanted/missing', { params: { pageSize } });
+    return data;
+  }, TTL.HISTORY);
 }
 
 export async function getHistory(pageSize = 50): Promise<unknown> {
-  const { data } = await client().get('/history', { params: { pageSize } });
-  return data;
+  return C.fetch(`lidarr_history_${pageSize}`, async () => {
+    const { data } = await client().get('/history', { params: { pageSize } });
+    return data;
+  }, TTL.HISTORY);
 }

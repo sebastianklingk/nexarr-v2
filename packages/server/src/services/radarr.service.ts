@@ -129,8 +129,10 @@ export async function getQualityProfiles(): Promise<unknown[]> {
 }
 
 export async function getHealth(): Promise<unknown[]> {
-  const { data } = await client().get('/health');
-  return data;
+  return C.fetch('radarr_health', async () => {
+    const { data } = await client().get('/health');
+    return data;
+  }, TTL.STATS);
 }
 
 export async function testAllIndexers(): Promise<void> {
@@ -138,13 +140,17 @@ export async function testAllIndexers(): Promise<void> {
 }
 
 export async function getMissingMovies(pageSize = 100): Promise<unknown> {
-  const { data } = await client().get('/wanted/missing', {
-    params: { pageSize, monitored: true },
-  });
-  return data;
+  return C.fetch(`radarr_missing_${pageSize}`, async () => {
+    const { data } = await client().get('/wanted/missing', {
+      params: { pageSize, monitored: true },
+    });
+    return data;
+  }, TTL.HISTORY);
 }
 
 export async function getHistory(pageSize = 100): Promise<unknown> {
-  const { data } = await client().get('/history', { params: { pageSize } });
-  return data;
+  return C.fetch(`radarr_history_${pageSize}`, async () => {
+    const { data } = await client().get('/history', { params: { pageSize } });
+    return data;
+  }, TTL.HISTORY);
 }

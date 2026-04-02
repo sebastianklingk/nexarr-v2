@@ -327,8 +327,8 @@ onMounted(async () => {
               <img v-if="posterUrl" :src="posterUrl" :alt="series.title" class="hero-poster"/>
               <div v-else class="hero-poster hero-ph">{{ series.title[0] }}</div>
 
-              <!-- Action bar -->
-              <div class="action-bar">
+              <!-- Action bar wird jetzt unter Hero angezeigt -->
+              <div class="action-bar-hidden" style="display:none">
                 <button class="act-btn act-search" :class="{'act-ok':searchAllStatus==='ok','act-err':searchAllStatus==='error'}" :disabled="isSearchingAll" @click="searchAll">
                   <svg v-if="isSearchingAll" class="spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
                   <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -377,6 +377,41 @@ onMounted(async () => {
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- ── Action Bar (horizontal, unter Hero) ── -->
+      <div class="detail-action-bar">
+        <button class="dab-btn" :class="{'dab-ok':searchAllStatus==='ok','dab-err':searchAllStatus==='error'}" :disabled="isSearchingAll" @click="searchAll">
+          <svg v-if="isSearchingAll" class="spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span>{{ isSearchingAll ? '…' : searchAllStatus==='ok' ? 'Gesucht ✓' : 'Alle suchen' }}</span>
+        </button>
+        <button class="dab-btn" :disabled="isRefreshing" @click="refreshSeries">
+          <svg :class="{spin:isRefreshing}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.02-7.36"/></svg>
+          <span>{{ isRefreshing ? '…' : 'Aktualisieren' }}</span>
+        </button>
+        <a v-if="tmdbTrailer" :href="`https://www.youtube.com/watch?v=${tmdbTrailer.key}`" target="_blank" rel="noopener" class="dab-btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          <span>Trailer</span>
+        </a>
+        <a v-if="plexUrl" :href="plexUrl" target="_blank" rel="noopener" class="dab-btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span>Plex</span>
+        </a>
+        <button class="dab-btn" :class="{'dab-active':series.monitored}" :disabled="isMonitorToggling" @click="toggleMonitored">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path v-if="series.monitored" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle v-if="series.monitored" cx="12" cy="12" r="3"/>
+            <path v-if="!series.monitored" d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+            <line v-if="!series.monitored" x1="1" y1="1" x2="23" y2="23"/>
+          </svg>
+          <span>{{ series.monitored ? 'Überwacht' : 'Ignoriert' }}</span>
+        </button>
+        <div class="dab-sep" />
+        <button class="dab-btn dab-danger" @click="showDeleteConfirm=true">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          <span>Entfernen</span>
+        </button>
       </div>
 
       <!-- Stats Bar -->
@@ -571,8 +606,19 @@ onMounted(async () => {
 .back-btn { display:inline-flex; align-items:center; gap:5px; color:var(--text-tertiary); font-size:var(--text-sm); transition:color .15s; align-self:flex-start; }
 .back-btn:hover { color:var(--text-primary); }
 .hero-main { display:flex; gap:var(--space-5); align-items:flex-end; }
-.hero-poster-wrap { display:flex; flex-direction:column; gap:var(--space-2); flex-shrink:0; }
-.hero-poster { width:130px; min-width:130px; aspect-ratio:2/3; object-fit:cover; border-radius:var(--radius-lg); border:1px solid rgba(255,255,255,.1); box-shadow:0 12px 40px rgba(0,0,0,.6); }
+.hero-poster-wrap { flex-shrink:0; }
+.hero-poster { width:140px; min-width:140px; aspect-ratio:2/3; object-fit:cover; border-radius:var(--radius-lg); border:1px solid rgba(255,255,255,.1); box-shadow:0 12px 40px rgba(0,0,0,.6); }
+
+/* Horizontale Action-Bar */
+.detail-action-bar { display:flex; align-items:center; gap:4px; flex-wrap:wrap; padding:var(--space-3) var(--space-6); background:rgba(0,0,0,.3); border-bottom:1px solid var(--bg-border); backdrop-filter:blur(8px); }
+.dab-btn { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:var(--radius-md); font-size:12px; font-weight:500; white-space:nowrap; cursor:pointer; background:var(--bg-elevated); border:1px solid rgba(255,255,255,.07); color:var(--text-tertiary); text-decoration:none; transition:all .15s; }
+.dab-btn:hover:not(:disabled) { background:var(--bg-overlay); color:var(--text-primary); border-color:rgba(255,255,255,.14); }
+.dab-btn:disabled { opacity:.45; cursor:not-allowed; }
+.dab-btn.dab-active { color:var(--sonarr); border-color:rgba(33,147,181,.3); background:rgba(33,147,181,.08); }
+.dab-btn.dab-ok { color:#22c55e; }
+.dab-btn.dab-err { color:#ef4444; }
+.dab-btn.dab-danger:hover:not(:disabled) { color:#ef4444; border-color:rgba(239,68,68,.35); background:rgba(239,68,68,.08); }
+.dab-sep { width:1px; height:18px; background:rgba(255,255,255,.08); margin:0 2px; flex-shrink:0; }
 .hero-ph { display:flex; align-items:center; justify-content:center; background:var(--bg-elevated); font-size:52px; font-weight:700; color:var(--text-muted); }
 .action-bar { display:flex; flex-direction:column; gap:4px; width:130px; }
 .act-btn { display:inline-flex; align-items:center; justify-content:center; gap:5px; padding:5px 8px; border-radius:var(--radius-sm); font-size:11px; font-weight:500; cursor:pointer; transition:all .15s; width:100%; white-space:nowrap; }

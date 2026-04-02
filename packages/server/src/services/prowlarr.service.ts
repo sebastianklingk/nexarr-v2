@@ -1,5 +1,7 @@
 import axios from 'axios';
 import { env } from '../config/env.js';
+import { C } from '../cache/cache.js';
+import { TTL } from '../config/constants.js';
 import type { ProwlarrResult } from '@nexarr/shared';
 
 function client() {
@@ -38,18 +40,24 @@ export async function grab(body: Record<string, unknown>): Promise<unknown> {
 }
 
 export async function getIndexers(): Promise<unknown[]> {
-  const { data } = await client().get('/indexer');
-  return data ?? [];
+  return C.fetch('prowlarr_indexers', async () => {
+    const { data } = await client().get('/indexer');
+    return data ?? [];
+  }, TTL.LONG);
 }
 
 export async function getStats(): Promise<unknown> {
-  const { data } = await client().get('/indexerstats');
-  return data ?? {};
+  return C.fetch('prowlarr_stats', async () => {
+    const { data } = await client().get('/indexerstats');
+    return data ?? {};
+  }, TTL.STATS);
 }
 
 export async function getHistory(pageSize = 100): Promise<unknown> {
-  const { data } = await client().get('/history', { params: { pageSize } });
-  return data ?? {};
+  return C.fetch(`prowlarr_history_${pageSize}`, async () => {
+    const { data } = await client().get('/history', { params: { pageSize } });
+    return data ?? {};
+  }, TTL.HISTORY);
 }
 
 export async function getRss(categories: number[] = [], limit = 50): Promise<unknown[]> {

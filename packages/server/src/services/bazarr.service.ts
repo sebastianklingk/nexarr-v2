@@ -121,7 +121,7 @@ export async function getEpisodeSubtitlesBySeries(sonarrSeriesId: number): Promi
       params: { 'seriesid[]': sonarrSeriesId },
     });
     return (data?.data ?? []) as BazarrEpisodeSubtitles[];
-  }, TTL.QUEUE);
+  }, TTL.COLLECTION);
 }
 
 // Untertitel-Suche für eine einzelne Episode

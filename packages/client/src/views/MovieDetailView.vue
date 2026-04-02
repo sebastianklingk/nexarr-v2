@@ -221,38 +221,6 @@ onMounted(async () => {
             <div class="hero-poster-wrap">
               <img v-if="posterUrl" :src="posterUrl" :alt="movie.title" class="hero-poster"/>
               <div v-else class="hero-poster hero-ph">{{ movie.title[0] }}</div>
-
-              <!-- Action bar unter Poster -->
-              <div class="action-bar">
-                <a v-if="tmdbTrailer" :href="`https://www.youtube.com/watch?v=${tmdbTrailer.key}`" target="_blank" rel="noopener" class="act-btn act-trailer" title="Trailer">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Trailer
-                </a>
-                <button class="act-btn act-interactive" title="Interaktive Suche" @click="showInteractive=true">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><circle cx="11" cy="11" r="3"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Interaktiv
-                </button>
-                <button class="act-btn act-search" :class="{'act-ok':searchStatus==='ok','act-err':searchStatus==='error'}" :disabled="isSearching" title="Automatisch suchen" @click="triggerSearch">
-                  <svg v-if="isSearching" class="spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                  <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                  {{ isSearching?'…':searchStatus==='ok'?'✓':'Suchen' }}
-                </button>
-                <a v-if="plexUrl" :href="plexUrl" target="_blank" rel="noopener" class="act-btn act-plex" title="In Plex öffnen">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8l7 4-7 4z"/></svg>Plex
-                </a>
-                <button class="act-btn act-refresh" :class="{'act-ok':refreshStatus==='ok'}" :disabled="isRefreshing" title="Aktualisieren" @click="rescanMovie">
-                  <svg class="spin-maybe" :class="{spin:isRefreshing}" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.02-7.36"/></svg>
-                  {{ refreshStatus==='ok'?'✓':'↺' }}
-                </button>
-                <button class="act-btn" :class="movie.monitored?'act-monitored-on':'act-monitored-off'" :disabled="isMonitorToggling" :title="movie.monitored?'Überwacht (klicken zum Deaktivieren)':'Nicht überwacht (klicken zum Aktivieren)'" @click="toggleMonitored">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path v-if="movie.monitored" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle v-if="movie.monitored" cx="12" cy="12" r="3"/>
-                    <path v-if="!movie.monitored" d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line v-if="!movie.monitored" x1="1" y1="1" x2="23" y2="23"/>
-                  </svg>
-                  {{ movie.monitored?'Überwacht':'Ignoriert' }}
-                </button>
-                <button class="act-btn act-delete" title="Löschen" @click="showDeleteConfirm=true">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>Löschen
-                </button>
-              </div>
             </div>
 
             <!-- Info -->
@@ -301,6 +269,45 @@ onMounted(async () => {
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- ── Action Bar (horizontal, unter Hero) ── -->
+      <div class="detail-action-bar">
+        <a v-if="tmdbTrailer" :href="`https://www.youtube.com/watch?v=${tmdbTrailer.key}`" target="_blank" rel="noopener" class="dab-btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          <span>Trailer</span>
+        </a>
+        <button class="dab-btn" @click="showInteractive=true">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><circle cx="11" cy="11" r="3"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span>Interaktiv</span>
+        </button>
+        <button class="dab-btn" :class="{'dab-ok':searchStatus==='ok','dab-err':searchStatus==='error'}" :disabled="isSearching" @click="triggerSearch">
+          <svg v-if="isSearching" class="spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span>{{ isSearching ? '…' : searchStatus==='ok' ? 'Gesucht ✓' : 'Suchen' }}</span>
+        </button>
+        <a v-if="plexUrl" :href="plexUrl" target="_blank" rel="noopener" class="dab-btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span>Plex</span>
+        </a>
+        <button class="dab-btn" :class="{'dab-ok':refreshStatus==='ok'}" :disabled="isRefreshing" @click="rescanMovie">
+          <svg :class="{spin:isRefreshing}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.02-7.36"/></svg>
+          <span>{{ refreshStatus==='ok' ? 'Fertig ✓' : 'Aktualisieren' }}</span>
+        </button>
+        <button class="dab-btn" :class="{'dab-active':movie.monitored}" :disabled="isMonitorToggling" @click="toggleMonitored">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path v-if="movie.monitored" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle v-if="movie.monitored" cx="12" cy="12" r="3"/>
+            <path v-if="!movie.monitored" d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+            <line v-if="!movie.monitored" x1="1" y1="1" x2="23" y2="23"/>
+          </svg>
+          <span>{{ movie.monitored ? 'Überwacht' : 'Ignoriert' }}</span>
+        </button>
+        <div class="dab-sep" />
+        <button class="dab-btn dab-danger" @click="showDeleteConfirm=true">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          <span>Löschen</span>
+        </button>
       </div>
 
       <!-- ── Tabs ── -->
@@ -553,30 +560,33 @@ onMounted(async () => {
 .back-btn:hover { color:var(--text-primary); }
 .hero-main { display:flex; gap:var(--space-5); align-items:flex-end; }
 
-/* Poster + Action Bar */
-.hero-poster-wrap { display:flex; flex-direction:column; gap:var(--space-2); flex-shrink:0; }
-.hero-poster { width:130px; min-width:130px; aspect-ratio:2/3; object-fit:cover; border-radius:var(--radius-lg); border:1px solid rgba(255,255,255,.1); box-shadow:0 12px 40px rgba(0,0,0,.6); }
+/* Poster */
+.hero-poster-wrap { flex-shrink:0; }
+.hero-poster { width:140px; min-width:140px; aspect-ratio:2/3; object-fit:cover; border-radius:var(--radius-lg); border:1px solid rgba(255,255,255,.1); box-shadow:0 12px 40px rgba(0,0,0,.6); }
 .hero-ph { display:flex; align-items:center; justify-content:center; background:var(--bg-elevated); font-size:52px; font-weight:700; color:var(--text-muted); }
-.action-bar { display:flex; flex-direction:column; gap:4px; width:130px; }
-.act-btn { display:inline-flex; align-items:center; justify-content:center; gap:5px; padding:5px 8px; border-radius:var(--radius-sm); font-size:11px; font-weight:500; cursor:pointer; transition:all .15s; white-space:nowrap; width:100%; }
-.act-btn:disabled { opacity:.6; cursor:not-allowed; }
-.act-trailer { background:rgba(255,0,0,.1); border:1px solid rgba(255,0,0,.25); color:var(--text-secondary); text-decoration:none; }
-.act-trailer:hover { background:rgba(255,0,0,.2); }
-.act-interactive { background:rgba(155,0,69,.1); border:1px solid rgba(155,0,69,.25); color:var(--text-secondary); }
-.act-interactive:hover { background:rgba(155,0,69,.2); }
-.act-search { background:rgba(244,165,74,.1); border:1px solid rgba(244,165,74,.25); color:var(--text-secondary); }
-.act-search:not(:disabled):hover { background:rgba(244,165,74,.2); }
-.act-plex { background:rgba(229,160,13,.1); border:1px solid rgba(229,160,13,.25); color:var(--text-secondary); text-decoration:none; }
-.act-plex:hover { background:rgba(229,160,13,.2); }
-.act-refresh { background:var(--bg-elevated); border:1px solid var(--bg-border); color:var(--text-tertiary); }
-.act-refresh:not(:disabled):hover { background:var(--bg-overlay); }
-.act-monitored-on { background:rgba(244,165,74,.12); border:1px solid rgba(244,165,74,.3); color:var(--radarr); }
-.act-monitored-off { background:var(--bg-elevated); border:1px solid var(--bg-border); color:var(--text-muted); }
-.act-monitored-on:hover,.act-monitored-off:hover { opacity:.8; }
-.act-delete { background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.2); color:var(--text-muted); }
-.act-delete:hover { background:rgba(239,68,68,.18); color:#ef4444; border-color:rgba(239,68,68,.4); }
-.act-ok { background:rgba(34,197,94,.12); border-color:rgba(34,197,94,.3); color:#22c55e; }
-.act-err { background:rgba(239,68,68,.12); border-color:rgba(239,68,68,.3); color:#ef4444; }
+
+/* Horizontale Action-Bar */
+.detail-action-bar {
+  display:flex; align-items:center; gap:4px; flex-wrap:wrap;
+  padding: var(--space-3) var(--space-6);
+  background:rgba(0,0,0,.3); border-bottom:1px solid var(--bg-border);
+  backdrop-filter: blur(8px);
+}
+.dab-btn {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 12px; border-radius:var(--radius-md);
+  font-size:12px; font-weight:500; white-space:nowrap; cursor:pointer;
+  background:var(--bg-elevated); border:1px solid rgba(255,255,255,.07);
+  color:var(--text-tertiary); text-decoration:none;
+  transition:all .15s;
+}
+.dab-btn:hover:not(:disabled) { background:var(--bg-overlay); color:var(--text-primary); border-color:rgba(255,255,255,.14); }
+.dab-btn:disabled { opacity:.45; cursor:not-allowed; }
+.dab-btn.dab-active { color:var(--radarr); border-color:rgba(244,165,74,.3); background:rgba(244,165,74,.08); }
+.dab-btn.dab-ok { color:#22c55e; }
+.dab-btn.dab-err { color:#ef4444; }
+.dab-btn.dab-danger:hover:not(:disabled) { color:#ef4444; border-color:rgba(239,68,68,.35); background:rgba(239,68,68,.08); }
+.dab-sep { width:1px; height:18px; background:rgba(255,255,255,.08); margin:0 2px; flex-shrink:0; }
 
 /* Hero Info */
 .hero-info { flex:1; display:flex; flex-direction:column; gap:var(--space-3); padding-bottom:var(--space-1); }

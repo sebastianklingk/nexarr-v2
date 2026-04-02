@@ -2,25 +2,28 @@
 import { ref, computed } from 'vue';
 
 const props = withDefaults(defineProps<{
-  title:        string;
-  year?:        number;
-  posterUrl?:   string;
-  rating?:      number;
-  hasFile?:     boolean;
-  monitored?:   boolean;
-  appColor?:    string;
-  quality?:     string;
-  progress?:    number;
-  episodes?:    string;
-  overview?:    string;
-  genres?:      string[];
-  runtime?:     number;
-  imdbRating?:  number;
-  tmdbRating?:  number;
-  techBadges?:  Array<{ label: string; color: string }>;
-  network?:     string;
-  seasons?:     number;
-  size?:        'sm' | 'md' | 'lg';
+  title:          string;
+  year?:          number;
+  posterUrl?:     string;
+  rating?:        number;
+  hasFile?:       boolean;
+  monitored?:     boolean;
+  appColor?:      string;
+  quality?:       string;
+  qualityProfile?: string;
+  progress?:      number;
+  episodes?:      string;
+  episodeFile?:   number;
+  episodeTotal?:  number;
+  overview?:      string;
+  genres?:        string[];
+  runtime?:       number;
+  imdbRating?:    number;
+  tmdbRating?:    number;
+  techBadges?:    Array<{ label: string; color: string }>;
+  network?:       string;
+  seasons?:       number;
+  size?:          'sm' | 'md' | 'lg';
 }>(), {
   size:      'md',
   hasFile:   false,
@@ -69,11 +72,26 @@ function setPos(cx: number, cy: number) {
   tooltipY.value = Math.max(8, Math.min(y, window.innerHeight - 300));
 }
 
-// Statusfarbe
+// Statusfarbe (Tooltip-Bar)
 const barColor = computed(() => {
   if (props.hasFile) return '#22c55e';
   if (props.monitored) return '#f59e0b';
   return '#555';
+});
+
+// Episoden-Fortschrittsbalken
+const epPct = computed(() => {
+  if (props.episodeTotal === undefined) return -1;
+  if (props.episodeTotal === 0) return 0;
+  return Math.round(((props.episodeFile ?? 0) / props.episodeTotal) * 100);
+});
+
+const epBarColor = computed(() => {
+  if (props.episodeTotal === 0 || props.episodeTotal === undefined) return 'var(--card-color)';
+  const pct = epPct.value;
+  if (pct === 100) return '#22c55e';
+  if (pct > 0)    return '#f59e0b';
+  return '#ef4444';
 });
 </script>
 
@@ -96,15 +114,25 @@ const barColor = computed(() => {
         <span class="ph-letter">{{ title[0] }}</span>
       </div>
 
-      <!-- Status Dot (oben rechts) -->
-      <div :class="['status-dot', hasFile ? 'dot-ok' : monitored ? 'dot-miss' : 'dot-unmon']"
+      <!-- Status Dot (oben rechts) – nur wenn KEIN Episoden-Balken -->
+      <div v-if="episodeTotal === undefined"
+        :class="['status-dot', hasFile ? 'dot-ok' : monitored ? 'dot-miss' : 'dot-unmon']"
         :title="hasFile ? 'Vorhanden' : monitored ? 'Fehlt' : 'Nicht überwacht'" />
 
       <!-- Quality Badge (oben links) -->
       <div v-if="quality" class="quality-badge">{{ quality }}</div>
 
-      <!-- Progress bar (unten, für Serien) -->
-      <div v-if="progress !== undefined && progress >= 0" class="progress-bar">
+      <!-- Episoden-Fortschrittsbalken (für Serien) -->
+      <div v-if="episodeTotal != null" class="ep-progress-wrap">
+        <div
+          class="ep-progress-fill"
+          :style="{ width: (episodeTotal ?? 0) > 0 ? `${epPct}%` : '0%', background: epBarColor }"
+        />
+        <span class="ep-progress-label" :style="{ color: epBarColor }">{{ episodeFile ?? 0 }} / {{ episodeTotal ?? 0 }}</span>
+      </div>
+
+      <!-- Alter dünner Progress bar (für Filme, falls noch genutzt) -->
+      <div v-else-if="progress !== undefined && progress >= 0 && episodeTotal === undefined" class="progress-bar">
         <div class="progress-fill" :style="{ width: `${progress}%` }" />
       </div>
     </div>
@@ -114,8 +142,12 @@ const barColor = computed(() => {
       <p class="poster-title">{{ title }}</p>
       <div class="poster-meta-row">
         <span v-if="year" class="poster-year">{{ year }}</span>
-        <span v-if="episodes" class="poster-eps">{{ episodes }}</span>
+        <span v-if="network" class="poster-eps">{{ network }}</span>
+        <span v-if="!network && episodes" class="poster-eps">{{ episodes }}</span>
         <span v-if="rating && rating > 0" class="poster-rating">★ {{ rating.toFixed(1) }}</span>
+      </div>
+      <div v-if="qualityProfile" class="poster-quality-row">
+        <span class="poster-quality">{{ qualityProfile }}</span>
       </div>
     </div>
 
@@ -259,7 +291,42 @@ const barColor = computed(() => {
   z-index: 3;
 }
 
-/* Progress Bar */
+/* Episoden-Fortschrittsbalken (Serien) */
+.ep-progress-wrap {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 22px;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.ep-progress-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  opacity: 0.28;
+  transition: width .35s ease;
+  min-width: 0;
+}
+.ep-progress-label {
+  position: relative;
+  z-index: 1;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 3px rgba(0,0,0,.9);
+  line-height: 1;
+}
+
+/* Progress Bar (Filme, legacy) */
 .progress-bar {
   position: absolute;
   bottom: 0;
@@ -298,12 +365,21 @@ const barColor = computed(() => {
 }
 
 .poster-year  { font-size: 10px; color: var(--text-muted); }
-.poster-eps   { font-size: 10px; color: var(--text-muted); }
+.poster-eps   { font-size: 10px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70px; }
 .poster-rating {
   font-size: 10px;
   color: #facc15;
   font-weight: 600;
   margin-left: auto;
+}
+.poster-quality-row {
+  margin-top: 1px;
+}
+.poster-quality {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: .02em;
 }
 
 /* Tooltip */

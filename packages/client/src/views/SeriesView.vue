@@ -4,11 +4,13 @@ import { useRouter } from 'vue-router';
 import { useSeriesStore } from '../stores/series.store.js';
 import { useApi } from '../composables/useApi.js';
 import PosterCard from '../components/ui/PosterCard.vue';
+import AddToLibraryModal from '../components/ui/AddToLibraryModal.vue';
 import type { SonarrSeries } from '@nexarr/shared';
 
 const router  = useRouter();
 const store   = useSeriesStore();
 const { get } = useApi();
+const showAddModal = ref(false);
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const search  = ref('');
@@ -20,10 +22,37 @@ const library = ref('all');
 
 // ── Root Folders ──────────────────────────────────────────────────────────────
 interface RootFolder { id: number; path: string; freeSpace: number }
-const rootFolders = ref<RootFolder[]>([]);
+const rootFolders     = ref<RootFolder[]>([]);
+const qualityProfiles = ref<Map<number, string>>(new Map());
 
 async function loadRootFolders() {
   try { rootFolders.value = await get<RootFolder[]>('/api/sonarr/rootfolders'); } catch { /* */ }
+}
+
+async function loadQualityProfiles() {
+  try {
+    const profiles = await get<Array<{ id: number; name: string }>>('/api/sonarr/qualityprofiles');
+    qualityProfiles.value = new Map(profiles.map(p => [p.id, p.name]));
+  } catch { /* */ }
+}
+
+function qualityProfileName(s: SonarrSeries): string | undefined {
+  const id = (s as any).qualityProfileId as number | undefined;
+  if (!id) return undefined;
+  return qualityProfiles.value.get(id);
+}
+
+// Episoden-Zähler aus seasons.statistics (zuverlässiger als Top-Level-Felder)
+function seriesEpFile(s: SonarrSeries): number {
+  const fromSeasons = s.seasons.reduce((acc, ss) => acc + (ss.statistics?.episodeFileCount ?? 0), 0);
+  if (fromSeasons > 0) return fromSeasons;
+  return s.episodeFileCount ?? 0;
+}
+
+function seriesEpTotal(s: SonarrSeries): number {
+  const fromSeasons = s.seasons.reduce((acc, ss) => acc + (ss.statistics?.totalEpisodeCount ?? 0), 0);
+  if (fromSeasons > 0) return fromSeasons;
+  return s.episodeCount ?? 0;
 }
 
 function libName(path: string): string {
@@ -133,7 +162,7 @@ function scrollToLetter(letter: string) {
 }
 
 onMounted(async () => {
-  await Promise.allSettled([store.fetchSeries(), loadRootFolders()]);
+  await Promise.allSettled([store.fetchSeries(), loadRootFolders(), loadQualityProfiles()]);
 });
 
 const ALPHABET = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
@@ -166,7 +195,7 @@ const ALPHABET = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
           <input v-model="search" type="search" class="search-input" placeholder="Serien suchen…" />
           <button v-if="search" class="search-clear" @click="search=''">×</button>
         </div>
-        <button class="add-btn" @click="router.push('/search')">
+        <button class="add-btn" @click="showAddModal = true">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Serie hinzufügen
         </button>
@@ -250,8 +279,9 @@ const ALPHABET = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
                 :rating="s.ratings?.value"
                 :has-file="(s.episodeFileCount ?? 0) > 0"
                 :monitored="s.monitored"
-                :progress="seriesProgress(s)"
-                :episodes="episodesLabel(s)"
+                :episode-file="seriesEpFile(s)"
+                :episode-total="seriesEpTotal(s)"
+                :quality-profile="qualityProfileName(s)"
                 :seasons="seriesSeasons(s)"
                 :overview="s.overview"
                 :genres="s.genres"
@@ -275,6 +305,8 @@ const ALPHABET = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
       </div>
     </template>
   </div>
+
+  <AddToLibraryModal v-model="showAddModal" type="series" />
 </template>
 
 <style scoped>

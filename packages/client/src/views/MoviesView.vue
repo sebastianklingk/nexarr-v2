@@ -4,11 +4,13 @@ import { useRouter } from 'vue-router';
 import { useMoviesStore } from '../stores/movies.store.js';
 import { useApi } from '../composables/useApi.js';
 import PosterCard from '../components/ui/PosterCard.vue';
+import AddToLibraryModal from '../components/ui/AddToLibraryModal.vue';
 import type { RadarrMovie } from '@nexarr/shared';
 
 const router   = useRouter();
 const store    = useMoviesStore();
 const { get }  = useApi();
+const showAddModal = ref(false);
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const search   = ref('');
@@ -183,7 +185,7 @@ const ALPHABET = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
           <input v-model="search" type="search" class="search-input" placeholder="Filme suchen…" />
           <button v-if="search" class="search-clear" @click="search=''">×</button>
         </div>
-        <button class="add-btn" @click="router.push('/search')">
+        <button class="add-btn" @click="showAddModal = true">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Film hinzufügen
         </button>
@@ -296,6 +298,8 @@ const ALPHABET = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
       </div>
     </template>
   </div>
+
+  <AddToLibraryModal v-model="showAddModal" type="movie" />
 </template>
 
 <style scoped>

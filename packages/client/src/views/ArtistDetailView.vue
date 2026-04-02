@@ -218,31 +218,10 @@ onMounted(async () => {
           </button>
 
           <div class="hero-main">
-            <!-- Artist Photo – rund + Action-Bar darunter -->
+            <!-- Artist Photo – rund -->
             <div class="artist-photo-wrap">
               <img v-if="posterUrl" :src="posterUrl" :alt="artist.artistName" class="artist-photo" />
               <div v-else class="artist-photo artist-ph">{{ artist.artistName[0] }}</div>
-
-              <!-- Action Bar -->
-              <div class="action-bar">
-                <button class="act-btn act-search"
-                  :class="{ 'act-ok': searchStatus==='ok', 'act-err': searchStatus==='error' }"
-                  :disabled="isSearching" title="Jetzt suchen" @click="triggerSearch">
-                  <svg v-if="isSearching" class="spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                  <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                  {{ isSearching ? '…' : searchStatus==='ok' ? '✓' : 'Suchen' }}
-                </button>
-                <button class="act-btn act-refresh"
-                  :class="{ 'act-ok': refreshStatus==='ok' }"
-                  :disabled="isRefreshing" title="Aktualisieren" @click="triggerRefresh">
-                  <svg class="spin-maybe" :class="{ spin: isRefreshing }" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.02-7.36"/></svg>
-                  {{ refreshStatus==='ok' ? '✓' : '↺' }}
-                </button>
-                <button class="act-btn act-delete" title="Entfernen" @click="showDeleteConfirm=true">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                  Entfernen
-                </button>
-              </div>
             </div>
 
             <div class="hero-info">
@@ -291,6 +270,24 @@ onMounted(async () => {
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- ── Action Bar (horizontal, unter Hero) ── -->
+      <div class="detail-action-bar">
+        <button class="dab-btn" :class="{'dab-ok':searchStatus==='ok','dab-err':searchStatus==='error'}" :disabled="isSearching" @click="triggerSearch">
+          <svg v-if="isSearching" class="spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span>{{ isSearching ? '…' : searchStatus==='ok' ? 'Gesucht ✓' : 'Suchen' }}</span>
+        </button>
+        <button class="dab-btn" :class="{'dab-ok':refreshStatus==='ok'}" :disabled="isRefreshing" @click="triggerRefresh">
+          <svg :class="{spin:isRefreshing}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.02-7.36"/></svg>
+          <span>{{ refreshStatus==='ok' ? 'Fertig ✓' : 'Aktualisieren' }}</span>
+        </button>
+        <div class="dab-sep" />
+        <button class="dab-btn dab-danger" @click="showDeleteConfirm=true">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          <span>Entfernen</span>
+        </button>
       </div>
 
       <!-- ── Stats Bar ── -->
@@ -424,6 +421,7 @@ onMounted(async () => {
 .detail-view { min-height: 100%; }
 
 /* Hero */
+.artist-photo-wrap { flex-shrink: 0; }
 .hero { position: relative; min-height: 380px; display: flex; flex-direction: column; justify-content: flex-end; }
 .hero-bg { position: absolute; inset: 0; background-image: var(--fanart); background-size: cover; background-position: center top; z-index: 0; }
 .hero-gradient { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(10,10,10,.15) 0%, rgba(10,10,10,.55) 40%, rgba(10,10,10,.97) 100%); z-index: 1; }
@@ -496,6 +494,16 @@ onMounted(async () => {
 .stat-bar  { height: 100%; background: var(--lidarr); border-radius: 2px; }
 .bar-full  { background: var(--status-success); }
 .stat-divider { width: 1px; height: 40px; background: var(--bg-border); flex-shrink: 0; }
+
+/* Horizontale Action-Bar */
+.detail-action-bar { display:flex; align-items:center; gap:4px; flex-wrap:wrap; padding:var(--space-3) var(--space-6); background:rgba(0,0,0,.3); border-bottom:1px solid var(--bg-border); backdrop-filter:blur(8px); }
+.dab-btn { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:var(--radius-md); font-size:12px; font-weight:500; white-space:nowrap; cursor:pointer; background:var(--bg-elevated); border:1px solid rgba(255,255,255,.07); color:var(--text-tertiary); text-decoration:none; transition:all .15s; }
+.dab-btn:hover:not(:disabled) { background:var(--bg-overlay); color:var(--text-primary); border-color:rgba(255,255,255,.14); }
+.dab-btn:disabled { opacity:.45; cursor:not-allowed; }
+.dab-btn.dab-ok { color:#22c55e; }
+.dab-btn.dab-err { color:#ef4444; }
+.dab-btn.dab-danger:hover:not(:disabled) { color:#ef4444; border-color:rgba(239,68,68,.35); background:rgba(239,68,68,.08); }
+.dab-sep { width:1px; height:18px; background:rgba(255,255,255,.08); margin:0 2px; flex-shrink:0; }
 
 /* Genre Bar */
 .genre-bar { display: flex; gap: var(--space-2); flex-wrap: wrap; padding: var(--space-3) var(--space-6); border-bottom: 1px solid var(--bg-border); background: var(--bg-surface); }
