@@ -7,6 +7,7 @@ import { useSeriesStore } from '../stores/series.store.js';
 import { useApi } from '../composables/useApi.js';
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue';
 import type { ArrQueueItem, NormalizedSlot, DownloaderType } from '@nexarr/shared';
+import { posterUrl as getPosterUrl, tmdbImageUrl } from '../utils/images.js';
 
 const queue       = useQueueStore();
 const moviesStore = useMoviesStore();
@@ -29,7 +30,7 @@ const activeTab = ref<'queue' | 'history' | 'missing'>('queue');
 const moviePosterMap = computed(() => {
   const m = new Map<number, string>();
   for (const movie of moviesStore.movies) {
-    const p = movie.images?.find(i => i.coverType === 'poster')?.remoteUrl;
+    const p = getPosterUrl(movie.images, 'w92');
     if (p) m.set(movie.id, p);
   }
   return m;
@@ -37,7 +38,7 @@ const moviePosterMap = computed(() => {
 const seriesPosterMap = computed(() => {
   const m = new Map<number, string>();
   for (const s of (seriesStore.series ?? [])) {
-    const p = s.images?.find((i: any) => i.coverType === 'poster')?.remoteUrl;
+    const p = getPosterUrl(s.images as any, 'w92');
     if (p) m.set(s.id, p);
   }
   return m;
@@ -362,7 +363,7 @@ async function loadMissing() {
       missingMovies.value = (mr.value?.records ?? []).map((r: any) => ({
         id: r.id, app: 'radarr', title: r.title ?? '–', year: r.year,
         quality: r.qualityProfile?.name,
-        posterUrl: r.images?.find((i: any) => i.coverType === 'poster')?.remoteUrl,
+        posterUrl: getPosterUrl(r.images, 'w92'),
       }));
     }
     if (sr.status === 'fulfilled') {
@@ -370,17 +371,20 @@ async function loadMissing() {
         id: r.id, app: 'sonarr',
         title: r.series?.title ?? '–',
         subtitle: `S${String(r.seasonNumber).padStart(2,'0')}E${String(r.episodeNumber).padStart(2,'0')} · ${r.title ?? ''}`,
-        posterUrl: r.series?.images?.find((i: any) => i.coverType === 'poster')?.remoteUrl,
+        posterUrl: getPosterUrl(r.series?.images, 'w92'),
       }));
     }
     if (lr.status === 'fulfilled') {
-      missingAlbums.value = (lr.value?.records ?? []).map((r: any) => ({
-        id: r.id, app: 'lidarr',
-        title: r.artist?.artistName ?? '–',
-        subtitle: r.title,
-        posterUrl: r.images?.find((i: any) => i.coverType === 'cover')?.remoteUrl
-                ?? r.artist?.images?.find((i: any) => i.coverType === 'poster')?.remoteUrl,
-      }));
+      missingAlbums.value = (lr.value?.records ?? []).map((r: any) => {
+        const coverUrl = r.images?.find((i: any) => i.coverType === 'cover')?.remoteUrl
+                      ?? r.artist?.images?.find((i: any) => i.coverType === 'poster')?.remoteUrl;
+        return {
+          id: r.id, app: 'lidarr',
+          title: r.artist?.artistName ?? '–',
+          subtitle: r.title,
+          posterUrl: coverUrl ? (tmdbImageUrl(coverUrl, 'w92') ?? coverUrl) : undefined,
+        };
+      });
     }
   } finally { missingLoading.value = false; }
 }
@@ -641,6 +645,7 @@ function evBadge(et: string) {
                 <p class="dl-title" @click="c.arr && navigateTo(c.arr)" :class="{'dl-title-link': c.arr?.movieId || c.arr?.seriesId}">
                   {{ c.arr?.title ?? c.slot.filename }}
                 </p>
+                <span v-if="c.arr" class="dl-release">{{ c.slot.filename }}</span>
                 <span :class="['st-badge', stClass(c.slot.status)]">{{ stLabel(c.slot.status) }}</span>
               </div>
 
@@ -663,9 +668,6 @@ function evBadge(et: string) {
                   Ratio {{ c.slot.seedRatio.toFixed(2) }}
                 </span>
               </div>
-
-              <!-- NZB/Torrent-Dateiname -->
-              <p class="dl-nzb">{{ c.slot.filename }}</p>
 
               <!-- Progress -->
               <div class="dl-progress-row">
@@ -1112,10 +1114,11 @@ function evBadge(et: string) {
   display: flex; flex-direction: column; gap: var(--space-2); min-width: 0;
 }
 
-.dl-title-row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
-.dl-title { font-size: var(--text-sm); font-weight: 600; color: var(--text-secondary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0; }
+.dl-title-row { display: flex; align-items: center; gap: var(--space-2); overflow: hidden; }
+.dl-title { font-size: var(--text-sm); font-weight: 600; color: var(--text-secondary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0; flex-shrink: 1; }
 .dl-title-link { cursor: pointer; }
 .dl-title-link:hover { color: var(--text-primary); }
+.dl-release { font-size: 10px; color: var(--text-muted); font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; opacity: .6; }
 
 /* App Tag */
 .app-tag { font-size: 10px; font-weight: 600; padding: 1px 7px; border-radius: 4px; border: 1px solid; white-space: nowrap; flex-shrink: 0; letter-spacing: .03em; }
@@ -1144,7 +1147,6 @@ function evBadge(et: string) {
 .badge-seeds   { color: #a3e635; border-color: rgba(163,230,53,.2); background: rgba(163,230,53,.06); }
 .badge-ratio   { color: #fb923c; border-color: rgba(251,146,60,.2); background: rgba(251,146,60,.06); }
 
-.dl-nzb { font-size: 10px; font-family: monospace; color: var(--text-muted); margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Progress */
 .dl-progress-row { display: flex; align-items: center; gap: var(--space-3); }
