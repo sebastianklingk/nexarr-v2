@@ -443,6 +443,7 @@ function navigateTo(item: ArrQueueItem) {
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function fmtMb(mb: number) { return mb >= 1024 ? `${(mb/1024).toFixed(1)} GB` : `${mb.toFixed(0)} MB`; }
+function copyText(text: string) { window.navigator.clipboard.writeText(text).catch(() => {}); }
 function fmtBytes(b?: number) {
   if (!b) return '';
   const g = b/1024/1024/1024;
@@ -634,6 +635,7 @@ function evBadge(et: string) {
             class="dl-card"
             :class="{
               'dl-card-selected': selectedIds.has(c.slot.id),
+              'dl-card-encrypted': c.slot.encrypted,
             }"
             :style="c.arr ? {'--accent': appColor(c.arr.app)} : {'--accent': dlColor(c.slot.downloader)}"
           >
@@ -712,6 +714,16 @@ function evBadge(et: string) {
                 <span v-if="c.slot.seedRatio !== undefined && c.slot.status === 'seeding'" class="badge badge-ratio">
                   Ratio {{ c.slot.seedRatio.toFixed(2) }}
                 </span>
+              </div>
+
+              <!-- Encryption Banner -->
+              <div v-if="c.slot.encrypted" class="enc-banner">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <span class="enc-text">Download wegen Verschlüsselung angehalten</span>
+                <span v-if="c.slot.password" class="enc-pw" @click.stop="copyText(c.slot.password ?? '')" title="Kopieren">{{ c.slot.password }}</span>
+                <button v-if="c.slot.password" class="enc-copy" @click.stop="copyText(c.slot.password ?? '')" title="Kopieren">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                </button>
               </div>
 
               <!-- Progress -->
@@ -1087,6 +1099,10 @@ function evBadge(et: string) {
 .dl-card:hover { background: var(--bg-elevated); border-color: color-mix(in srgb, var(--accent, var(--sabnzbd)) 20%, var(--bg-border)); }
 .dl-card:hover .dl-acts { opacity: 1; }
 
+.dl-card-encrypted {
+  border-color: rgba(239,68,68,.35) !important;
+}
+
 .dl-card-selected {
   background: var(--bg-elevated) !important;
   border-color: color-mix(in srgb, var(--accent, var(--sabnzbd)) 35%, var(--bg-border)) !important;
@@ -1296,6 +1312,29 @@ function evBadge(et: string) {
 .miss-btn:hover:not(:disabled) { color: var(--text-primary); border-color: rgba(255,255,255,.2); }
 .miss-btn:disabled { opacity: .4; cursor: not-allowed; }
 .miss-btn-ok { color: #22c55e !important; border-color: rgba(34,197,94,.35) !important; background: rgba(34,197,94,.08) !important; }
+
+/* ── Encryption Banner ─────────────────────────────────────────────────────── */
+.enc-banner {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: 4px 8px; border-radius: var(--radius-sm);
+  background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2);
+  color: #ef4444; font-size: 11px;
+}
+.enc-text { font-weight: 500; }
+.enc-pw {
+  font-family: monospace; font-size: 10px; padding: 1px 6px;
+  background: rgba(239,68,68,.12); border-radius: 3px;
+  cursor: pointer; user-select: all; word-break: break-all; max-width: 200px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.enc-pw:hover { background: rgba(239,68,68,.2); }
+.enc-copy {
+  display: flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 3px;
+  background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.2);
+  color: #ef4444; cursor: pointer; flex-shrink: 0; transition: background .12s;
+}
+.enc-copy:hover { background: rgba(239,68,68,.25); }
 
 /* ── Misc ─────────────────────────────────────────────────────────────────── */
 .loading-list { display: flex; flex-direction: column; gap: var(--space-2); }

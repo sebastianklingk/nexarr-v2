@@ -1,8 +1,8 @@
 # nexarr v2 – AI Context
 > Dieses Dokument wird am Ende jeder Session aktualisiert.
-> Zuletzt aktualisiert: 03.04.2026 – Dev-Setup final (Daemon), Downloads UI komplett, Image-Perf, Auth-Bypass
+> Zuletzt aktualisiert: 03.04.2026 – Downloads Verschlüsselungs-Banner (11.6) + StreamsView (11.10)
 > Aktualisiert von: Chat-Claude
-> Stand: Phase 10 ✅ KOMPLETT · Phase 11 Schritt 5 ✅ + Dev-Infra + Downloads-Polish
+> Stand: Phase 10 ✅ KOMPLETT · Phase 11 Schritt 5 ✅ + Downloads-Polish + Verschlüsselung + StreamsView
 
 ---
 
@@ -242,6 +242,24 @@ TMDB: trending/discover/details/similar; Radarr/Sonarr/Lidarr: qualityprofiles/h
 - **Torrent-Badges:** Seeds/Peers, Upload-Ratio (Transmission-spezifisch)
 - **Stats-Bar:** Pro Downloader eine Card (dynamisch, keine Hardcoded-SABnzbd-Annahme mehr)
 - **Header-Controls:** Pro Downloader ein Pause/Resume-Button mit farbigem Downloader-Badge
+- **Kombinierte Queue (11.2.B):** `combinedSlots` matcht NormalizedSlot + ArrQueueItem via downloadId; unmatchedArr für "In Verarbeitung/Import"-Sektion; Poster + Medientitel aus Stores
+- **History-Tab (11.2.C):** Lädt Radarr/Sonarr/Lidarr History parallel; App- und Event-Filter (Grab/Import/Fehler); Pagination; Event-Badges farbcodiert; NZB-Releasename monospace
+- **Fehlend-Tab (11.2.D):** Lädt Missing von allen drei Arrs; Pro-Item-Suche + "Alle suchen" pro App; Poster + Qualitätsprofil; Suchstatus-Feedback (Spinner → Häkchen)
+- **SABnzbd Priorität + Move-to-Top (11.2.E):** Backend setPriority() + moveToTop() in sabnzbd.service.ts; Routes /queue/:nzoId/priority + /queue/:nzoId/move-top; UI Priority-Dropdown + Move-to-Top Button pro Slot
+
+### Schritt 6: Downloads Optik-Polish (11.6) ✅
+- **Verschlüsselungs-Banner:** Wenn SABnzbd-Job paused + password vorhanden → roter Banner mit Lock-Icon, Verschlüsselungs-Hinweis, Passwort-Anzeige (monospace) + Kopier-Button
+- **Encrypted Card Border:** Rote Border auf verschlüsselten Job-Cards
+- **NormalizedSlot erweitert:** `encrypted?: boolean` + `password?: string` in shared/socket.ts
+- **SabnzbdSlot erweitert:** `password?: string` für SABnzbd-API-Feld
+- **queue.service.ts:** Erkennung: `encrypted = !!(slot.password && status === 'paused')`
+
+### Schritt 10: StreamsView (11.10) ✅
+- **Route:** `/streams` + Sidebar-Eintrag mit Cast-Icon (Plex-Farbe)
+- **TautulliStream:** Interface auf ~100 Felder erweitert (Video/Audio/Subtitle Quelle+Stream, Transcode-Pipeline mit HW-Accel/Speed/Throttle, Bandwidth, Player-Details, Network/IP, Session-IDs, Library, Relay, Secure, Live)
+- **StreamsView.vue:** Header mit Live-Pill + Bandwidth-Summary (Gesamt/LAN/WAN + Direct Play/Stream/Transcode Counts); Stream-Cards mit Poster (via Tautulli pms_image_proxy), Titel, User, Player, State-Badge (Playing grün / Paused gelb / Buffering lila); Decision-Badges (Direct Play/Stream/Transcode farbcodiert); Tech-Badges (Resolution, HDR, Codec, Audio+Channels, Subtitle, Bandwidth, LAN/WAN); Aufklappbare Detail-Sektion pro Stream (Video-Pipeline Quelle→Stream, Audio-Pipeline, Untertitel, Transcode-Details inkl. HW Enc/Dec + Speed + Throttle + Buffer, Player/Plattform/Produkt + Versionen, Netzwerk IP+Bandbreite+Bitrate, Session-IDs); Auto-Refresh alle 5s
+- **Tautulli Backend:** `getPlexImage()` Proxy für Plex-Poster; Route `/api/tautulli/plex-image`
+- **Dashboard:** Streams-Card linkt jetzt zu `/streams` statt `/tautulli`
 
 ### Zwischen-Schritt: Auth-Bypass + Image-Performance ✅
 - **AUTH_DISABLED:** `.env` Variable `AUTH_DISABLED=true` – Middleware setzt Fake-Admin-Session, `/api/auth/me` gibt immer Admin zurück, kein Login-Screen

@@ -45,6 +45,7 @@ export interface SabnzbdSlot {
   timeleft: string;
   cat: string;
   priority?: string;    // Force / High / Normal / Low
+  password?: string;    // Wenn verschlüsselt: Hash/Passwort
 }
 
 export interface SabnzbdState {
@@ -85,6 +86,9 @@ export interface NormalizedSlot {
   timeleft?: string;
   category?: string;
   priority?: string;          // SABnzbd: Force/High/Normal/Low; Transmission: n/a
+  /** Verschlüsselung (SABnzbd) */
+  encrypted?: boolean;
+  password?: string;
   /** Torrent-spezifisch */
   seeds?: number;
   peers?: number;

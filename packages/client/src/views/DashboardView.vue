@@ -251,7 +251,7 @@ onUnmounted(() => { clearInterval(clockTimer); queue.unsubscribe(); });
         <span class="sc-arr">›</span>
       </button>
 
-      <button class="stat-card" style="--c:var(--tautulli)" @click="nav('/tautulli')">
+      <button class="stat-card" style="--c:var(--tautulli)" @click="nav('/streams')">
         <div class="sc-icon">📊</div>
         <div class="sc-body">
           <div class="sc-label">Streams</div>

@@ -12,8 +12,10 @@ router.get('/activity', requireAuth, H(async (_req, res) => {
   res.json(await tautulliService.getActivity());
 }));
 
-router.get('/stats', requireAuth, H(async (_req, res) => {
-  res.json(await tautulliService.getHomeStats());
+router.get('/stats', requireAuth, H(async (req, res) => {
+  const timeRange = Number(req.query.time_range) || 30;
+  const statsCount = Number(req.query.stats_count) || 5;
+  res.json(await tautulliService.getHomeStats(timeRange, statsCount));
 }));
 
 // History (für Dashboard-Widget)
@@ -64,6 +66,79 @@ router.get('/find-key', requireAuth, H(async (req, res) => {
 router.get('/plays-by-date', requireAuth, H(async (req, res) => {
   const timeRange = Number(req.query.time_range) || 30;
   res.json(await tautulliService.getPlaysByDate(timeRange));
+}));
+
+// Plex-Image Proxy (für Stream-Poster in StreamsView)
+// GET /api/tautulli/plex-image?img=/library/metadata/12345/thumb&width=120&height=180
+router.get('/plex-image', requireAuth, H(async (req, res) => {
+  const img    = req.query.img as string;
+  const width  = Number(req.query.width) || 200;
+  const height = Number(req.query.height) || 300;
+  if (!img) { res.status(400).json({ error: 'img required' }); return; }
+  const imageData = await tautulliService.getPlexImage(img, width, height);
+  if (!imageData) { res.status(404).end(); return; }
+  res.set('Content-Type', 'image/jpeg');
+  res.set('Cache-Control', 'public, max-age=3600');
+  res.send(imageData);
+}));
+
+// ── Grafiken ───────────────────────────────────────────────────────────────────
+
+router.get('/plays-by-dayofweek', requireAuth, H(async (req, res) => {
+  const timeRange = Number(req.query.time_range) || 30;
+  res.json(await tautulliService.getPlaysByDayOfWeek(timeRange));
+}));
+
+router.get('/plays-by-hourofday', requireAuth, H(async (req, res) => {
+  const timeRange = Number(req.query.time_range) || 30;
+  res.json(await tautulliService.getPlaysByHourOfDay(timeRange));
+}));
+
+router.get('/plays-by-top-platforms', requireAuth, H(async (req, res) => {
+  const timeRange = Number(req.query.time_range) || 30;
+  res.json(await tautulliService.getPlaysByTopPlatforms(timeRange));
+}));
+
+router.get('/plays-by-top-users', requireAuth, H(async (req, res) => {
+  const timeRange = Number(req.query.time_range) || 30;
+  res.json(await tautulliService.getPlaysByTopUsers(timeRange));
+}));
+
+router.get('/stream-type-by-top-platforms', requireAuth, H(async (req, res) => {
+  const timeRange = Number(req.query.time_range) || 30;
+  res.json(await tautulliService.getStreamTypeByTopPlatforms(timeRange));
+}));
+
+router.get('/stream-type-by-top-users', requireAuth, H(async (req, res) => {
+  const timeRange = Number(req.query.time_range) || 30;
+  res.json(await tautulliService.getStreamTypeByTopUsers(timeRange));
+}));
+
+// ── Bibliotheken ───────────────────────────────────────────────────────────────
+
+router.get('/libraries-table', requireAuth, H(async (_req, res) => {
+  res.json(await tautulliService.getLibrariesTable());
+}));
+
+// ── Erweiterte History (mit Filtern, Pagination, Suche) ─────────────────────
+
+router.get('/history-filtered', requireAuth, H(async (req, res) => {
+  res.json(await tautulliService.getHistoryFiltered({
+    length:              Number(req.query.length) || 25,
+    start:               Number(req.query.start) || 0,
+    media_type:          (req.query.media_type as string) || undefined,
+    transcode_decision:  (req.query.transcode_decision as string) || undefined,
+    search:              (req.query.search as string) || undefined,
+    order_column:        (req.query.order_column as string) || undefined,
+    order_dir:           (req.query.order_dir as string) || undefined,
+    user:                (req.query.user as string) || undefined,
+  }));
+}));
+
+// ── User-Liste ───────────────────────────────────────────────────────────────
+
+router.get('/users', requireAuth, H(async (_req, res) => {
+  res.json(await tautulliService.getUsers());
 }));
 
 export default router;

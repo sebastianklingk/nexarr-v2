@@ -21,7 +21,7 @@ export async function getActivity(): Promise<TautulliActivity> {
   const r = data?.response?.data;
   return {
     stream_count:               r?.stream_count               ?? 0,
-    sessions:                   r?.sessions                   ?? [],
+    sessions:                   (r?.sessions ?? []) as TautulliActivity['sessions'],
     stream_count_direct_play:   r?.stream_count_direct_play   ?? 0,
     stream_count_direct_stream: r?.stream_count_direct_stream ?? 0,
     stream_count_transcode:     r?.stream_count_transcode      ?? 0,
@@ -31,9 +31,9 @@ export async function getActivity(): Promise<TautulliActivity> {
   };
 }
 
-export async function getHomeStats(): Promise<unknown> {
-  return C.fetch('tautulli_home_stats', async () => {
-    const { data } = await api('get_home_stats', { time_range: '30', stats_count: '5' });
+export async function getHomeStats(timeRange = 30, statsCount = 5): Promise<unknown> {
+  return C.fetch(`tautulli_home_stats_${timeRange}_${statsCount}`, async () => {
+    const { data } = await api('get_home_stats', { time_range: String(timeRange), stats_count: String(statsCount) });
     return data?.response?.data ?? [];
   }, TTL.STATS);
 }
@@ -138,6 +138,117 @@ export async function findMovieRatingKey(title: string): Promise<string | null> 
     });
     const rows = data?.response?.data?.data ?? [];
     return rows[0]?.rating_key ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// ── Grafiken-Daten ────────────────────────────────────────────────────────────
+
+export async function getPlaysByDayOfWeek(timeRange = 30): Promise<unknown> {
+  return C.fetch(`tautulli_plays_dayofweek_${timeRange}`, async () => {
+    const { data } = await api('get_plays_by_dayofweek', { time_range: String(timeRange) });
+    return data?.response?.data ?? {};
+  }, TTL.STATS);
+}
+
+export async function getPlaysByHourOfDay(timeRange = 30): Promise<unknown> {
+  return C.fetch(`tautulli_plays_hourofday_${timeRange}`, async () => {
+    const { data } = await api('get_plays_by_hourofday', { time_range: String(timeRange) });
+    return data?.response?.data ?? {};
+  }, TTL.STATS);
+}
+
+export async function getPlaysByTopPlatforms(timeRange = 30): Promise<unknown> {
+  return C.fetch(`tautulli_plays_top_platforms_${timeRange}`, async () => {
+    const { data } = await api('get_plays_by_top_10_platforms', { time_range: String(timeRange) });
+    return data?.response?.data ?? {};
+  }, TTL.STATS);
+}
+
+export async function getPlaysByTopUsers(timeRange = 30): Promise<unknown> {
+  return C.fetch(`tautulli_plays_top_users_${timeRange}`, async () => {
+    const { data } = await api('get_plays_by_top_10_users', { time_range: String(timeRange) });
+    return data?.response?.data ?? {};
+  }, TTL.STATS);
+}
+
+export async function getStreamTypeByTopPlatforms(timeRange = 30): Promise<unknown> {
+  return C.fetch(`tautulli_streamtype_platforms_${timeRange}`, async () => {
+    const { data } = await api('get_stream_type_by_top_10_platforms', { time_range: String(timeRange) });
+    return data?.response?.data ?? {};
+  }, TTL.STATS);
+}
+
+export async function getStreamTypeByTopUsers(timeRange = 30): Promise<unknown> {
+  return C.fetch(`tautulli_streamtype_users_${timeRange}`, async () => {
+    const { data } = await api('get_stream_type_by_top_10_users', { time_range: String(timeRange) });
+    return data?.response?.data ?? {};
+  }, TTL.STATS);
+}
+
+// ── Bibliotheken ──────────────────────────────────────────────────────────────
+
+export async function getLibrariesTable(): Promise<unknown> {
+  return C.fetch('tautulli_libraries_table', async () => {
+    const { data } = await api('get_libraries_table', { length: '50' });
+    return data?.response?.data ?? {};
+  }, TTL.COLLECTION);
+}
+
+// ── Erweiterte History (mit Filtern) ──────────────────────────────────────────
+
+export async function getHistoryFiltered(params: {
+  length?: number;
+  start?: number;
+  media_type?: string;
+  transcode_decision?: string;
+  search?: string;
+  order_column?: string;
+  order_dir?: string;
+  user?: string;
+}): Promise<unknown> {
+  const p: Record<string, string | number> = {
+    length: String(params.length ?? 25),
+    start:  String(params.start ?? 0),
+  };
+  if (params.media_type)          p.media_type = params.media_type;
+  if (params.transcode_decision)  p.transcode_decision = params.transcode_decision;
+  if (params.search)              p.search = params.search;
+  if (params.order_column)        p.order_column = params.order_column;
+  if (params.order_dir)           p.order_dir = params.order_dir;
+  if (params.user)                p.user = params.user;
+  // Kein Cache – dynamische Abfrage
+  const { data } = await api('get_history', p);
+  return data?.response?.data ?? {};
+}
+
+// ── User-Liste ────────────────────────────────────────────────────────────────
+
+export async function getUsers(): Promise<unknown> {
+  return C.fetch('tautulli_users', async () => {
+    const { data } = await api('get_users');
+    return data?.response?.data ?? [];
+  }, TTL.COLLECTION);
+}
+
+// Plex-Image Proxy (für StreamsView Poster)
+export async function getPlexImage(img: string, width: number, height: number): Promise<Buffer | null> {
+  if (!env.TAUTULLI_URL || !env.TAUTULLI_API_KEY) return null;
+  try {
+    const { data } = await axios.get(`${env.TAUTULLI_URL}/api/v2`, {
+      params: {
+        apikey: env.TAUTULLI_API_KEY,
+        cmd: 'pms_image_proxy',
+        img,
+        width: String(width),
+        height: String(height),
+        fallback: 'poster',
+      },
+      responseType: 'arraybuffer',
+      timeout: 8_000,
+    });
+    return Buffer.from(data);
   } catch {
     return null;
   }

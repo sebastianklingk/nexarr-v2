@@ -137,6 +137,8 @@ function normalizeSabnzbd(state: SabnzbdState): NormalizedSlot[] {
     timeleft:      slot.timeleft || undefined,
     category:      slot.cat || undefined,
     priority:      slot.priority,
+    encrypted:     !!(slot.password && slot.status.toLowerCase() === 'paused'),
+    password:      slot.password || undefined,
     canPause:      true,
     canMoveToTop:  true,
     canSetPriority: true,

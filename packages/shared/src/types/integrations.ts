@@ -152,30 +152,113 @@ export interface LidarrAlbum {
 // ─── Tautulli ────────────────────────────────────────────────────────────────
 
 export interface TautulliStream {
+  session_key?: string;
   session_id: string;
+  // ── User ──
+  user_id?: number;
   user: string;
   friendly_name: string;
+  user_thumb?: string;
+  email?: string;
+  // ── Media ──
   title: string;
-  grandparent_title?: string;   // Serie
-  parent_media_index?: string;  // Staffel
-  media_index?: string;         // Episode
+  grandparent_title?: string;   // Serie / Künstler
+  parent_title?: string;        // Staffel / Album
+  original_title?: string;
   year?: string;
-  media_type: 'movie' | 'episode' | 'track';
+  media_type: 'movie' | 'episode' | 'track' | 'clip';
+  media_index?: string;         // Episode-Nr
+  parent_media_index?: string;  // Staffel-Nr
+  rating_key: string;
+  parent_rating_key?: string;
+  grandparent_rating_key?: string;
+  full_title?: string;
+  // ── Poster / Art ──
+  thumb?: string;
+  parent_thumb?: string;
+  grandparent_thumb?: string;
+  art?: string;
+  // ── Playback ──
   state: 'playing' | 'paused' | 'buffering';
   progress_percent: string;
   view_offset: number;
   duration: number;
-  stream_video_resolution?: string;
-  stream_video_codec?: string;
-  stream_audio_codec?: string;
+  // ── Quality ──
+  quality_profile?: string;
   stream_container?: string;
-  transcode_decision?: 'direct play' | 'copy' | 'transcode';
+  stream_container_decision?: string;
+  // ── Video ──
+  video_codec?: string;
+  video_resolution?: string;
+  video_full_resolution?: string;
+  video_bitrate?: number;
+  video_bit_depth?: number;
+  video_framerate?: string;
+  video_dynamic_range?: string;
+  video_decision?: string;
+  stream_video_codec?: string;
+  stream_video_resolution?: string;
+  stream_video_full_resolution?: string;
+  stream_video_bitrate?: number;
+  stream_video_bit_depth?: number;
+  stream_video_framerate?: string;
+  stream_video_dynamic_range?: string;
+  // ── Audio ──
+  audio_codec?: string;
+  audio_channels?: number;
+  audio_channel_layout?: string;
+  audio_bitrate?: number;
+  audio_language?: string;
+  audio_language_code?: string;
+  audio_decision?: string;
+  stream_audio_codec?: string;
+  stream_audio_channels?: number;
+  stream_audio_channel_layout?: string;
+  stream_audio_bitrate?: number;
+  // ── Subtitle ──
+  subtitle_codec?: string;
+  subtitle_language?: string;
+  subtitle_decision?: string;
+  stream_subtitle_codec?: string;
+  stream_subtitle_language?: string;
+  stream_subtitle_decision?: string;
+  subtitle_forced?: number;
+  // ── Transcode ──
+  transcode_decision?: string;
+  transcode_container?: string;
+  transcode_video_codec?: string;
+  transcode_audio_codec?: string;
+  transcode_throttled?: number;
+  transcode_progress?: number;
+  transcode_speed?: string;
+  transcode_hw_requested?: number;
+  transcode_hw_decoding?: number;
+  transcode_hw_encoding?: number;
+  // ── Network / Location ──
   ip_address?: string;
+  ip_address_public?: string;
+  location?: string;
+  // ── Player ──
   platform?: string;
+  platform_name?: string;
+  platform_version?: string;
+  product?: string;
+  product_version?: string;
   player?: string;
-  thumb?: string;
-  grandparent_thumb?: string;
-  rating_key: string;
+  machine_id?: string;
+  // ── Bandwidth ──
+  bandwidth?: number;
+  stream_bitrate?: number;
+  // ── Sonstiges ──
+  optimized_version?: number;
+  relay?: number;
+  secure?: number;
+  live?: number;
+  channel_call_sign?: string;
+  library_name?: string;
+  section_id?: string;
+  // Index signature für unbekannte Felder
+  [key: string]: unknown;
 }
 
 export interface TautulliActivity {

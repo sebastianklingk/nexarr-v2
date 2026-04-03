@@ -29,7 +29,7 @@ const navItems = [
   { name: 'Downloads',     path: '/downloads',   icon: 'download', color: 'var(--sabnzbd)' },
   { name: 'Kalender',      path: '/calendar',    icon: 'calendar', color: 'var(--text-tertiary)' },
   { name: 'Suche',         path: '/search',      icon: 'search',   color: 'var(--text-tertiary)' },
-  { name: 'Statistiken',   path: '/tautulli',    icon: 'chart',    color: 'var(--tautulli)' },
+  { name: 'Streams',       path: '/streams',     icon: 'cast',     color: 'var(--tautulli)' },
   { name: 'Anfragen',           path: '/overseerr',       icon: 'inbox',  color: 'var(--overseerr)' },
   { name: 'Audiobookshelf',     path: '/audiobookshelf',  icon: 'book',   color: 'var(--abs)' },
   { name: 'Benachrichtigungen', path: '/gotify',           icon: 'bell',   color: 'var(--gotify)' },
@@ -121,6 +121,7 @@ function getIcon(name: string): string {
     logout:   `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
     compass:  `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>`,
     indexer:  `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`,
+    cast:    `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/><line x1="2" y1="20" x2="2.01" y2="20"/></svg>`,
   };
   return icons[name] ?? '';
 }

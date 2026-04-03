@@ -75,9 +75,13 @@ export const router = createRouter({
       component: () => import('../views/SearchView.vue'),
     },
     {
+      path: '/streams',
+      name: 'streams',
+      component: () => import('../views/StreamsView.vue'),
+    },
+    {
       path: '/tautulli',
-      name: 'tautulli',
-      component: () => import('../views/TautulliView.vue'),
+      redirect: '/streams',
     },
     {
       path: '/overseerr',

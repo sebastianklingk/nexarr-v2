@@ -247,14 +247,14 @@ v2 lädt nur einen 30-Tage-Fenster. Sollte wie v1 einen größeren Range laden.
 
 ## 2. DownloadsView – Vollständiger Ausbau `[CRITICAL]`
 
-### 11.2.A – Stats-Bar `[HIGH]`
+### 11.2.A – Stats-Bar `[HIGH]` ✅
 ```
 4 Karten: Radarr (X Filme) | Sonarr (X Episoden) | Lidarr (X Alben) | SABnzbd (X MB/s · Y Jobs)
 Farbige linke Border (App-Farbe)
 Klickbar (scrollt zu Queue-Sektion)
 ```
 
-### 11.2.B – Kombinierte Queue (SABnzbd + Arr zusammen) `[CRITICAL]`
+### 11.2.B – Kombinierte Queue (SABnzbd + Arr zusammen) `[CRITICAL]` ✅
 Aktuell zeigt v2 SABnzbd-Slots und Arr-Einträge getrennt. v1 verknüpft sie.
 ```
 Pro kombiniertem Job-Card:
@@ -275,7 +275,7 @@ Pro kombiniertem Job-Card:
   Arr-Einträge ohne SABnzbd-Match: eigene Sektion "In Verarbeitung / Import"
 ```
 
-### 11.2.C – History-Tab `[HIGH]`
+### 11.2.C – History-Tab `[HIGH]` ✅
 ```
 Laden: GET /api/radarr/history?pageSize=100
         GET /api/sonarr/history?pageSize=100
@@ -292,7 +292,7 @@ Pro Eintrag:
 Pagination: 10 pro Seite, Gesamt-Count
 ```
 
-### 11.2.D – Fehlend-Tab `[HIGH]`
+### 11.2.D – Fehlend-Tab `[HIGH]` ✅
 ```
 Laden: GET /api/radarr/missing?pageSize=100 (NEU Backend)
         GET /api/sonarr/missing?pageSize=100 (NEU Backend)
@@ -304,7 +304,7 @@ Pro Bereich (Filme / Episoden / Alben) mit farbigem Header + Count:
             POST /api/lidarr/command {name:'AlbumSearch', albumIds:[id]}
 ```
 
-### 11.2.E – SABnzbd Job Priorität + Move-to-Top `[MEDIUM]`
+### 11.2.E – SABnzbd Job Priorität + Move-to-Top `[MEDIUM]` ✅
 Neue Backend-Endpoints:
 - `POST /api/sabnzbd/queue/:nzoId/priority` body: {priority: 'Force'|'High'|'Normal'|'Low'}
 - `POST /api/sabnzbd/queue/:nzoId/move` body: {position: 0}
@@ -313,7 +313,7 @@ Neue Backend-Endpoints:
 
 ## 3. Downloads Backend – Neue Endpoints `[HIGH]`
 
-### 11.3.A – Fehlend-Endpoints
+### 11.3.A – Fehlend-Endpoints ✅
 ```
 GET /api/radarr/missing?pageSize=X → radarrService.getMissing()
   → GET /wanted/missing?pageSize=X&monitored=true
@@ -323,14 +323,14 @@ GET /api/lidarr/missing?pageSize=X → lidarrService.getMissingAlbums()
   → GET /wanted/missing?pageSize=X
 ```
 
-### 11.3.B – History-Endpoints
+### 11.3.B – History-Endpoints ✅
 ```
 GET /api/radarr/history?pageSize=X → radarrService.getHistory(pageSize)
 GET /api/sonarr/history?pageSize=X → sonarrService.getHistory(pageSize)
 GET /api/lidarr/history?pageSize=X → lidarrService.getHistory(pageSize)
 ```
 
-### 11.3.C – SABnzbd Priorität + Move-Top
+### 11.3.C – SABnzbd Priorität + Move-Top ✅
 ```
 POST /api/sabnzbd/queue/:nzoId/priority → sabnzbdService.setPriority(id, priority)
   → SABnzbd API: queue?name=priority&value=priority&id=nzo_id
@@ -410,7 +410,7 @@ Aktuell fehlen in v2-Sidebar:
 
 ---
 
-## 6. Downloads-Ansicht Optik-Polish `[MEDIUM]`
+## 6. Downloads-Ansicht Optik-Polish `[MEDIUM]` ✅
 
 ### 11.6.A – Downloader-Badge
 ```
@@ -467,7 +467,7 @@ GET /api/sonarr/cutoff?monitored=true → Episoden die upgraden könnten
 
 ---
 
-## 10. Streams View `[LOW]`
+## 10. Streams View `[LOW]` ✅
 
 v1 hat `/streams` (dedizierte Seite für Live-Plex-Streams).
 v2 zeigt Streams nur im Dashboard-Widget.

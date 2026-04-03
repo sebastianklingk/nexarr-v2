@@ -41,6 +41,7 @@ export async function getQueue(): Promise<SabnzbdState> {
         timeleft:  slot.timeleft ?? '',
         cat:       slot.cat ?? '',
         priority:  slot.priority ?? 'Normal',
+        password:  slot.password || undefined,
       })),
     } satisfies SabnzbdState;
   }, TTL.QUEUE);
