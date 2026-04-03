@@ -7,6 +7,7 @@ import InteractiveSearchModal from '../components/ui/InteractiveSearchModal.vue'
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue';
 import RatingPills from '../components/ui/RatingPills.vue';
 import type { SonarrSeries, SonarrEpisode, SonarrSeason, TMDBCredits, TMDBVideo } from '@nexarr/shared';
+import { posterUrl as getPosterUrl, fanartUrl as getFanartUrl } from '../utils/images.js';
 
 const route  = useRoute();
 const router = useRouter();
@@ -229,8 +230,8 @@ async function loadTmdb() {
 
 // ── Computed ──────────────────────────────────────────────────────────────────
 const seriesId  = computed(() => Number(route.params.id));
-const fanartUrl = computed(() => series.value?.images?.find(i=>i.coverType==='fanart')?.remoteUrl);
-const posterUrl = computed(() => series.value?.images?.find(i=>i.coverType==='poster')?.remoteUrl);
+const fanartUrl = computed(() => getFanartUrl(series.value?.images));
+const posterUrl = computed(() => getPosterUrl(series.value?.images, 'w500'));
 const plexUrl   = computed(() => series.value ? `https://app.plex.tv/desktop#!/search?query=${encodeURIComponent(series.value.title)}` : null);
 
 const totalSeasons  = computed(() => (series.value?.seasons??[]).filter(s=>s.seasonNumber>0).length);

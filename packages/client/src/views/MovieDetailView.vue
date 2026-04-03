@@ -7,6 +7,7 @@ import InteractiveSearchModal from '../components/ui/InteractiveSearchModal.vue'
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue';
 import RatingPills from '../components/ui/RatingPills.vue';
 import type { RadarrMovie, TMDBCredits, TMDBVideo } from '@nexarr/shared';
+import { posterUrl as getPosterUrl, fanartUrl as getFanartUrl } from '../utils/images.js';
 
 const route  = useRoute();
 const router = useRouter();
@@ -136,8 +137,8 @@ async function loadTautulli() {
 
 // ── Computed / Helpers ────────────────────────────────────────────────────────
 const movieId   = computed(() => Number(route.params.id));
-const fanartUrl = computed(() => movie.value?.images?.find(i=>i.coverType==='fanart')?.remoteUrl);
-const posterUrl = computed(() => movie.value?.images?.find(i=>i.coverType==='poster')?.remoteUrl);
+const fanartUrl = computed(() => getFanartUrl(movie.value?.images));
+const posterUrl = computed(() => getPosterUrl(movie.value?.images, 'w500'));
 const plexUrl   = computed(() => movie.value ? `https://app.plex.tv/desktop#!/search?query=${encodeURIComponent(movie.value.title)}` : null);
 const imdbUrl   = computed(() => movie.value?.imdbId ? `https://www.imdb.com/title/${movie.value.imdbId}` : null);
 const tmdbUrl   = computed(() => movie.value?.tmdbId ? `https://www.themoviedb.org/movie/${movie.value.tmdbId}` : null);

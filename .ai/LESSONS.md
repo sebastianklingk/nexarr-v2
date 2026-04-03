@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-04-03 · Alle Views · TMDB-Poster in Originalgröße geladen
+**Was passierte:** `posterUrl()` gab `remoteUrl` direkt zurück – TMDB-URLs mit `/original/` (2000×3000px, ~500KB/Poster). Bei 100+ Filmen in der Grid-Ansicht ~50MB Bilder.
+**Regel:** Poster-URLs IMMER über `posterUrl()` / `fanartUrl()` aus `@/utils/images.ts` laden. Grid = `w342`, Detail = `w500`, Fanart = `w1280`. NIEMALS `remoteUrl` direkt verwenden.
+
+## 2026-04-03 · Auth · Session-Verlust bei Server-Restart
+**Was passierte:** Express-Session mit MemoryStore verliert alle Sessions bei tsx-watch-Restart. User wird ständig ausgeloggt.
+**Regel:** Für Dev: `AUTH_DISABLED=true` in `.env`. Für Prod später: SQLite-Session-Store nutzen (Tabelle `sessions` existiert bereits).
+
 ## 2026-04-03 · DownloadsView · NormalizedSlot computed-Reaktivität
 **Was passierte:** `batchMoveToTopCount` und `batchPriorityCount` riefen eine normale Funktion (`eligibleSlots()`) auf statt direkt auf `selectedSlots.value` zuzugreifen. Das erzeugt keine reaktive Abhängigkeit – die computed-Werte wurden nicht neu berechnet wenn sich die Auswahl änderte.
 **Regel:** Computed-Properties MÜSSEN direkt auf reaktive Quellen (`.value`) zugreifen. Hilfsfunktionen die reaktive Arrays filtern sind in computeds nur sicher wenn sie intern `.value` verwenden – besser direkt inlinen.

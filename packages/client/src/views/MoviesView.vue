@@ -6,6 +6,7 @@ import { useApi } from '../composables/useApi.js';
 import PosterCard from '../components/ui/PosterCard.vue';
 import AddToLibraryModal from '../components/ui/AddToLibraryModal.vue';
 import type { RadarrMovie } from '@nexarr/shared';
+import { posterUrl } from '../utils/images.js';
 
 const router   = useRouter();
 const store    = useMoviesStore();
@@ -93,9 +94,7 @@ const grouped = computed((): Array<{ letter: string; items: RadarrMovie[] }> => 
 const availableLetters = computed(() => new Set(grouped.value.map(g => g.letter)));
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function posterUrl(m: RadarrMovie): string | undefined {
-  return m.images?.find(i => i.coverType === 'poster')?.remoteUrl;
-}
+// posterUrl imported from @/utils/images
 
 function qualityLabel(m: RadarrMovie): string | undefined {
   if (!m.movieFile) return undefined;
@@ -267,7 +266,7 @@ const ALPHABET = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
                 :key="m.id"
                 :title="m.title"
                 :year="m.year"
-                :poster-url="posterUrl(m)"
+                :poster-url="posterUrl(m.images)"
                 :rating="m.ratings?.tmdb?.value ?? m.ratings?.imdb?.value"
                 :imdb-rating="m.ratings?.imdb?.value"
                 :tmdb-rating="m.ratings?.tmdb?.value ? m.ratings.tmdb.value * 10 : undefined"

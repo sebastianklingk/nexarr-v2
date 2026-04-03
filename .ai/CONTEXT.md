@@ -1,8 +1,8 @@
 # nexarr v2 – AI Context
 > Dieses Dokument wird am Ende jeder Session aktualisiert.
-> Zuletzt aktualisiert: 03.04.2026 – Phase 11 Schritt 5 komplett: DownloadsView Multi-Downloader + Batch-Select + Shift-Range-Select
+> Zuletzt aktualisiert: 03.04.2026 – AUTH_DISABLED + Image-URL-Optimierung (w342/w500/w1280)
 > Aktualisiert von: Chat-Claude
-> Stand: Phase 10 ✅ KOMPLETT · Phase 11 Schritt 5 ✅
+> Stand: Phase 10 ✅ KOMPLETT · Phase 11 Schritt 5 ✅ + Auth-Bypass + Poster-Performance
 
 ---
 
@@ -33,8 +33,9 @@ npm run dev
 ```
 
 **Logs:** `/tmp/nexarr-v2.log`
-**DB:** `./data/nexarr.db` (SQLite, better-sqlite3)
+**DB:** `./data/nexarr.db` (SQLite, node:sqlite)
 **Config:** `.env` (Zod-validiert beim Start)
+**Auth:** `AUTH_DISABLED=true` in .env → kein Login nötig (Dev-Modus)
 
 ---
 
@@ -228,6 +229,16 @@ TMDB: trending/discover/details/similar; Radarr/Sonarr/Lidarr: qualityprofiles/h
 - **Torrent-Badges:** Seeds/Peers, Upload-Ratio (Transmission-spezifisch)
 - **Stats-Bar:** Pro Downloader eine Card (dynamisch, keine Hardcoded-SABnzbd-Annahme mehr)
 - **Header-Controls:** Pro Downloader ein Pause/Resume-Button mit farbigem Downloader-Badge
+
+### Zwischen-Schritt: Auth-Bypass + Image-Performance ✅
+- **AUTH_DISABLED:** `.env` Variable `AUTH_DISABLED=true` – Middleware setzt Fake-Admin-Session, `/api/auth/me` gibt immer Admin zurück, kein Login-Screen
+- **Session-Problem gelöst:** MemoryStore verliert Sessions bei Server-Restart (tsx watch) – AUTH_DISABLED macht das irrelevant für Dev
+- **Image-URL-Optimierung:** Zentrale Utility `packages/client/src/utils/images.ts` mit `posterUrl()`, `fanartUrl()`, `tmdbImageUrl()`
+  - TMDB-URLs werden automatisch von `/original/` auf passende Größe umgeschrieben
+  - Grid-Poster: `w342` (~30KB statt ~500KB = 94% kleiner)
+  - Detail-Poster: `w500` (~60KB statt ~500KB)
+  - Fanart/Backdrop: `w1280` (~150KB statt ~1MB)
+  - Angewendet auf: MoviesView, SeriesView, MusicView, MovieDetailView, SeriesDetailView, ArtistDetailView, SearchView, CalendarView
 
 ---
 

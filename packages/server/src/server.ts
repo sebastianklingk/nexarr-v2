@@ -31,7 +31,11 @@ async function bootstrap() {
   httpServer.listen(port, '0.0.0.0', () => {
     console.log(`\n🚀 nexarr v2 läuft auf http://0.0.0.0:${port}`);
     console.log(`   Umgebung: ${env.NODE_ENV}`);
-    console.log(`   DB:       ${env.DB_PATH}\n`);
+    console.log(`   DB:       ${env.DB_PATH}`);
+    if (env.AUTH_DISABLED) {
+      console.log('   ⚠️  AUTH DEAKTIVIERT – kein Login erforderlich');
+    }
+    console.log('');
 
     // 5. Cache-Warming im Hintergrund (alle 4 Wellen, blockiert den Server nicht)
     warmCache(4).catch(err => {

@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useMusicStore } from '../stores/music.store.js';
 import type { LidarrArtist } from '@nexarr/shared';
+import { posterUrl } from '../utils/images.js';
 
 const router = useRouter();
 const store  = useMusicStore();
@@ -81,9 +82,7 @@ function scrollToLetter(letter: string) {
 }
 
 // ── Poster / Stats helpers ────────────────────────────────────────────────────
-function posterUrl(a: LidarrArtist): string | undefined {
-  return a.images?.find(i => i.coverType === 'poster')?.remoteUrl;
-}
+// posterUrl imported from @/utils/images
 
 function completionPct(a: LidarrArtist): number {
   const stats = (a as any).statistics;
@@ -238,7 +237,7 @@ onMounted(() => store.fetchArtists());
 
             <!-- Poster mit Status-Dot + Progress -->
             <div class="poster-wrap">
-              <img v-if="posterUrl(artist)" :src="posterUrl(artist)" :alt="artist.artistName" class="poster-img" loading="lazy" />
+              <img v-if="posterUrl(artist.images)" :src="posterUrl(artist.images)" :alt="artist.artistName" class="poster-img" loading="lazy" />
               <div v-else class="poster-ph">{{ artist.artistName[0] }}</div>
 
               <!-- Status-Dot -->

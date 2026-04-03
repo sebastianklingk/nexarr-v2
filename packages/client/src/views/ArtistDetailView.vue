@@ -5,6 +5,7 @@ import { useMusicStore } from '../stores/music.store.js';
 import { useApi } from '../composables/useApi.js';
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue';
 import type { LidarrArtist, LidarrAlbum } from '@nexarr/shared';
+import { posterUrl as getPosterUrl, fanartUrl as getFanartUrl, tmdbImageUrl } from '../utils/images.js';
 
 const route  = useRoute();
 const router = useRouter();
@@ -138,8 +139,8 @@ function linkLabel(name: string): string {
 }
 
 // ── Computed ──────────────────────────────────────────────────────────────────
-const fanartUrl = computed(() => artist.value?.images?.find(i => i.coverType === 'fanart')?.remoteUrl);
-const posterUrl = computed(() => artist.value?.images?.find(i => i.coverType === 'poster')?.remoteUrl);
+const fanartUrl = computed(() => getFanartUrl(artist.value?.images));
+const posterUrl = computed(() => getPosterUrl(artist.value?.images, 'w500'));
 
 function albumProgress(album: LidarrAlbum): number {
   const total = album.statistics?.trackCount ?? 0;
@@ -148,7 +149,8 @@ function albumProgress(album: LidarrAlbum): number {
 }
 
 function albumCover(album: LidarrAlbum): string | undefined {
-  return album.images?.find(i => i.coverType === 'cover')?.remoteUrl;
+  const url = album.images?.find(i => i.coverType === 'cover')?.remoteUrl;
+  return url ? tmdbImageUrl(url, 'w342') ?? url : undefined;
 }
 
 function fmtBytes(b: number): string {

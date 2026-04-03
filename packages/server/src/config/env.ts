@@ -4,12 +4,16 @@ import { z } from 'zod';
 // Leere Strings in .env werden als undefined behandelt
 const optUrl = z.string().url().optional().or(z.literal('')).transform(v => v || undefined);
 const optStr = z.string().optional().transform(v => v || undefined);
+const optBool = z.string().optional().transform(v => v === 'true' || v === '1');
 
 const envSchema = z.object({
   PORT:             z.string().default('3000'),
   NODE_ENV:         z.enum(['development', 'production', 'test']).default('development'),
   SESSION_SECRET:   z.string().min(32, 'SESSION_SECRET muss mindestens 32 Zeichen haben'),
   DB_PATH:          z.string().default('./data/nexarr.db'),
+
+  // Auth deaktivieren (kein Login nötig – für Entwicklung)
+  AUTH_DISABLED:     optBool,
 
   RADARR_URL:        optUrl,
   RADARR_API_KEY:    optStr,

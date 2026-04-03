@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction, Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { dbGet } from '../db/index.js';
+import { env } from '../config/env.js';
 
 const router = Router();
 
@@ -14,6 +15,15 @@ interface UserRow {
 // POST /api/auth/login
 router.post('/login', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    // Auth deaktiviert → sofort als Admin einloggen
+    if (env.AUTH_DISABLED) {
+      req.session.userId = 1;
+      req.session.username = 'admin';
+      req.session.userRole = 'admin';
+      res.json({ id: 1, username: 'admin', role: 'admin' });
+      return;
+    }
+
     const { username, password } = req.body as { username?: string; password?: string };
 
     if (!username || !password) {
@@ -40,6 +50,12 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
 
 // POST /api/auth/logout
 router.post('/logout', (req: Request, res: Response, next: NextFunction) => {
+  // Auth deaktiviert → Logout ist ein No-Op
+  if (env.AUTH_DISABLED) {
+    res.json({ ok: true });
+    return;
+  }
+
   req.session.destroy((err) => {
     if (err) return next(err);
     res.json({ ok: true });
@@ -48,6 +64,12 @@ router.post('/logout', (req: Request, res: Response, next: NextFunction) => {
 
 // GET /api/auth/me
 router.get('/me', (req: Request, res: Response) => {
+  // Auth deaktiviert → immer als Admin angemeldet
+  if (env.AUTH_DISABLED) {
+    res.json({ id: 1, username: 'admin', role: 'admin' });
+    return;
+  }
+
   if (!req.session.userId) {
     res.status(401).json({ error: 'Nicht angemeldet' });
     return;

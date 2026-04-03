@@ -6,6 +6,7 @@ import { useApi } from '../composables/useApi.js';
 import PosterCard from '../components/ui/PosterCard.vue';
 import AddToLibraryModal from '../components/ui/AddToLibraryModal.vue';
 import type { SonarrSeries } from '@nexarr/shared';
+import { posterUrl } from '../utils/images.js';
 
 const router  = useRouter();
 const store   = useSeriesStore();
@@ -129,9 +130,7 @@ const availableLetters = computed(() => new Set(grouped.value.map(g => g.letter)
 const statsComplete = computed(() => store.series.filter(s => seriesProgress(s) === 100).length);
 const statsMissing  = computed(() => store.series.filter(s => { const p = seriesProgress(s); return p < 100 && p > 0 && s.monitored; }).length);
 
-function posterUrl(s: SonarrSeries): string | undefined {
-  return s.images?.find(i => i.coverType === 'poster')?.remoteUrl;
-}
+// posterUrl imported from @/utils/images
 
 function episodesLabel(s: SonarrSeries): string {
   const total = s.episodeCount ?? 0;
@@ -275,7 +274,7 @@ const ALPHABET = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
                 :key="s.id"
                 :title="s.title"
                 :year="s.year"
-                :poster-url="posterUrl(s)"
+                :poster-url="posterUrl(s.images)"
                 :rating="s.ratings?.value"
                 :has-file="(s.episodeFileCount ?? 0) > 0"
                 :monitored="s.monitored"

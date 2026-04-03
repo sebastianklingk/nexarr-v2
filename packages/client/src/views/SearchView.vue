@@ -6,6 +6,7 @@ import { useSeriesStore } from '../stores/series.store.js';
 import { useMusicStore }  from '../stores/music.store.js';
 import { useApi } from '../composables/useApi.js';
 import type { RadarrMovie, SonarrSeries, LidarrArtist, ProwlarrResult } from '@nexarr/shared';
+import { posterUrl } from '../utils/images.js';
 
 const router = useRouter();
 const movies = useMoviesStore();
@@ -80,9 +81,7 @@ const artistResults = computed<LidarrArtist[]>(() => {
 
 const localTotal = computed(() => movieResults.value.length + seriesResults.value.length + artistResults.value.length);
 
-function posterUrl(images: Array<{ coverType: string; remoteUrl: string }>): string | undefined {
-  return images?.find(i => i.coverType === 'poster')?.remoteUrl;
-}
+// posterUrl imported from @/utils/images – accepts images array
 
 function highlight(text: string): string {
   if (!q.value) return text;

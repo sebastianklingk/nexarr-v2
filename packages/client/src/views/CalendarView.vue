@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useApi } from '../composables/useApi.js';
+import { tmdbImageUrl } from '../utils/images.js';
 
 const router  = useRouter();
 const { get } = useApi();
@@ -204,7 +205,8 @@ function fmtSize(bytes?: number): string | undefined {
 function posterFromImages(imgs: any[]): string | null {
   if (!imgs?.length) return null;
   const p = imgs.find(i => i.coverType==='poster' || i.type==='poster');
-  return p?.remoteUrl ?? p?.url ?? null;
+  const url = p?.remoteUrl ?? p?.url ?? null;
+  return url ? (tmdbImageUrl(url, 'w342') ?? url) : null;
 }
 
 // ── Laden ─────────────────────────────────────────────────────────────────────
