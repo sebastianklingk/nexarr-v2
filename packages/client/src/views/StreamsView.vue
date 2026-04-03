@@ -6,6 +6,7 @@ import { useMoviesStore } from '../stores/movies.store.js';
 import { useSeriesStore } from '../stores/series.store.js';
 import { useMusicStore } from '../stores/music.store.js';
 import { posterUrl as getPosterUrl } from '../utils/images.js';
+import { getPlatformIcon } from '../utils/platformIcons.js';
 import type { TautulliActivity, TautulliStream } from '@nexarr/shared';
 
 const { get } = useApi();
@@ -467,9 +468,10 @@ function locLbl(s: TautulliStream) { return s.location==='lan'?'LAN':s.location=
                 :class="['stc-row', { 'stc-clickable': sc.id.includes('movie')||sc.id.includes('tv')||sc.id.includes('music')||sc.id==='last_watched'||sc.id.includes('librar') }]"
                 @click="navigateStat(row, sc.id)">
                 <span class="stc-rank">{{ i+1 }}</span>
-                <div class="stc-poster">
+                <div class="stc-poster" :class="{ 'stc-poster-round': sc.id.includes('user') || sc.id.includes('platform') }">
                   <img v-if="resolveStatItem(row, sc.id)?.poster" :src="resolveStatItem(row, sc.id)!.poster!" loading="lazy" />
                   <img v-else-if="row.user_thumb" :src="row.user_thumb" loading="lazy" class="stc-avatar" />
+                  <span v-else-if="getPlatformIcon(row.platform)" class="stc-plat-icon" v-html="getPlatformIcon(row.platform)" />
                   <img v-else-if="plexImg(row.grandparent_thumb ?? row.thumb)" :src="plexImg(row.grandparent_thumb ?? row.thumb)!" loading="lazy" />
                   <span v-else class="stc-poster-ph">{{ sc.icon }}</span>
                 </div>
@@ -698,7 +700,10 @@ function locLbl(s: TautulliStream) { return s.location==='lan'?'LAN':s.location=
 .stc-rank { font-size:10px; color:var(--text-muted); font-weight:700; width:16px; text-align:center; flex-shrink:0; }
 .stc-poster { width:28px; height:40px; border-radius:3px; overflow:hidden; background:var(--bg-elevated); border:1px solid var(--bg-border); flex-shrink:0; display:flex; align-items:center; justify-content:center; }
 .stc-poster img { width:100%; height:100%; object-fit:cover; }
+.stc-poster-round { border-radius:50%; width:32px; height:32px; }
 .stc-avatar { border-radius:50%; }
+.stc-plat-icon { width:18px; height:18px; color:var(--text-muted); display:flex; align-items:center; justify-content:center; }
+.stc-plat-icon :deep(svg) { width:18px; height:18px; }
 .stc-poster-ph { font-size:12px; }
 .stc-content { flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; }
 .stc-name { font-size:var(--text-sm); color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

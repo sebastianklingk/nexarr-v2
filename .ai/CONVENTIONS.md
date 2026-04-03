@@ -451,6 +451,48 @@ Bei jeder neuen API/Integration diese Reihenfolge einhalten:
 
 ---
 
+## Icon-System
+
+### Drei Utilities für Icons
+```typescript
+// 1. Media Icons (Codecs, Auflösungen, Kanäle, Content-Rating)
+import { getMediaIcon, getBrandIcon, getMediaLabel } from '../utils/mediaIcons.js';
+
+// 2. Rating Icons (IMDb, TMDB, Rotten Tomatoes) – Inline-SVG-Strings
+import { getRatingIcon } from '../utils/ratingIcons.js';
+
+// 3. Platform Icons (Tautulli Player-Plattformen) – Inline-SVG-Strings
+import { getPlatformIcon } from '../utils/platformIcons.js';
+```
+
+### Vue Component: MediaIcon
+```vue
+<!-- Brand-SVG für bekannte Codecs/Formate -->
+<MediaIcon category="audio_codec" value="truehd" :size="24" />
+<MediaIcon category="video_codec" value="hevc" :size="20" />
+<MediaIcon category="video_resolution" value="4k" :size="20" />
+
+<!-- Standalone Brand-Icons (HDR, Dolby Vision etc.) -->
+<MediaIcon brand="dolby_vision" :size="32" />
+<MediaIcon brand="hdr10plus" :size="28" />
+
+<!-- Fallback: Text-Badge wenn kein Icon gefunden -->
+<MediaIcon category="video_codec" value="unknown_codec" fallbackLabel="???" />
+```
+
+### Regeln
+- **IMMER** `getMediaIcon()` / `<MediaIcon>` verwenden statt hardcodierte Pfade
+- **IMMER** `getRatingIcon()` für Rating-Seiten-Logos (IMDb, RT, TMDB)
+- **IMMER** `getPlatformIcon()` für Tautulli Stream-Player
+- Brand-SVGs haben Priorität über Tautulli-PNGs (gleicher Codec = SVG wird bevorzugt)
+- Alias-System normalisiert automatisch: `h265`→`hevc`, `truehd`→`dolby_truehd`, `2160`→`4k` etc.
+- Icons regenerieren: `bash scripts/download-icons.sh` (lädt von GitHub + Wikimedia)
+- `ratingIcons.ts` wird vom Script auto-generiert – NICHT manuell editieren
+- `platformIcons.ts` wurde manuell aus Tautulli SVGs generiert
+- `mediaIcons.ts` ist handgeschrieben – neue Codecs/Aliases hier ergänzen
+
+---
+
 ## Validierung vor jedem Commit
 
 ```bash

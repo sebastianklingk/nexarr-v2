@@ -1,8 +1,8 @@
 # nexarr v2 – AI Context
 > Dieses Dokument wird am Ende jeder Session aktualisiert.
-> Zuletzt aktualisiert: 03.04.2026 – Kalender-Fixes: Finale-Bug, Kachel-Redesign, Premiere-Option, Monats-Epnum
+> Zuletzt aktualisiert: 03.04.2026 – Icon-System: Media/Rating/Brand Icons + MediaIcon Component
 > Aktualisiert von: Chat-Claude
-> Stand: Phase 10 ✅ KOMPLETT · Phase 11 Schritt 5 ✅ + Downloads-Polish + Verschlüsselung + StreamsView + Kalender-Polish
+> Stand: Phase 10 ✅ KOMPLETT · Phase 11 Schritt 5 ✅ + Downloads-Polish + Verschlüsselung + StreamsView + Kalender-Polish + Icon-System
 
 ---
 
@@ -146,9 +146,13 @@ packages/
 │       └── services/*.service.ts
 └── client/     → Vue 3 Frontend
     └── src/
-        ├── components/ui/       → PosterCard, InteractiveSearchModal, ConfirmDialog
+        ├── components/ui/       → PosterCard, InteractiveSearchModal, ConfirmDialog, MediaIcon
         ├── stores/*.store.ts
+        ├── utils/               → images.ts, mediaIcons.ts, ratingIcons.ts, platformIcons.ts
         └── views/*View.vue
+    └── public/icons/        → brands/ (21 SVG), media/ (76 PNG), rating/ (7 SVG)
+scripts/
+    └── download-icons.sh    → Icon-Download + ratingIcons.ts Generator
 ```
 
 ---
@@ -283,6 +287,23 @@ TMDB: trending/discover/details/similar; Radarr/Sonarr/Lidarr: qualityprofiles/h
   - Detail-Poster: `w500` (~60KB statt ~500KB)
   - Fanart/Backdrop: `w1280` (~150KB statt ~1MB)
   - Angewendet auf: MoviesView, SeriesView, MusicView, MovieDetailView, SeriesDetailView, ArtistDetailView, SearchView, CalendarView
+
+### Icon-System: Media / Rating / Platform Icons ✅
+- **3 Icon-Kategorien:**
+  - **Brand SVGs** (21): Dolby Vision/Atmos/DD/TrueHD, DTS/DTS-HD MA, AV1, VP9, H.264, HEVC, HDR10/HDR10+, FLAC, Opus, AAC, IMAX, THX, Blu-ray/UHD Blu-ray → `public/icons/brands/`
+  - **Media Flag PNGs** (76): video_codec, audio_codec, audio_channels, video_resolution, content_rating → `public/icons/media/{category}/`
+  - **Rating SVGs** (7): IMDb, TMDB, TVDB, Rotten Tomatoes (ripe/rotten), Audience (upright/spilled) → `public/icons/rating/`
+- **Quellen:** Tautulli GitHub (media_flags PNGs + rating SVGs) + Wikimedia Commons (Brand SVGs)
+- **Download-Script:** `bash scripts/download-icons.sh` – lädt alles + generiert `ratingIcons.ts`
+- **Utilities:**
+  - `packages/client/src/utils/mediaIcons.ts` – Zentrale Registry: `getMediaIcon(category, value)`, `getBrandIcon(key)`, `getMediaLabel(category, value)`. Brand-SVGs haben Priorität über PNGs. Alias-System normalisiert Codec-Namen (h265→hevc, truehd→dolby_truehd etc.)
+  - `packages/client/src/utils/ratingIcons.ts` – Inline-SVGs: `getRatingIcon(source)` mit Alias-Support (imdb, tmdb, tvdb, rotten tomatoes, audience)
+  - `packages/client/src/utils/platformIcons.ts` – Inline-SVGs: `getPlatformIcon(platform)` für Tautulli Stream-Player (26 Plattformen)
+- **Vue Component:** `packages/client/src/components/ui/MediaIcon.vue`
+  - `<MediaIcon category="audio_codec" value="truehd" :size="24" />` → zeigt Brand-SVG
+  - `<MediaIcon brand="dolby_vision" :size="32" />` → Standalone Brand-Icon
+  - Fallback: Text-Badge wenn kein Icon gefunden
+- **Nicht enthalten:** aspect_ratio, video_framerate (bewusst weggelassen), studio-Logos (605 PNGs, zu viele)
 
 ---
 

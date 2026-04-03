@@ -5,6 +5,10 @@
 
 ---
 
+## 2026-04-03 · MediaIcon.vue · Import-Pfad `@/` statt relativ
+**Was passierte:** `import ... from '@/utils/mediaIcons'` in MediaIcon.vue – vue-tsc konnte das Modul nicht finden weil kein `paths`-Alias in tsconfig.json konfiguriert ist.
+**Regel:** nexarr v2 nutzt KEINE `@/`-Aliases. IMMER relative Pfade mit `.js`-Extension: `from '../utils/mediaIcons.js'`, `from '../../composables/useApi.js'` etc.
+
 ## 2026-04-03 · CalendarView · Sonarr finaleType Enum-Werte falsch
 **Was passierte:** `isFinale` prüfte auf `['seasonFinale','seriesFinale','midSeasonFinale']`. Sonarr liefert aber `'season'`, `'series'`, `'midSeason'` (ohne "Finale"-Suffix). Ergebnis: Finale-Symbol ★ wurde nie angezeigt.
 **Regel:** Sonarr `finaleType` Werte sind: `'none'`, `'season'`, `'series'`, `'midSeason'`. NICHT `'seasonFinale'` etc. Immer `.toLowerCase()` beim Vergleichen – API-Werte können mixed-case sein.
