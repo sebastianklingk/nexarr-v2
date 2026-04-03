@@ -48,7 +48,9 @@ export async function getCalendar(start: string, end: string): Promise<unknown[]
 
 export async function getQueue(): Promise<unknown> {
   return C.fetch('radarr_queue', async () => {
-    const { data } = await client().get('/queue', { params: { pageSize: 100 } });
+    const { data } = await client().get('/queue', {
+      params: { pageSize: 500, includeUnknownMovieItems: true },
+    });
     return data;
   }, TTL.QUEUE);
 }

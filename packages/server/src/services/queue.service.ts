@@ -35,6 +35,12 @@ interface RawArrRecord {
   movieId?: number;
   seriesId?: number;
   artistId?: number;
+  // Nested objects (wenn includeSeries/includeEpisode/includeMovie aktiv)
+  movie?: { title?: string };
+  series?: { title?: string };
+  episode?: { title?: string; seasonNumber?: number; episodeNumber?: number };
+  artist?: { artistName?: string };
+  album?: { title?: string };
 }
 
 interface ArrQueueResponse {
@@ -55,6 +61,27 @@ function mapArrQueue(
       ? Math.round(((size - sizeleft) / size) * 100)
       : 0;
 
+    // Medien-Titel aus den nested Objects extrahieren
+    let mediaTitle: string | undefined;
+    let episodeLabel: string | undefined;
+
+    if (app === 'radarr' && item.movie?.title) {
+      mediaTitle = item.movie.title;
+    } else if (app === 'sonarr') {
+      if (item.series?.title) mediaTitle = item.series.title;
+      if (item.episode) {
+        const sn = item.episode.seasonNumber;
+        const en = item.episode.episodeNumber;
+        const epTitle = item.episode.title;
+        if (sn !== undefined && en !== undefined) {
+          episodeLabel = `S${String(sn).padStart(2,'0')}E${String(en).padStart(2,'0')}`;
+          if (epTitle) episodeLabel += ` \u00b7 ${epTitle}`;
+        }
+      }
+    } else if (app === 'lidarr') {
+      if (item.artist?.artistName) mediaTitle = item.artist.artistName;
+    }
+
     return {
       id:                   item.id ?? 0,
       title:                item.title ?? 'Unbekannt',
@@ -74,6 +101,8 @@ function mapArrQueue(
       languages:            item.languages?.map(l => l.name).filter((n): n is string => !!n),
       customFormats:        item.customFormats?.map(cf => cf.name).filter((n): n is string => !!n),
       downloadClientName:   item.downloadClientName ?? item.downloadClient,
+      mediaTitle,
+      episodeLabel,
       movieId:              item.movieId,
       seriesId:             item.seriesId,
       artistId:             item.artistId,

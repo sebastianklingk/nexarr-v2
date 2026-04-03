@@ -52,7 +52,14 @@ export async function getEpisodeFiles(seriesId: number): Promise<unknown[]> {
 
 export async function getQueue(): Promise<unknown> {
   return C.fetch('sonarr_queue', async () => {
-    const { data } = await client().get('/queue', { params: { pageSize: 100 } });
+    const { data } = await client().get('/queue', {
+      params: {
+        pageSize: 500,
+        includeUnknownSeriesItems: true,
+        includeSeries: true,
+        includeEpisode: true,
+      },
+    });
     return data;
   }, TTL.QUEUE);
 }

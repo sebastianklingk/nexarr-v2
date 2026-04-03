@@ -658,7 +658,8 @@ function evBadge(et: string) {
                   {{ dlLabel(c.slot.downloader) }}
                 </span>
                 <p class="dl-title" @click="c.arr && navigateTo(c.arr)" :class="{'dl-title-link': c.arr?.movieId || c.arr?.seriesId}">
-                  {{ (c.arr ? mediaName(c.arr) : null) ?? c.slot.filename }}
+                  {{ c.arr?.mediaTitle ?? (c.arr ? mediaName(c.arr) : null) ?? c.slot.filename }}
+                  <span v-if="c.arr?.episodeLabel" class="dl-ep-label">{{ c.arr.episodeLabel }}</span>
                 </p>
                 <span v-if="c.arr" class="dl-release">{{ c.arr.title }}</span>
                 <span :class="['st-badge', stClass(c.slot.status)]">{{ stLabel(c.slot.status) }}</span>
@@ -737,7 +738,7 @@ function evBadge(et: string) {
               </div>
 
               <!-- Delete -->
-              <button class="act-btn act-del" @click="askDeleteSlot(c.slot, (c.arr ? mediaName(c.arr) : null) ?? c.slot.filename)" title="Entfernen">
+              <button class="act-btn act-del" @click="askDeleteSlot(c.slot, c.arr?.mediaTitle ?? (c.arr ? mediaName(c.arr) : null) ?? c.slot.filename)" title="Entfernen">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
               </button>
             </div>
@@ -1141,6 +1142,7 @@ function evBadge(et: string) {
 .dl-title-link { cursor: pointer; }
 .dl-title-link:hover { color: var(--text-primary); }
 .dl-release { font-size: 10px; color: var(--text-muted); font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; opacity: .6; }
+.dl-ep-label { font-size: 11px; font-weight: 400; color: var(--text-muted); margin-left: 4px; white-space: nowrap; }
 
 /* App Tag */
 .app-tag { font-size: 10px; font-weight: 600; padding: 1px 7px; border-radius: 4px; border: 1px solid; white-space: nowrap; flex-shrink: 0; letter-spacing: .03em; }

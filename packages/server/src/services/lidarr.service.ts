@@ -67,7 +67,9 @@ export async function getTracksByArtistAlbum(artistId: number, albumId: number):
 
 export async function getQueue(): Promise<unknown> {
   return C.fetch('lidarr_queue', async () => {
-    const { data } = await client().get('/queue', { params: { pageSize: 100 } });
+    const { data } = await client().get('/queue', {
+      params: { pageSize: 500, includeUnknownArtistItems: true },
+    });
     return data;
   }, TTL.QUEUE);
 }

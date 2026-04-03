@@ -22,6 +22,8 @@ export interface ArrQueueItem {
   languages?: string[];          // e.g. ["German", "English"]
   customFormats?: string[];      // Custom Format names
   downloadClientName?: string;   // e.g. "SABnzbd", "Transmission"
+  mediaTitle?: string;           // Film/Serien/Künstler-Name (aus arr API, nicht Release-Titel)
+  episodeLabel?: string;         // z.B. "S02E08 · The Curse of Cumberbatch"
   movieId?: number;              // Radarr movie ID (for poster lookup)
   seriesId?: number;             // Sonarr series ID (for poster lookup)
   artistId?: number;             // Lidarr artist ID (for poster lookup)
