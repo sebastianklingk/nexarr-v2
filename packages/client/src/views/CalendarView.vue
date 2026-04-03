@@ -17,6 +17,7 @@ interface CalendarEntry {
   overview?:      string;
   hasFile:        boolean;
   isFinale:       boolean;
+  isPremiere:     boolean;
   isSeasonPack:   boolean;
   bundledCount?:  number;
   app:            'radarr' | 'sonarr' | 'lidarr';
@@ -52,9 +53,9 @@ interface CalendarEntry {
 
   // ── Episode-File ──────────────────────────────────────────────────────────
   episodeQuality?: string;
-  episodeQualityName?: string;      // vollständiger Name z.B. "WEBDL-2160p"
-  episodeRuntime?: string;          // "42:57"
-  episodeSize?:   number;           // Bytes
+  episodeQualityName?: string;
+  episodeRuntime?: string;
+  episodeSize?:   number;
   episodeLanguages?: string[];
   episodeReleaseGroup?: string;
   episodeCutoffNotMet?: boolean;
@@ -87,6 +88,7 @@ const showPhysical     = ref<boolean>(ls('showPhysical', true));
 const bundleEpisodes   = ref<boolean>(ls('bundleEp', false));
 const showEpInfo       = ref<boolean>(ls('showEpInfo', true));
 const showFinaleSymbol = ref<boolean>(ls('showFinale', true));
+const showPremiereSymbol = ref<boolean>(ls('showPremiere', true));
 const showSpecials     = ref<boolean>(ls('showSpecials', false));
 const bundleAlbums     = ref<boolean>(ls('bundleAlb', false));
 const showOptions      = ref(false);
@@ -94,8 +96,8 @@ const showOptions      = ref(false);
 const watchMap: Record<string, ReturnType<typeof ref>> = {
   view: viewMode, weekStartMon, colHdrFmt: colHeaderFmt, fullColor, showAirTime,
   showRadarr, showSonarr, showLidarr, showCinemas, showDigital, showPhysical,
-  bundleEp: bundleEpisodes, showEpInfo, showFinale: showFinaleSymbol, showSpecials,
-  bundleAlb: bundleAlbums,
+  bundleEp: bundleEpisodes, showEpInfo, showFinale: showFinaleSymbol,
+  showPremiere: showPremiereSymbol, showSpecials, bundleAlb: bundleAlbums,
 };
 for (const [k, r] of Object.entries(watchMap)) watch(r, v => lsSet(k, v));
 
@@ -237,7 +239,7 @@ async function load() {
 
       const base: Partial<CalendarEntry> = {
         id: m.id as number, title: m.title as string, hasFile: m.hasFile as boolean,
-        isFinale: false, isSeasonPack: false, radarrId: m.id as number, app: 'radarr',
+        isFinale: false, isPremiere: false, isSeasonPack: false, radarrId: m.id as number, app: 'radarr',
         overview: m.overview as string | undefined,
         moviePosterUrl: posterFromImages(mi) ?? undefined,
         movieYear:     m.year as number | undefined,
@@ -259,9 +261,12 @@ async function load() {
       const dateUtc = (e.airDateUtc ?? e.airDate) as string | undefined;
       if (!dateUtc) continue;
       const ser = e.series as any;
-      const isFinale = ['seasonFinale','seriesFinale','midSeasonFinale'].includes(
-        (e.finaleType as string) ?? (e.episodeType as string) ?? '');
+      // Sonarr finaleType values: 'season', 'series', 'midSeason' (NOT 'seasonFinale' etc.)
+      const finaleType = ((e.finaleType as string) ?? '').toLowerCase();
+      const isFinale = ['season','series','midseason'].includes(finaleType);
       const sn = e.seasonNumber as number;
+      const en = e.episodeNumber as number;
+      const isPremiere = en === 1;
       const localDate = new Date(dateUtc);
       const serRatings = ser?.ratings as any;
 
@@ -289,7 +294,7 @@ async function load() {
 
       mapped.push({
         id: e.id as number, title: e.title as string, hasFile: e.hasFile as boolean,
-        isFinale, isSeasonPack: sn===0, app: 'sonarr',
+        isFinale, isPremiere, isSeasonPack: sn===0, app: 'sonarr',
         seriesId:    ser?.id,
         seriesTitle: ser?.title,
         seriesPosterUrl: posterFromImages(ser?.images) ?? undefined,
@@ -300,7 +305,7 @@ async function load() {
         seriesRatingValue: serRatings?.value,
         seriesStatus: ser?.status,
         seriesSeasonCount: (ser?.seasons as any[])?.filter((s:any)=>s.seasonNumber>0).length,
-        seasonNumber: sn, episodeNumber: e.episodeNumber as number,
+        seasonNumber: sn, episodeNumber: en,
         overview: e.overview as string | undefined,
         airTime: dateUtc.includes('T') ? localDate.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}) : undefined,
         dateKey: fmtDate(localDate),
@@ -318,7 +323,7 @@ async function load() {
       mapped.push({
         id: a.id as number, title: a.title as string,
         hasFile: ((a.statistics as any)?.trackFileCount ?? 0) > 0,
-        isFinale: false, isSeasonPack: false, app: 'lidarr',
+        isFinale: false, isPremiere: false, isSeasonPack: false, app: 'lidarr',
         dateKey: date.slice(0,10), navPath: `/music`,
       });
     }
@@ -361,7 +366,7 @@ const displayEntries = computed(() => {
     for (const eps of groups.values()) {
       if (eps.length===1) { list.push(eps[0]); continue; }
       list.push({...eps[0], title:`${eps.length} Episoden`, episodeNumber:undefined,
-        isFinale:eps.some(e=>e.isFinale), bundledCount:eps.length});
+        isFinale:eps.some(e=>e.isFinale), isPremiere:eps.some(e=>e.isPremiere), bundledCount:eps.length});
     }
     list.sort((a,b)=>a.dateKey.localeCompare(b.dateKey));
   }
@@ -511,11 +516,10 @@ function updatePos(ev: MouseEvent) {
           </div>
         </template>
 
-        <!-- ── EINZELNE EPISODE ── neue reichhaltige Episodenbox ── -->
+        <!-- ── EINZELNE EPISODE ── -->
         <template v-else-if="tooltipType==='episode'">
           <div class="tt-bar" style="background:#22c55e"/>
           <div class="tt-body">
-            <!-- Header: Poster + Serientitel + Episode -->
             <div class="tt-row-header">
               <img v-if="hoverEntry.seriesPosterUrl" :src="hoverEntry.seriesPosterUrl" class="tt-poster"/>
               <div class="tt-header-info">
@@ -529,11 +533,7 @@ function updatePos(ev: MouseEvent) {
                 </div>
               </div>
             </div>
-
-            <!-- Episode Overview -->
             <p v-if="hoverEntry.overview" class="tt-overview">{{ hoverEntry.overview.length>200?hoverEntry.overview.substring(0,200)+'…':hoverEntry.overview }}</p>
-
-            <!-- Datei-Meta (wie Filme-Toolbox) -->
             <div class="tt-meta">
               <span v-if="hoverEntry.episodeQualityName" class="tt-badge-quality">{{ hoverEntry.episodeQualityName }}</span>
               <span v-else-if="hoverEntry.episodeQuality" class="tt-badge-quality">{{ hoverEntry.episodeQuality }}</span>
@@ -541,16 +541,12 @@ function updatePos(ev: MouseEvent) {
               <span v-if="hoverEntry.airTime && showAirTime">🕐 {{ hoverEntry.airTime }}</span>
               <span class="tt-have">✓ Vorhanden</span>
             </div>
-
-            <!-- Dateigröße + Sprachen + Release Group -->
             <div class="tt-file-info">
               <span v-if="fmtSize(hoverEntry.episodeSize)" class="tt-file-size">💾 {{ fmtSize(hoverEntry.episodeSize) }}</span>
               <span v-if="hoverEntry.episodeLanguages?.length" class="tt-langs">🌐 {{ hoverEntry.episodeLanguages.join(' / ') }}</span>
               <span v-if="hoverEntry.episodeReleaseGroup" class="tt-relgrp">{{ hoverEntry.episodeReleaseGroup }}</span>
               <span v-if="hoverEntry.episodeCutoffNotMet" class="tt-cutoff">⚠ Cutoff</span>
             </div>
-
-            <!-- Network + Rating -->
             <div class="tt-bottom-row">
               <span v-if="hoverEntry.seriesNetwork" class="tt-network">{{ hoverEntry.seriesNetwork }}</span>
               <div v-if="hoverEntry.seriesImdbRating || hoverEntry.seriesRatingValue" class="tt-ratings">
@@ -558,17 +554,14 @@ function updatePos(ev: MouseEvent) {
                 <span v-else-if="hoverEntry.seriesRatingValue" class="tt-imdb">★ {{ hoverEntry.seriesRatingValue.toFixed(1) }}</span>
               </div>
             </div>
-
-            <!-- Tech Badges -->
             <div v-if="hoverEntry.episodeTechBadges?.length" class="tt-tech">
               <span v-for="b in hoverEntry.episodeTechBadges" :key="b.label"
                 class="tt-tbadge" :style="`color:${b.color};border-color:${b.color}55`">{{ b.label }}</span>
               <span v-if="hoverEntry.episodeFps" class="tt-tbadge" style="color:#666;border-color:#66666655">{{ hoverEntry.episodeFps?.toFixed(3) }} fps</span>
               <span v-if="hoverEntry.episodeBitDepth && hoverEntry.episodeBitDepth!==8" class="tt-tbadge" style="color:#bb86fc;border-color:#bb86fc55">{{ hoverEntry.episodeBitDepth }}-bit</span>
             </div>
-
-            <!-- Staffelfinale -->
             <div v-if="hoverEntry.isFinale && showFinaleSymbol" class="tt-finale-tag">★ Staffelfinale</div>
+            <div v-if="hoverEntry.isPremiere && showPremiereSymbol" class="tt-premiere-tag">▶ Staffelstart</div>
           </div>
         </template>
 
@@ -612,6 +605,7 @@ function updatePos(ev: MouseEvent) {
               <span v-if="hoverEntry.app==='sonarr'" class="tt-ep-badge-sm">{{ epLabel(hoverEntry) }}</span>
               <span v-if="hoverEntry.airTime && showAirTime">{{ hoverEntry.airTime }}</span>
               <span v-if="hoverEntry.isFinale && showFinaleSymbol" style="color:#f5c518">★ Finale</span>
+              <span v-if="hoverEntry.isPremiere && showPremiereSymbol" style="color:#22c65b">▶ Start</span>
             </div>
             <p v-if="hoverEntry.seriesTitle" class="tt-sub">{{ hoverEntry.title }}</p>
             <p v-if="hoverEntry.overview" class="tt-overview">{{ hoverEntry.overview.length>200?hoverEntry.overview.substring(0,200)+'…':hoverEntry.overview }}</p>
@@ -645,7 +639,8 @@ function updatePos(ev: MouseEvent) {
               <div class="opt-row"><div class="opt-row-text"><p>Mehrere Episoden zusammenfassen</p><span>Serien mit mehreren Folgen am selben Tag bündeln</span></div><button :class="['tog',{on:bundleEpisodes}]" @click="bundleEpisodes=!bundleEpisodes"><span class="tog-knob"/></button></div>
               <div class="opt-row"><div class="opt-row-text"><p>Episodeninformationen anzeigen</p><span>Titel und Nummer der Episode einblenden</span></div><button :class="['tog',{on:showEpInfo}]" @click="showEpInfo=!showEpInfo"><span class="tog-knob"/></button></div>
               <div class="opt-row"><div class="opt-row-text"><p>Symbol für Staffel-/Serienfinale</p><span>Zeigt ★ bei letzter Episode einer Staffel oder Serie</span></div><button :class="['tog',{on:showFinaleSymbol}]" @click="showFinaleSymbol=!showFinaleSymbol"><span class="tog-knob"/></button></div>
-              <div class="opt-row"><div class="opt-row-text"><p>Symbol für Specials</p><span>Zeigt ★ bei Episoden aus Staffel 0</span></div><button :class="['tog',{on:showSpecials}]" @click="showSpecials=!showSpecials"><span class="tog-knob"/></button></div>
+              <div class="opt-row"><div class="opt-row-text"><p>Symbol für Staffel-/Serienstart</p><span>Zeigt ▶ bei erster Episode einer Staffel (z.B. S01E01, S04E01)</span></div><button :class="['tog',{on:showPremiereSymbol}]" @click="showPremiereSymbol=!showPremiereSymbol"><span class="tog-knob"/></button></div>
+              <div class="opt-row"><div class="opt-row-text"><p>Symbol für Specials</p><span>Zeigt ◈ bei Episoden aus Staffel 0</span></div><button :class="['tog',{on:showSpecials}]" @click="showSpecials=!showSpecials"><span class="tog-knob"/></button></div>
             </div>
             <div class="opt-section">
               <div class="opt-section-title" style="color:var(--lidarr)">
@@ -746,17 +741,20 @@ function updatePos(ev: MouseEvent) {
               @click="navTo(entry)" @mouseenter="(e)=>onEnter(e,entry)" @mousemove="onMove" @mouseleave="onLeave">
               <div class="evt-accent" :style="`background:${appColor(entry.app)}`"/>
               <div class="evt-body">
+                <!-- Top row: Icon + Symbols + Content name (left) · Time (right) -->
                 <div class="evt-top">
                   <span class="evt-icon">{{ relTypeLabel(entry.releaseType)||(entry.app==='sonarr'?'📺':entry.app==='lidarr'?'🎵':'') }}</span>
                   <span v-if="entry.isFinale&&showFinaleSymbol" class="evt-finale">★</span>
+                  <span v-if="entry.isPremiere&&showPremiereSymbol" class="evt-premiere">▶</span>
                   <span v-if="entry.isSeasonPack" class="evt-special">◈</span>
+                  <span class="evt-name">{{ entry.seriesTitle??entry.title }}</span>
                   <span v-if="entry.airTime&&showAirTime" class="evt-time">{{ entry.airTime }}</span>
                 </div>
-                <p class="evt-title">{{ entry.seriesTitle??entry.title }}</p>
-                <p v-if="entry.seriesTitle&&showEpInfo" class="evt-ep">
-                  {{ entry.bundledCount?`${entry.bundledCount} Ep.`:epLabel(entry) }}
-                  {{ !entry.bundledCount?entry.title:'' }}
-                </p>
+                <!-- Bottom row: Episode name (left) · Episode number (right) -->
+                <div v-if="entry.app==='sonarr'&&showEpInfo" class="evt-bottom">
+                  <span class="evt-ep">{{ entry.bundledCount?`${entry.bundledCount} Ep.`:entry.title }}</span>
+                  <span v-if="epLabel(entry)" class="evt-epnum">{{ epLabel(entry) }}</span>
+                </div>
               </div>
             </div>
           </template>
@@ -779,7 +777,9 @@ function updatePos(ev: MouseEvent) {
             :style="`background:color-mix(in srgb,${appColor(entry.app)} 15%,var(--bg-elevated));border-left:2px solid ${appColor(entry.app)}${entry.hasFile?';border-right:1px solid rgba(34,197,94,.45)':''}`"
             @click="navTo(entry)" @mouseenter="(e)=>onEnter(e,entry)" @mousemove="onMove" @mouseleave="onLeave">
             <span v-if="entry.isFinale&&showFinaleSymbol" class="mc-finale">★</span>
+            <span v-if="entry.isPremiere&&showPremiereSymbol" class="mc-premiere">▶</span>
             <span class="mc-evt-title">{{ entry.seriesTitle??entry.title }}</span>
+            <span v-if="entry.app==='sonarr'&&epLabel(entry)" class="mc-evt-ep">{{ epLabel(entry) }}</span>
           </div>
         </div>
       </div>
@@ -811,6 +811,7 @@ function updatePos(ev: MouseEvent) {
                   <span v-if="entry.seriesTitle" class="entry-series">{{ entry.seriesTitle }}</span>
                   <span v-if="epLabel(entry)&&showEpInfo" class="entry-episode">{{ epLabel(entry) }}</span>
                   <span v-if="entry.isFinale&&showFinaleSymbol" class="entry-finale">★ Finale</span>
+                  <span v-if="entry.isPremiere&&showPremiereSymbol" class="entry-premiere">▶ Start</span>
                   <span v-if="entry.airTime&&showAirTime" class="entry-time">{{ entry.airTime }}</span>
                   <span v-if="entry.hasFile" class="entry-available">✓</span>
                 </div>
@@ -889,26 +890,34 @@ function updatePos(ev: MouseEvent) {
 .wdh-num { font-size: var(--text-base); font-weight: 700; color: var(--text-secondary); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
 .wdh-num-today { background: var(--accent); color: #fff; }
 .week-body { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); }
-.week-col { display: flex; flex-direction: column; gap: 3px; padding: var(--space-2) var(--space-1); border-right: 1px solid var(--bg-border); min-width: 0; overflow: hidden; }
+.week-col { display: flex; flex-direction: column; gap: 4px; padding: var(--space-2) var(--space-1); border-right: 1px solid var(--bg-border); min-width: 0; overflow: hidden; }
 .week-col:last-child { border-right: none; }
 .wcol-today { background: rgba(155,0,69,.03); }
 .wcol-past { opacity: .5; }
 .week-col-empty { min-height: 80px; }
-/* Option B: grüner rechter Rand bei hasFile */
+
+/* Week event card */
 .week-event { display: flex; border-radius: var(--radius-sm); border: 1px solid var(--bg-border); overflow: hidden; transition: all .12s; background: var(--bg-surface); }
 .week-event.evt-has { border-right: 2px solid rgba(34,197,94,.55); }
 .week-event.evt-clickable { cursor: pointer; }
 .week-event.evt-clickable:hover { border-color: rgba(255,255,255,.15); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,.3); }
 .week-event.evt-has.evt-clickable:hover { border-right-color: rgba(34,197,94,.85); }
 .evt-accent { width: 3px; flex-shrink: 0; }
-.evt-body { flex: 1; min-width: 0; padding: 4px 5px; }
-.evt-top { display: flex; align-items: center; gap: 3px; margin-bottom: 2px; }
-.evt-icon { font-size: 10px; line-height: 1; }
-.evt-finale { font-size: 10px; color: var(--sabnzbd); font-weight: 700; }
-.evt-special { font-size: 10px; color: var(--text-muted); }
-.evt-time { font-size: 9px; color: var(--text-muted); margin-left: auto; font-variant-numeric: tabular-nums; }
-.evt-title { font-size: 10px; font-weight: 600; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0; line-height: 1.3; }
-.evt-ep { font-size: 9px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0; }
+.evt-body { flex: 1; min-width: 0; padding: 5px 6px; display: flex; flex-direction: column; gap: 2px; }
+
+/* Top row: icon + symbols + content name */
+.evt-top { display: flex; align-items: center; gap: 3px; min-width: 0; }
+.evt-icon { font-size: 11px; line-height: 1; flex-shrink: 0; }
+.evt-finale { font-size: 11px; color: var(--sabnzbd); font-weight: 700; flex-shrink: 0; }
+.evt-premiere { font-size: 9px; color: #22c65b; font-weight: 700; flex-shrink: 0; }
+.evt-special { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+.evt-name { font-size: 11.5px; font-weight: 600; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.3; flex: 1; min-width: 0; }
+
+/* Bottom row: episode name (left) · episode number (right) */
+.evt-bottom { display: flex; align-items: baseline; gap: 4px; min-width: 0; }
+.evt-ep { font-size: 10.5px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; margin: 0; line-height: 1.3; }
+.evt-time { font-size: 10px; color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; margin-left: auto; flex-shrink: 0; }
+.evt-epnum { font-size: 10.5px; font-weight: 600; color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0; }
 
 /* ── Month View ── */
 .month-view { border: 1px solid var(--bg-border); border-radius: var(--radius-lg); overflow: hidden; }
@@ -925,7 +934,9 @@ function updatePos(ev: MouseEvent) {
 .mc-event { display: flex; align-items: center; gap: 3px; border-radius: 3px; padding: 1px 4px; cursor: pointer; overflow: hidden; flex-shrink: 0; }
 .mc-event:hover { opacity: .75; }
 .mc-finale { font-size: 9px; color: var(--sabnzbd); flex-shrink: 0; }
-.mc-evt-title { font-size: 9px; font-weight: 600; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.mc-premiere { font-size: 8px; color: #22c65b; flex-shrink: 0; }
+.mc-evt-title { font-size: 10px; font-weight: 600; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.mc-evt-ep { font-size: 10px; font-weight: 600; color: var(--text-secondary); flex-shrink: 0; white-space: nowrap; font-variant-numeric: tabular-nums; }
 
 /* ── List View ── */
 .list-view { flex: 1; }
@@ -949,6 +960,7 @@ function updatePos(ev: MouseEvent) {
 .entry-series  { font-size: var(--text-xs); color: var(--text-tertiary); font-weight: 500; }
 .entry-episode { font-size: var(--text-xs); color: var(--text-muted); font-variant-numeric: tabular-nums; font-weight: 600; }
 .entry-finale  { font-size: var(--text-xs); color: var(--sabnzbd); font-weight: 700; }
+.entry-premiere { font-size: var(--text-xs); color: #22c65b; font-weight: 700; }
 .entry-time    { font-size: var(--text-xs); color: var(--text-muted); margin-left: auto; }
 .entry-available { font-size: var(--text-xs); color: var(--status-success); font-weight: 700; }
 .entry-title   { font-size: var(--text-sm); color: var(--text-secondary); font-weight: 500; margin: 0; }
@@ -1010,6 +1022,7 @@ function updatePos(ev: MouseEvent) {
 .tt-tbadge { font-size: 9px; padding: 1px 6px; border-radius: 4px; background: rgba(0,0,0,.4); font-weight: 700; border: 1px solid; }
 
 .tt-finale-tag { display: inline-flex; margin-top: 5px; font-size: 9px; font-weight: 700; padding: 1px 7px; border-radius: 99px; background: rgba(251,191,36,.1); color: #f5c518; border: 1px solid rgba(251,191,36,.2); }
+.tt-premiere-tag { display: inline-flex; margin-top: 5px; font-size: 9px; font-weight: 700; padding: 1px 7px; border-radius: 99px; background: rgba(34,198,91,.1); color: #22c65b; border: 1px solid rgba(34,198,91,.2); }
 
 /* Empty */
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-12) var(--space-4); gap: var(--space-3); text-align: center; }

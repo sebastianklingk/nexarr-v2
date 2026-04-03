@@ -1,9 +1,18 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import { useApi } from '../composables/useApi.js';
+import { useMoviesStore } from '../stores/movies.store.js';
+import { useSeriesStore } from '../stores/series.store.js';
+import { useMusicStore } from '../stores/music.store.js';
+import { posterUrl as getPosterUrl } from '../utils/images.js';
 import type { TautulliActivity, TautulliStream } from '@nexarr/shared';
 
 const { get } = useApi();
+const router = useRouter();
+const moviesStore = useMoviesStore();
+const seriesStore = useSeriesStore();
+const musicStore  = useMusicStore();
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 const activeTab = ref<'activity' | 'history' | 'libraries' | 'graphs'>('activity');
@@ -20,7 +29,7 @@ async function loadActivity() {
 }
 
 // Watch Stats (get_home_stats)
-interface StatRow { title?: string; grandparent_title?: string; year?: number; play_count: number; users_watched?: number; friendly_name?: string; user?: string; platform?: string; thumb?: string; grandparent_thumb?: string; total_plays?: number; last_play?: number }
+interface StatRow { title?: string; grandparent_title?: string; year?: number; play_count: number; users_watched?: number; friendly_name?: string; user?: string; platform?: string; thumb?: string; grandparent_thumb?: string; total_plays?: number; last_play?: number; count?: number; media_type?: string; rating_key?: string; user_thumb?: string }
 interface StatCard { stat_id: string; stat_type: string; rows: StatRow[] }
 const stats = ref<StatCard[]>([]);
 const isLoadingStats = ref(true);
@@ -45,16 +54,13 @@ async function loadLibrariesQuick() {
   } catch { /* */ }
 }
 
-// Expanded streams
-const expanded = ref<Set<string>>(new Set());
-function toggleExpand(id: string) {
-  const n = new Set(expanded.value);
-  if (n.has(id)) n.delete(id); else n.add(id);
-  expanded.value = n;
-}
+// (expand feature removed – all info shown directly on card)
 
 onMounted(async () => {
-  await Promise.all([loadActivity(), loadStats(), loadLibrariesQuick()]);
+  await Promise.all([
+    loadActivity(), loadStats(), loadLibrariesQuick(),
+    moviesStore.fetchMovies(), seriesStore.fetchSeries(), musicStore.fetchArtists(),
+  ]);
   pollTimer = setInterval(loadActivity, 5000);
 });
 onUnmounted(() => clearInterval(pollTimer));
@@ -64,11 +70,21 @@ const streamCount = computed(() => activity.value?.stream_count ?? 0);
 
 // Stat card helpers
 function statCard(id: string) { return stats.value.find(s => s.stat_id === id); }
-function maxPlays(card?: StatCard) { return Math.max(1, ...(card?.rows ?? []).map(r => r.play_count ?? r.total_plays ?? 0)); }
+function maxPlays(card?: StatCard) { return Math.max(1, ...(card?.rows ?? []).map(r => r.play_count ?? r.total_plays ?? r.count ?? 0)); }
 function barW(val: number, max: number) { return `${Math.round((val / max) * 100)}%`; }
+function statVal(row: StatRow, id: string): number | string {
+  // most_concurrent: count-Feld statt play_count
+  if (id === 'most_concurrent') return row.count ?? row.play_count ?? 0;
+  // last_watched: kein Count, zeige friendly_name
+  if (id === 'last_watched') return row.friendly_name ?? row.user ?? '';
+  // popular: users_watched
+  if (id.includes('popular')) return row.users_watched ?? row.play_count ?? 0;
+  return row.play_count ?? row.total_plays ?? 0;
+}
 function statLabel(row: StatRow, id: string) {
   if (id.includes('user'))     return row.friendly_name ?? row.user ?? '–';
   if (id.includes('platform')) return row.platform ?? '–';
+  if (id === 'most_concurrent') return row.title ?? '–';
   if (row.grandparent_title)   return row.grandparent_title;
   return row.title ?? '–';
 }
@@ -85,6 +101,75 @@ function statColor(id: string) {
   if (id.includes('platform'))  return 'var(--plex)';
   if (id.includes('library'))   return 'var(--tautulli)';
   return 'var(--text-muted)';
+}
+
+// Bibliotheks-Abgleich: Tautulli-Titel → Library-Item mit Poster + Route
+interface ResolvedItem { route: string; poster: string | null }
+
+// Normalisierung für besseres Matching (Sonderzeichen, „–“ → „-“, trim)
+function norm(s: string) { return s.toLowerCase().replace(/[^a-z0-9à-ÿöäüß]/g, '').trim(); }
+
+const movieMap = computed(() => {
+  const m = new Map<string, ResolvedItem>();
+  for (const movie of moviesStore.movies) {
+    m.set(norm(movie.title), {
+      route: `/movies/${movie.id}`,
+      poster: getPosterUrl(movie.images, 'w92') ?? null,
+    });
+  }
+  return m;
+});
+
+const seriesMap = computed(() => {
+  const m = new Map<string, ResolvedItem>();
+  for (const s of seriesStore.series) {
+    m.set(norm(s.title), {
+      route: `/series/${s.id}`,
+      poster: getPosterUrl(s.images as any, 'w92') ?? null,
+    });
+  }
+  return m;
+});
+
+const artistMap = computed(() => {
+  const m = new Map<string, ResolvedItem>();
+  for (const a of musicStore.artists) {
+    m.set(norm(a.artistName), {
+      route: `/music/${a.id}`,
+      poster: getPosterUrl(a.images as any, 'w92') ?? null,
+    });
+  }
+  return m;
+});
+
+function resolveStatItem(row: StatRow, statId: string): ResolvedItem | null {
+  const title = norm(row.grandparent_title ?? row.title ?? '');
+  if (!title) return null;
+
+  if (statId.includes('movie')) return movieMap.value.get(title) ?? null;
+  if (statId.includes('tv'))    return seriesMap.value.get(title) ?? null;
+  if (statId.includes('music')) return artistMap.value.get(title) ?? null;
+  if (statId.includes('librar')) {
+    // Libraries können Filme ODER Serien sein – beides probieren
+    return movieMap.value.get(title) ?? seriesMap.value.get(title) ?? artistMap.value.get(title) ?? null;
+  }
+
+  // last_watched: anhand media_type entscheiden
+  if (statId === 'last_watched') {
+    if (row.media_type === 'movie')   return movieMap.value.get(norm(row.title ?? '')) ?? null;
+    if (row.media_type === 'episode') return seriesMap.value.get(norm(row.grandparent_title ?? '')) ?? null;
+    if (row.media_type === 'track')   return artistMap.value.get(norm(row.grandparent_title ?? row.title ?? '')) ?? null;
+  }
+  return null;
+}
+
+function navigateStat(row: StatRow, id: string) {
+  const resolved = resolveStatItem(row, id);
+  if (resolved) { router.push(resolved.route); return; }
+  // Fallback: Suche
+  const title = row.grandparent_title ?? row.title;
+  if (title && (id.includes('movie') || id.includes('tv') || id.includes('music') || id === 'last_watched' || id.includes('librar')))
+    router.push(`/search?q=${encodeURIComponent(title)}`);
 }
 
 const statCardIds = [
@@ -281,6 +366,16 @@ function locLbl(s: TautulliStream) { return s.location==='lan'?'LAN':s.location=
     </div>
   </div>
 
+  <!-- Library Stats Bar (im Header, über Tabs) -->
+  <div v-if="libraries.length" class="lib-bar">
+    <div v-for="lib in libraries" :key="lib.section_name" class="lib-chip">
+      <span class="lib-icon">{{ libIcon(lib.section_type) }}</span>
+      <span class="lib-name">{{ lib.section_name }}</span>
+      <span class="lib-count">{{ lib.count }}</span>
+      <span v-if="lib.plays" class="lib-plays">· {{ lib.plays }} Plays</span>
+    </div>
+  </div>
+
   <!-- Tab Bar -->
   <div class="tab-bar">
     <button v-for="t in [{k:'activity',l:'Aktivität'},{k:'history',l:'Verlauf'},{k:'libraries',l:'Bibliotheken'},{k:'graphs',l:'Grafiken'}]" :key="t.k"
@@ -291,81 +386,62 @@ function locLbl(s: TautulliStream) { return s.location==='lan'?'LAN':s.location=
   <div v-if="activeTab==='activity'" class="tab-body">
     <!-- Active Streams -->
     <section v-if="sessions.length" class="streams-section">
-      <div v-for="s in sessions" :key="s.session_id" class="sc" @click="toggleExpand(s.session_id)">
+      <div v-for="s in sessions" :key="s.session_id" class="sc">
         <div class="sc-accent" />
         <div class="sc-row">
+          <!-- Poster -->
           <div class="sc-poster">
-            <img v-if="plexImg(s.grandparent_thumb??s.parent_thumb??s.thumb)" :src="plexImg(s.grandparent_thumb??s.parent_thumb??s.thumb)!" loading="lazy" />
+            <img v-if="plexImg(s.grandparent_thumb??s.parent_thumb??s.thumb,300)" :src="plexImg(s.grandparent_thumb??s.parent_thumb??s.thumb,300)!" loading="lazy" />
             <div v-else class="sc-ph">{{ mediaIcon(s.media_type as string) }}</div>
           </div>
+
+          <!-- Info Grid (Tautulli-Style Label:Value) -->
           <div class="sc-info">
-            <div class="sc-line1">
-              <span :class="['sc-state',stateClass(s.state as string)]">{{ stateIcon(s.state as string) }}</span>
-              <span class="sc-ttl">{{ streamTitle(s) }}</span>
-              <span class="sc-pct">{{ s.progress_percent }}%</span>
+            <div class="sc-info-grid">
+              <span class="sc-lbl">PRODUCT</span><span class="sc-val">{{ s.product ?? '–' }}{{ s.product_version ? ' v'+s.product_version : '' }}</span>
+              <span class="sc-lbl">PLAYER</span><span class="sc-val">{{ s.player ?? '–' }}{{ s.platform_name && s.platform_name !== s.player ? ' ('+s.platform_name+(s.platform_version?' '+s.platform_version:'')+')' : '' }}</span>
+              <span class="sc-lbl">QUALITY</span><span class="sc-val">{{ s.quality_profile ?? 'Original' }}{{ s.video_bitrate ? ` (${fmtBitrate(s.video_bitrate as number)})` : s.stream_bitrate ? ` (${fmtBitrate(s.stream_bitrate as number)})` : '' }}</span>
+              <span class="sc-lbl sc-lbl-gap">STREAM</span><span class="sc-val">{{ decLabel(s.transcode_decision as string) }}</span>
+              <span class="sc-lbl">CONTAINER</span><span class="sc-val">{{ decLabel(s.stream_container_decision as string) }}{{ s.stream_container ? ` (${(s.stream_container as string).toUpperCase()})` : '' }}</span>
+              <span v-if="s.media_type!=='track'" class="sc-lbl">VIDEO</span>
+              <span v-if="s.media_type!=='track'" class="sc-val">{{ decLabel(s.video_decision as string) }} ({{ s.stream_video_codec ?? s.video_codec ?? '–' }} {{ s.stream_video_full_resolution ?? s.stream_video_resolution ?? s.video_resolution ?? '' }}{{ s.video_dynamic_range ? ' '+s.video_dynamic_range : '' }})</span>
+              <span class="sc-lbl">AUDIO</span><span class="sc-val">{{ decLabel(s.audio_decision as string) }} ({{ s.audio_language ?? '' }}{{ s.audio_language && s.stream_audio_codec ? ' - ' : '' }}{{ s.stream_audio_codec ?? s.audio_codec ?? '–' }} {{ channelLbl(s.stream_audio_channels as number, s.stream_audio_channel_layout as string) }})</span>
+              <span v-if="s.media_type!=='track'" class="sc-lbl">SUBTITLE</span>
+              <span v-if="s.media_type!=='track'" class="sc-val">{{ s.subtitle_language ? decLabel(s.subtitle_decision as string) + ' (' + s.subtitle_language + (s.subtitle_codec ? ' - ' + (s.subtitle_codec as string).toUpperCase() : '') + ')' : 'None' }}</span>
+              <!-- Transcode-Details (nur bei Transcode, untereinander) -->
+              <template v-if="(s.transcode_decision as string)?.toLowerCase()==='transcode'">
+                <span class="sc-lbl sc-lbl-gap">TRANSCODE</span>
+                <span class="sc-val sc-val-wrap">
+                  <span v-if="s.transcode_video_codec" class="tc-line">Video: {{ s.video_codec }} → {{ s.transcode_video_codec }}</span>
+                  <span v-if="s.transcode_audio_codec" class="tc-line">Audio: {{ s.audio_codec }} → {{ s.transcode_audio_codec }}</span>
+                  <span v-if="s.transcode_speed" class="tc-line">Speed: {{ s.transcode_speed }}×{{ s.transcode_throttled ? ' (gedrosselt)' : '' }}</span>
+                  <span v-if="s.transcode_hw_decoding||s.transcode_hw_encoding" class="tc-line tc-hw">{{ s.transcode_hw_decoding ? 'HW-Dec' : '' }}{{ s.transcode_hw_decoding && s.transcode_hw_encoding ? ' · ' : '' }}{{ s.transcode_hw_encoding ? 'HW-Enc' : '' }}</span>
+                </span>
+              </template>
+              <span class="sc-lbl sc-lbl-gap">LOCATION</span><span class="sc-val">🔒 {{ locLbl(s) }}{{ s.ip_address ? ': '+s.ip_address : '' }}</span>
+              <span class="sc-lbl">BANDWIDTH</span><span class="sc-val">{{ fmtBw(s.bandwidth as number) }}{{ s.stream_bitrate && s.stream_bitrate !== s.bandwidth ? ' (Stream: '+fmtBitrate(s.stream_bitrate as number)+')' : '' }}</span>
             </div>
-            <div class="sc-line2">
-              <span class="sc-user">{{ s.friendly_name }}</span><span class="sep">·</span>
-              <span>{{ s.player ?? s.product ?? s.platform }}</span>
-              <span v-if="s.bandwidth" class="sep">·</span>
-              <span v-if="s.bandwidth">{{ fmtBitrate(s.bandwidth as number) }}</span>
-            </div>
-            <div class="sc-badges">
-              <span :class="['bdg',decClass(s.transcode_decision as string)]">{{ decLabel(s.transcode_decision as string) }}</span>
-              <span v-if="s.stream_video_full_resolution||s.stream_video_resolution" class="bdg bdg-res">{{ s.stream_video_full_resolution??s.stream_video_resolution }}</span>
-              <span v-if="s.stream_video_codec" class="bdg">{{ (s.stream_video_codec as string).toUpperCase() }}</span>
-              <span v-if="s.video_dynamic_range||s.stream_video_dynamic_range" class="bdg bdg-hdr">{{ s.stream_video_dynamic_range??s.video_dynamic_range }}</span>
-              <span v-if="s.stream_audio_codec" class="bdg">{{ (s.stream_audio_codec as string).toUpperCase() }} {{ channelLbl(s.stream_audio_channels as number,s.stream_audio_channel_layout as string) }}</span>
-              <span v-if="s.subtitle_language" class="bdg bdg-sub">🗨 {{ s.subtitle_language }}</span>
-              <span class="bdg bdg-loc">{{ locLbl(s) }}</span>
-            </div>
-            <div class="sc-prog">
-              <div class="sc-prog-bar"><div class="sc-prog-fill" :style="{width:s.progress_percent+'%'}" /></div>
+            <!-- Progress (rechts oben) -->
+            <div class="sc-eta">
               <span class="sc-prog-time">{{ fmtDur(s.view_offset as number) }} / {{ fmtDur(s.duration as number) }}</span>
             </div>
+            <!-- Progress Bar -->
+            <div class="sc-prog">
+              <div class="sc-prog-bar"><div class="sc-prog-fill" :style="{width:s.progress_percent+'%'}" /></div>
+            </div>
           </div>
-          <div class="sc-arrow"><svg :class="{open:expanded.has(s.session_id)}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
         </div>
-        <!-- Expanded -->
-        <div v-if="expanded.has(s.session_id)" class="sc-detail" @click.stop>
-          <div class="det-grid">
-            <div class="det-sec">
-              <h4>🎞️ Video</h4>
-              <p><b>Quelle:</b> {{ s.video_codec ?? '–' }} · {{ s.video_full_resolution ?? s.video_resolution ?? '–' }}{{ s.video_dynamic_range ? ' · '+s.video_dynamic_range : '' }}{{ s.video_bitrate ? ' · '+fmtBitrate(s.video_bitrate as number) : '' }}</p>
-              <p><b>Stream:</b> {{ s.stream_video_codec ?? '–' }} · {{ s.stream_video_full_resolution ?? s.stream_video_resolution ?? '–' }}{{ s.stream_video_bitrate ? ' · '+fmtBitrate(s.stream_video_bitrate as number) : '' }}</p>
-              <p><b>Entscheidung:</b> <span :class="decClass(s.video_decision as string)">{{ decLabel(s.video_decision as string) }}</span></p>
-            </div>
-            <div class="det-sec">
-              <h4>🔊 Audio</h4>
-              <p><b>Quelle:</b> {{ s.audio_codec ?? '–' }}{{ s.audio_channel_layout ? ' · '+s.audio_channel_layout : '' }}{{ s.audio_language ? ' · '+s.audio_language : '' }}</p>
-              <p><b>Stream:</b> {{ s.stream_audio_codec ?? '–' }}{{ s.stream_audio_channel_layout ? ' · '+s.stream_audio_channel_layout : '' }}</p>
-              <p><b>Entscheidung:</b> <span :class="decClass(s.audio_decision as string)">{{ decLabel(s.audio_decision as string) }}</span></p>
-            </div>
-            <div v-if="s.subtitle_language||s.subtitle_codec" class="det-sec">
-              <h4>🗨 Untertitel</h4>
-              <p>{{ s.subtitle_language ?? '–' }} · {{ s.subtitle_codec ?? '–' }} · {{ decLabel(s.subtitle_decision as string) }}{{ s.subtitle_forced ? ' · Forced' : '' }}</p>
-            </div>
-            <div v-if="(s.transcode_decision as string)?.toLowerCase()==='transcode'" class="det-sec">
-              <h4>⚙️ Transcode</h4>
-              <p v-if="s.transcode_video_codec"><b>Video:</b> {{ s.video_codec }} → {{ s.transcode_video_codec }}</p>
-              <p v-if="s.transcode_audio_codec"><b>Audio:</b> {{ s.audio_codec }} → {{ s.transcode_audio_codec }}</p>
-              <p v-if="s.transcode_speed"><b>Speed:</b> {{ s.transcode_speed }}×{{ s.transcode_throttled ? ' (gedrosselt)' : '' }}</p>
-              <p v-if="s.transcode_hw_decoding||s.transcode_hw_encoding"><b>HW:</b> {{ s.transcode_hw_decoding?'Dec':'–' }} / {{ s.transcode_hw_encoding?'Enc':'–' }}</p>
-            </div>
-            <div class="det-sec">
-              <h4>📱 Player</h4>
-              <p><b>Produkt:</b> {{ s.product ?? '–' }}{{ s.product_version ? ' v'+s.product_version : '' }}</p>
-              <p><b>Player:</b> {{ s.player ?? '–' }}</p>
-              <p><b>Plattform:</b> {{ s.platform_name ?? s.platform ?? '–' }}{{ s.platform_version ? ' '+s.platform_version : '' }}</p>
-            </div>
-            <div class="det-sec">
-              <h4>🌐 Netzwerk</h4>
-              <p><b>Standort:</b> {{ locLbl(s) }}{{ s.ip_address ? ' · '+s.ip_address : '' }}</p>
-              <p v-if="s.bandwidth"><b>Bandbreite:</b> {{ fmtBitrate(s.bandwidth as number) }}</p>
-              <p v-if="s.stream_bitrate"><b>Stream-Bitrate:</b> {{ fmtBitrate(s.stream_bitrate as number) }}</p>
-              <p v-if="s.quality_profile"><b>Qualität:</b> {{ s.quality_profile }}</p>
-              <p><b>Session:</b> <code>{{ s.session_id }}</code></p>
-            </div>
+
+        <!-- Bottom: Title + User -->
+        <div class="sc-bottom">
+          <span :class="['sc-state-icon',stateClass(s.state as string)]">{{ stateIcon(s.state as string) }}</span>
+          <div class="sc-bottom-info">
+            <p class="sc-ttl">{{ streamTitle(s) }}</p>
+            <p v-if="s.media_type==='episode'" class="sc-ep">📺 S{{ String(s.parent_media_index??'').padStart(2,'0') }} · E{{ String(s.media_index??'').padStart(2,'0') }}</p>
+            <p v-if="s.media_type==='track' && s.parent_title" class="sc-ep">🎵 {{ s.parent_title }}</p>
+          </div>
+          <div class="sc-bottom-user">
+            <span class="sc-user-name">{{ s.friendly_name }}</span>
           </div>
         </div>
       </div>
@@ -387,29 +463,26 @@ function locLbl(s: TautulliStream) { return s.location==='lan'?'LAN':s.location=
           <div v-if="statCard(sc.id)?.rows?.length" class="stat-card">
             <div class="stc-head"><span class="stc-icon">{{ sc.icon }}</span><span class="stc-label">{{ sc.label }}</span></div>
             <div class="stc-list">
-              <div v-for="(row,i) in statCard(sc.id)!.rows" :key="i" class="stc-row">
+              <div v-for="(row,i) in statCard(sc.id)!.rows" :key="i"
+                :class="['stc-row', { 'stc-clickable': sc.id.includes('movie')||sc.id.includes('tv')||sc.id.includes('music')||sc.id==='last_watched'||sc.id.includes('librar') }]"
+                @click="navigateStat(row, sc.id)">
                 <span class="stc-rank">{{ i+1 }}</span>
-                <span class="stc-name">{{ statLabel(row, sc.id) }}</span>
-                <span v-if="statSub(row, sc.id)" class="stc-sub">{{ statSub(row, sc.id) }}</span>
-                <div class="stc-bar-track"><div class="stc-bar-fill" :style="{width:barW(row.play_count??row.total_plays??0,maxPlays(statCard(sc.id))),background:statColor(sc.id)}" /></div>
-                <span class="stc-val">{{ row.play_count ?? row.total_plays ?? row.users_watched ?? 0 }}</span>
+                <div class="stc-poster">
+                  <img v-if="resolveStatItem(row, sc.id)?.poster" :src="resolveStatItem(row, sc.id)!.poster!" loading="lazy" />
+                  <img v-else-if="row.user_thumb" :src="row.user_thumb" loading="lazy" class="stc-avatar" />
+                  <img v-else-if="plexImg(row.grandparent_thumb ?? row.thumb)" :src="plexImg(row.grandparent_thumb ?? row.thumb)!" loading="lazy" />
+                  <span v-else class="stc-poster-ph">{{ sc.icon }}</span>
+                </div>
+                <div class="stc-content">
+                  <span class="stc-name">{{ statLabel(row, sc.id) }}</span>
+                  <span v-if="statSub(row, sc.id)" class="stc-sub">{{ statSub(row, sc.id) }}</span>
+                  <div class="stc-bar-track"><div class="stc-bar-fill" :style="{width:barW(Number(statVal(row,sc.id))||0,maxPlays(statCard(sc.id))),background:statColor(sc.id)}" /></div>
+                </div>
+                <span class="stc-val">{{ statVal(row, sc.id) }}</span>
               </div>
             </div>
           </div>
         </template>
-      </div>
-    </section>
-
-    <!-- Library Stats (compact) -->
-    <section v-if="libraries.length" class="lib-section">
-      <h2 class="section-title">Library Statistics</h2>
-      <div class="lib-grid">
-        <div v-for="lib in libraries" :key="lib.section_name" class="lib-chip">
-          <span class="lib-icon">{{ libIcon(lib.section_type) }}</span>
-          <span class="lib-name">{{ lib.section_name }}</span>
-          <span class="lib-count">{{ lib.count }}</span>
-          <span v-if="lib.plays" class="lib-plays">{{ lib.plays }} Plays</span>
-        </div>
       </div>
     </section>
   </div>
@@ -545,6 +618,17 @@ function locLbl(s: TautulliStream) { return s.location==='lan'?'LAN':s.location=
 .bw-row { display:flex; gap:var(--space-4); margin-top:var(--space-2); font-size:var(--text-sm); color:var(--text-muted); flex-wrap:wrap; }
 .bw-sum { color:var(--text-secondary); font-weight:500; }
 
+/* Library Bar (Header) */
+.lib-bar {
+  display:flex; gap:var(--space-2); flex-wrap:wrap; padding:var(--space-2) var(--space-6);
+  background:var(--bg-surface); border-bottom:1px solid var(--bg-border);
+}
+.lib-chip { display:flex; align-items:center; gap:var(--space-2); padding:2px var(--space-3); background:var(--bg-elevated); border:1px solid var(--bg-border); border-radius:var(--radius-sm); font-size:11px; }
+.lib-icon { font-size:12px; }
+.lib-name { color:var(--text-secondary); font-weight:500; }
+.lib-count { color:var(--text-primary); font-weight:700; font-variant-numeric:tabular-nums; }
+.lib-plays { color:var(--text-muted); }
+
 /* Tabs */
 .tab-bar { display:flex; border-bottom:1px solid var(--bg-border); background:var(--bg-surface); padding:0 var(--space-6); }
 .tab-btn { padding:var(--space-3) var(--space-5); font-size:var(--text-sm); color:var(--text-muted); border-bottom:2px solid transparent; margin-bottom:-1px; transition:all .15s; }
@@ -556,49 +640,44 @@ function locLbl(s: TautulliStream) { return s.location==='lan'?'LAN':s.location=
 .empty-mini { display:flex; align-items:center; gap:var(--space-3); padding:var(--space-6); color:var(--text-muted); font-size:var(--text-sm); justify-content:center; }
 
 /* ── Stream Cards ── */
-.streams-section { display:flex; flex-direction:column; gap:var(--space-3); max-width:1000px; }
-.sc { background:var(--bg-surface); border:1px solid var(--bg-border); border-radius:var(--radius-lg); overflow:hidden; cursor:pointer; transition:border-color .15s; }
+.streams-section { display:grid; grid-template-columns:repeat(auto-fill,minmax(480px,1fr)); gap:var(--space-3); }
+.sc { background:var(--bg-surface); border:1px solid var(--bg-border); border-radius:var(--radius-lg); overflow:hidden; transition:border-color .15s; }
 .sc:hover { border-color:rgba(229,160,13,.25); }
 .sc-accent { height:2px; background:var(--tautulli); }
 .sc-row { display:flex; align-items:stretch; }
-.sc-poster { width:75px; flex-shrink:0; background:var(--bg-elevated); overflow:hidden; display:flex; align-items:center; justify-content:center; border-right:1px solid var(--bg-border); }
+.sc-poster { width:140px; min-height:140px; flex-shrink:0; background:var(--bg-elevated); overflow:hidden; display:flex; align-items:center; justify-content:center; border-right:1px solid var(--bg-border); }
 .sc-poster img { width:100%; height:100%; object-fit:cover; }
-.sc-ph { font-size:24px; }
-.sc-info { flex:1; padding:var(--space-3) var(--space-4); display:flex; flex-direction:column; gap:var(--space-2); min-width:0; }
-.sc-line1 { display:flex; align-items:center; gap:var(--space-2); }
-.sc-state { font-size:10px; font-weight:600; padding:2px 6px; border-radius:4px; flex-shrink:0; }
-.st-play { background:rgba(34,197,94,.12); color:#22c55e; border:1px solid rgba(34,197,94,.2); }
-.st-pause { background:rgba(245,197,24,.08); color:#ca8a04; border:1px solid rgba(245,197,24,.15); }
-.st-buf { background:rgba(99,102,241,.12); color:#818cf8; border:1px solid rgba(99,102,241,.2); }
-.sc-ttl { font-size:var(--text-sm); font-weight:600; color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0; }
-.sc-pct { font-size:11px; color:var(--text-muted); font-variant-numeric:tabular-nums; flex-shrink:0; }
-.sc-line2 { display:flex; align-items:center; gap:var(--space-2); font-size:var(--text-xs); color:var(--text-muted); flex-wrap:wrap; }
-.sc-user { color:var(--tautulli); font-weight:600; }
-.sep { color:var(--bg-border); }
-.sc-badges { display:flex; gap:4px; flex-wrap:wrap; }
-.bdg { font-size:10px; padding:1px 6px; border-radius:3px; border:1px solid var(--bg-border); background:var(--bg-elevated); color:var(--text-muted); white-space:nowrap; font-weight:500; }
-.dec-dp { color:#22c55e; border-color:rgba(34,197,94,.25); background:rgba(34,197,94,.08); }
-.dec-ds { color:var(--sonarr); border-color:rgba(33,147,181,.25); background:rgba(33,147,181,.08); }
-.dec-tc { color:#ef4444; border-color:rgba(239,68,68,.25); background:rgba(239,68,68,.08); }
-.bdg-res { color:#93c5fd; border-color:rgba(147,197,253,.2); background:rgba(147,197,253,.06); }
-.bdg-hdr { color:#fbbf24; border-color:rgba(251,191,36,.2); background:rgba(251,191,36,.06); font-weight:700; }
-.bdg-sub { color:#86efac; border-color:rgba(134,239,172,.2); background:rgba(134,239,172,.06); }
-.bdg-loc { font-style:italic; }
-.sc-prog { display:flex; align-items:center; gap:var(--space-3); }
+.sc-ph { font-size:32px; }
+.sc-info { flex:1; padding:var(--space-3) var(--space-4); display:flex; flex-direction:column; gap:var(--space-2); min-width:0; position:relative; }
+
+/* Tautulli-style label:value grid */
+.sc-info-grid { display:grid; grid-template-columns:auto 1fr; gap:1px var(--space-4); align-items:baseline; }
+.sc-lbl { font-size:10px; font-weight:600; color:var(--text-muted); letter-spacing:.05em; white-space:nowrap; padding:1px 0; }
+.sc-lbl-gap { margin-top:var(--space-2); }
+.sc-val { font-size:var(--text-sm); color:var(--text-secondary); padding:1px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sc-val-wrap { white-space:normal; display:flex; flex-direction:column; gap:1px; }
+.tc-line { font-size:12px; color:var(--text-secondary); }
+.tc-hw { color:#a78bfa; font-weight:600; }
+.sc-eta { position:absolute; top:var(--space-3); right:var(--space-4); text-align:right; }
+.sc-prog { display:flex; align-items:center; gap:var(--space-3); margin-top:auto; }
 .sc-prog-bar { flex:1; height:3px; background:var(--bg-elevated); border-radius:99px; overflow:hidden; }
 .sc-prog-fill { height:100%; border-radius:99px; background:var(--tautulli); transition:width 1s ease; }
-.sc-prog-time { font-size:10px; color:var(--text-muted); font-variant-numeric:tabular-nums; white-space:nowrap; }
-.sc-arrow { display:flex; align-items:center; justify-content:center; width:32px; flex-shrink:0; color:var(--text-muted); border-left:1px solid var(--bg-border); }
-.sc-arrow svg { transition:transform .2s; }
-.sc-arrow svg.open { transform:rotate(180deg); }
+.sc-prog-time { font-size:11px; color:var(--text-muted); font-variant-numeric:tabular-nums; white-space:nowrap; }
 
-/* Expanded Details */
-.sc-detail { border-top:1px solid var(--bg-border); padding:var(--space-4) var(--space-5); background:rgba(0,0,0,.1); cursor:default; }
-.det-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:var(--space-4); }
-.det-sec h4 { font-size:12px; font-weight:600; color:var(--tautulli); margin:0 0 var(--space-2); }
-.det-sec p { font-size:11px; color:var(--text-secondary); margin:2px 0; }
-.det-sec b { color:var(--text-muted); font-weight:500; }
-.det-sec code { font-size:10px; color:var(--text-muted); background:var(--bg-elevated); padding:1px 4px; border-radius:3px; }
+/* Bottom: Title + User */
+.sc-bottom { display:flex; align-items:center; gap:var(--space-3); padding:var(--space-2) var(--space-4); border-top:1px solid var(--bg-border); background:var(--bg-elevated); }
+.sc-state-icon { font-size:14px; flex-shrink:0; }
+.st-play { color:#22c55e; }
+.st-pause { color:#ca8a04; }
+.st-buf { color:#818cf8; }
+.sc-bottom-info { flex:1; min-width:0; }
+.sc-ttl { font-size:var(--text-sm); font-weight:600; color:var(--text-secondary); margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sc-ep { font-size:11px; color:var(--text-muted); margin:1px 0 0; }
+.sc-bottom-user { flex-shrink:0; display:flex; align-items:center; gap:var(--space-2); }
+.sc-user-name { font-size:var(--text-xs); color:var(--tautulli); font-weight:600; }
+
+/* Decision text colors */
+.dec-dp { color:#22c55e; } .dec-ds { color:var(--sonarr); } .dec-tc { color:#ef4444; }
 
 /* ── Watch Statistics ── */
 .section-head { display:flex; align-items:center; justify-content:space-between; }
@@ -613,22 +692,21 @@ function locLbl(s: TautulliStream) { return s.location==='lan'?'LAN':s.location=
 .stc-icon { font-size:14px; }
 .stc-label { font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em; }
 .stc-list { display:flex; flex-direction:column; gap:var(--space-2); }
-.stc-row { display:grid; grid-template-columns:16px 1fr auto; grid-template-rows:auto auto; column-gap:var(--space-2); align-items:center; }
-.stc-rank { font-size:10px; color:var(--text-muted); font-weight:700; grid-row:1/3; text-align:center; }
+.stc-row { display:flex; align-items:center; gap:var(--space-2); padding:3px 4px; border-radius:var(--radius-sm); transition:background .1s; }
+.stc-clickable { cursor:pointer; }
+.stc-clickable:hover { background:var(--bg-elevated); }
+.stc-rank { font-size:10px; color:var(--text-muted); font-weight:700; width:16px; text-align:center; flex-shrink:0; }
+.stc-poster { width:28px; height:40px; border-radius:3px; overflow:hidden; background:var(--bg-elevated); border:1px solid var(--bg-border); flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+.stc-poster img { width:100%; height:100%; object-fit:cover; }
+.stc-avatar { border-radius:50%; }
+.stc-poster-ph { font-size:12px; }
+.stc-content { flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; }
 .stc-name { font-size:var(--text-sm); color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.stc-sub { font-size:10px; color:var(--text-muted); grid-column:2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.stc-bar-track { grid-column:2; height:3px; background:var(--bg-border); border-radius:99px; overflow:hidden; margin-top:2px; }
+.stc-clickable .stc-name { color:var(--text-primary); }
+.stc-sub { font-size:10px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.stc-bar-track { height:3px; background:var(--bg-border); border-radius:99px; overflow:hidden; margin-top:2px; }
 .stc-bar-fill { height:100%; border-radius:99px; transition:width .5s ease; }
-.stc-val { font-size:var(--text-xs); color:var(--text-muted); font-variant-numeric:tabular-nums; grid-row:1/3; }
-
-/* Library chips */
-.lib-section { }
-.lib-grid { display:flex; gap:var(--space-2); flex-wrap:wrap; }
-.lib-chip { display:flex; align-items:center; gap:var(--space-2); padding:var(--space-2) var(--space-3); background:var(--bg-surface); border:1px solid var(--bg-border); border-radius:var(--radius-md); font-size:var(--text-xs); }
-.lib-icon { font-size:14px; }
-.lib-name { color:var(--text-secondary); font-weight:500; }
-.lib-count { color:var(--text-primary); font-weight:700; font-variant-numeric:tabular-nums; }
-.lib-plays { color:var(--text-muted); }
+.stc-val { font-size:var(--text-xs); color:var(--text-muted); font-variant-numeric:tabular-nums; flex-shrink:0; min-width:24px; text-align:right; }
 
 /* ── History Tab ── */
 .filter-row { display:flex; gap:var(--space-3); flex-wrap:wrap; align-items:center; }

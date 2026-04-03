@@ -5,6 +5,10 @@
 
 ---
 
+## 2026-04-03 · CalendarView · Sonarr finaleType Enum-Werte falsch
+**Was passierte:** `isFinale` prüfte auf `['seasonFinale','seriesFinale','midSeasonFinale']`. Sonarr liefert aber `'season'`, `'series'`, `'midSeason'` (ohne "Finale"-Suffix). Ergebnis: Finale-Symbol ★ wurde nie angezeigt.
+**Regel:** Sonarr `finaleType` Werte sind: `'none'`, `'season'`, `'series'`, `'midSeason'`. NICHT `'seasonFinale'` etc. Immer `.toLowerCase()` beim Vergleichen – API-Werte können mixed-case sein.
+
 ## 2026-04-03 · Dev Server · Vite stirbt bei SSH-Disconnect
 **Was passierte:** Vite lief im Vordergrund. Bei SSH-Disconnect/Terminal-Close bekommt der Vordergrund-Prozess SIGHUP → Vite stirbt → Seite nicht erreichbar. Server mit `setsid` überlebte, Vite nicht.
 **Regel:** Server UND Vite BEIDE als `setsid`-Daemons starten (`dev.sh`). `npm run dev` startet beide im Hintergrund, gibt sofort den Prompt zurück. Überleben Terminal-Close, SSH-Disconnect, Ctrl+C. Logs via `npm run logs` / `npm run logs:client`.

@@ -170,7 +170,7 @@ Detail-Modal (erscheint bei Klick auf Karte oder "Details"):
 **Status:** v2 hat Navigation + Hover-Tooltip. Es fehlen alle v1-Features.  
 **Gap-Analyse:**
 
-### 11.1.A – Wochen-Ansicht (7-Spalten-Grid) `[CRITICAL]`
+### 11.1.A – Wochen-Ansicht (7-Spalten-Grid) `[CRITICAL]` ✅
 v1 Default-Ansicht ist die Wochen-Grid. v2 hat nur eine Listenansicht.
 ```
 Layout: 7 Spalten-Grid (Mo–So oder So–Sa, je nach Option)
@@ -189,7 +189,7 @@ Pro Spalte:
   Vollfarbig-Modus: ganzer Event-Hintergrund in App-Farbe (Checkbox in Optionen)
 ```
 
-### 11.1.B – Monats-Ansicht `[HIGH]`
+### 11.1.B – Monats-Ansicht `[HIGH]` ✅
 ```
 Standard-Monats-Grid: 7 Spalten × 5-6 Zeilen
 Tages-Zellen: Nummer + bis zu 4 Events + "+X weitere" Button
@@ -198,7 +198,7 @@ Heute: pink border + Hintergrund
 Tages-Popup: erscheint bei "+X weitere" Klick (fixed-positioned, alle Events)
 ```
 
-### 11.1.C – Kalenderoptionen-Panel `[HIGH]`
+### 11.1.C – Kalenderoptionen-Panel `[HIGH]` ✅
 Ausklappbares Panel von rechts (320px) mit Einstellungen:
 ```
 Filme:
@@ -228,11 +228,11 @@ Wochenansicht:
 Persistenz: localStorage (Key: 'nx_cal_opts_v1')
 ```
 
-### 11.1.D – Filter-Toggle-Buttons (kompakt) `[HIGH]`
+### 11.1.D – Filter-Toggle-Buttons (kompakt) `[HIGH]` ✅
 Drei Icon-Buttons rechts neben Navigation: Radarr-Icon | Sonarr-Icon | Lidarr-Icon
 Aktiv = App-Farbe, Inaktiv = grau
 
-### 11.1.E – Ausstrahlungszeit `[HIGH]`
+### 11.1.E – Ausstrahlungszeit `[HIGH]` ✅
 ```
 v1 berechnet airDateUtc → Lokalzeit via Intl.DateTimeFormat (Timezone: Europe/Berlin)
 Zeigt z.B. "20:15 Uhr" unter dem Episodentitel

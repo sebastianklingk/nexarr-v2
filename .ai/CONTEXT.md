@@ -1,8 +1,8 @@
 # nexarr v2 – AI Context
 > Dieses Dokument wird am Ende jeder Session aktualisiert.
-> Zuletzt aktualisiert: 03.04.2026 – Downloads Verschlüsselungs-Banner (11.6) + StreamsView (11.10)
+> Zuletzt aktualisiert: 03.04.2026 – Kalender-Fixes: Finale-Bug, Kachel-Redesign, Premiere-Option, Monats-Epnum
 > Aktualisiert von: Chat-Claude
-> Stand: Phase 10 ✅ KOMPLETT · Phase 11 Schritt 5 ✅ + Downloads-Polish + Verschlüsselung + StreamsView
+> Stand: Phase 10 ✅ KOMPLETT · Phase 11 Schritt 5 ✅ + Downloads-Polish + Verschlüsselung + StreamsView + Kalender-Polish
 
 ---
 
@@ -260,6 +260,19 @@ TMDB: trending/discover/details/similar; Radarr/Sonarr/Lidarr: qualityprofiles/h
 - **StreamsView.vue:** Header mit Live-Pill + Bandwidth-Summary (Gesamt/LAN/WAN + Direct Play/Stream/Transcode Counts); Stream-Cards mit Poster (via Tautulli pms_image_proxy), Titel, User, Player, State-Badge (Playing grün / Paused gelb / Buffering lila); Decision-Badges (Direct Play/Stream/Transcode farbcodiert); Tech-Badges (Resolution, HDR, Codec, Audio+Channels, Subtitle, Bandwidth, LAN/WAN); Aufklappbare Detail-Sektion pro Stream (Video-Pipeline Quelle→Stream, Audio-Pipeline, Untertitel, Transcode-Details inkl. HW Enc/Dec + Speed + Throttle + Buffer, Player/Plattform/Produkt + Versionen, Netzwerk IP+Bandbreite+Bitrate, Session-IDs); Auto-Refresh alle 5s
 - **Tautulli Backend:** `getPlexImage()` Proxy für Plex-Poster; Route `/api/tautulli/plex-image`
 - **Dashboard:** Streams-Card linkt jetzt zu `/streams` statt `/tautulli`
+
+### Kalender-Polish (11.1 Fortsetzung) ✅
+- **Bugfix Finale-Symbol:** `isFinale` prüfte auf `'seasonFinale'`/`'seriesFinale'`/`'midSeasonFinale'` – Sonarr liefert aber `'season'`/`'series'`/`'midSeason'`. Geändert auf `.toLowerCase()` + `['season','series','midseason']`
+- **Wochenkachel-Redesign:** Neue 2-Zeilen-Struktur:
+  - Zeile 1 (oben): Icon + ★/▶/◈ + Serienname (flex:1) + Uhrzeit (rechts)
+  - Zeile 2 (unten): Episodenname (flex:1) + Episodennummer S01E02 (rechts, gleiche Sichtbarkeit wie Serienname)
+- **Schriftgrößen vergrößert:** evt-name 10→11.5px, evt-ep 9→10.5px, evt-icon 10→11px, mc-evt-title 9→10px
+- **Neue Option: Staffel-/Serienstart:** `showPremiereSymbol` Toggle – zeigt ▶ bei `episodeNumber === 1` (S01E01, S04E01 etc.)
+  - Icon: ▶ grün (#22c65b) in Woche/Monat/Liste/Tooltips
+  - localStorage: `cal_showPremiere`, Default: true
+  - Optionen-Drawer: Neuer Toggle unter "Staffel-/Serienfinale"
+- **Monatsansicht Episodennummer:** Rechts neben Serientitel, gleiche Sichtbarkeit (10px, font-weight 600, --text-secondary)
+- **CalendarEntry erweitert:** `isPremiere: boolean` Feld hinzugefügt
 
 ### Zwischen-Schritt: Auth-Bypass + Image-Performance ✅
 - **AUTH_DISABLED:** `.env` Variable `AUTH_DISABLED=true` – Middleware setzt Fake-Admin-Session, `/api/auth/me` gibt immer Admin zurück, kein Login-Screen
