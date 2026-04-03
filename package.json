@@ -8,11 +8,12 @@
     "packages/client"
   ],
   "scripts": {
-    "predev": "fuser -k 3000/tcp 2>/dev/null || true",
-    "dev": "concurrently -k -n server,client -c cyan,magenta \"npm run dev -w packages/server\" \"npm run dev -w packages/client\"",
+    "dev": "concurrently -n server,client -c cyan,magenta \"npm run dev -w packages/server\" \"npm run dev -w packages/client\"",
+    "dev:server": "npm run dev -w packages/server",
+    "dev:client": "npm run dev -w packages/client",
     "build": "npm run build -w packages/shared && npm run build -w packages/server && npm run build -w packages/client",
     "typecheck": "npm run typecheck -w packages/shared && npm run typecheck -w packages/server && npm run typecheck -w packages/client",
-    "restart": "fuser -k 3000/tcp 2>/dev/null; sleep 1; npm run dev"
+    "restart": "fuser -k 3000/tcp 2>/dev/null; sleep 1; npm run dev:server"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
