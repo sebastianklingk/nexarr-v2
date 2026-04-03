@@ -94,7 +94,8 @@ function fmtSpeed(mbs: number) {
 
 // ── Batch Selektion ────────────────────────────────────────────────────────────
 const selectedIds   = ref<Set<string>>(new Set());
-const showingChecks = computed(() => selectedIds.value.size > 0);
+const batchMode     = ref(false);
+const showingChecks = computed(() => batchMode.value);
 
 const lastSelectedIndex = ref<number>(-1);
 
@@ -128,6 +129,11 @@ function clearSelection() {
   lastSelectedIndex.value = -1;
 }
 
+function exitBatchMode() {
+  clearSelection();
+  batchMode.value = false;
+}
+
 const selectedSlots = computed<NormalizedSlot[]>(() =>
   combinedSlots.value.filter(c => selectedIds.value.has(c.slot.id)).map(c => c.slot)
 );
@@ -144,11 +150,11 @@ const batchPriorityOpen    = ref(false);
 // Batch Actions
 async function batchPause() {
   await Promise.allSettled(selectedSlots.value.map(s => pauseSlot(s)));
-  clearSelection();
+  exitBatchMode();
 }
 async function batchResume() {
   await Promise.allSettled(selectedSlots.value.map(s => resumeSlot(s)));
-  clearSelection();
+  exitBatchMode();
 }
 async function batchDelete() {
   askConfirm(
@@ -156,7 +162,7 @@ async function batchDelete() {
     `${selectedSlots.value.length} ausgewählte Downloads aus der Queue entfernen?`,
     async () => {
       await Promise.allSettled(selectedSlots.value.map(s => deleteSlot(s)));
-      clearSelection();
+      exitBatchMode();
     }
   );
 }
@@ -594,9 +600,13 @@ function evBadge(et: string) {
         <div class="section-header">
           <span class="section-title">Downloads</span>
           <span class="section-meta">{{ combinedSlots.length }} Slot{{ combinedSlots.length !== 1 ? 's' : '' }}</span>
-          <span v-if="showingChecks" class="section-meta" style="margin-left:auto">{{ selectedIds.size }} ausgewählt</span>
-          <button v-if="showingChecks" class="select-all-btn select-clear-btn" @click="clearSelection">
-            Auswahl aufheben
+          <span v-if="batchMode && selectedIds.size > 0" class="section-meta" style="margin-left:auto">{{ selectedIds.size }} ausgewählt</span>
+          <button v-if="!batchMode" class="select-all-btn" @click="batchMode = true">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            Auswählen
+          </button>
+          <button v-else class="select-all-btn select-clear-btn" @click="exitBatchMode">
+            Abbrechen
           </button>
         </div>
 
@@ -607,21 +617,9 @@ function evBadge(et: string) {
             class="dl-card"
             :class="{
               'dl-card-selected': selectedIds.has(c.slot.id),
-              'dl-card-selectable': showingChecks,
             }"
             :style="c.arr ? {'--accent': appColor(c.arr.app)} : {'--accent': dlColor(c.slot.downloader)}"
           >
-            <!-- Checkbox -->
-            <div
-              class="dl-checkbox"
-              :class="{'dl-checkbox-visible': showingChecks || selectedIds.has(c.slot.id)}"
-              @click.stop="(e) => toggleSelect(c.slot.id, combinedSlots.indexOf(c), e)"
-            >
-              <div class="dl-cb-inner" :class="{'dl-cb-checked': selectedIds.has(c.slot.id)}">
-                <svg v-if="selectedIds.has(c.slot.id)" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              </div>
-            </div>
-
             <!-- Left accent bar -->
             <div class="dl-accent" />
 
@@ -725,6 +723,17 @@ function evBadge(et: string) {
               <button class="act-btn act-del" @click="askDeleteSlot(c.slot, c.arr?.title ?? c.slot.filename)" title="Entfernen">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
               </button>
+            </div>
+
+            <!-- Batch Checkbox (rechts, nur im Batch-Modus) -->
+            <div
+              v-if="batchMode"
+              class="dl-checkbox-right"
+              @click.stop="(e: MouseEvent) => toggleSelect(c.slot.id, combinedSlots.indexOf(c), e)"
+            >
+              <div class="dl-cb-inner" :class="{'dl-cb-checked': selectedIds.has(c.slot.id)}">
+                <svg v-if="selectedIds.has(c.slot.id)" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
             </div>
           </div>
         </div>
@@ -923,7 +932,7 @@ function evBadge(et: string) {
 
     <!-- ════════════ BATCH TOOLBAR (Slide-up) ════════════ -->
     <Transition name="batch-bar">
-      <div v-if="showingChecks" class="batch-bar">
+      <div v-if="batchMode && selectedIds.size > 0" class="batch-bar">
         <div class="batch-left">
           <span class="batch-count">{{ selectedIds.size }} ausgewählt</span>
         </div>
@@ -971,7 +980,7 @@ function evBadge(et: string) {
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
             Löschen
           </button>
-          <button class="batch-btn batch-clear" @click="clearSelection">
+          <button class="batch-btn batch-clear" @click="exitBatchMode">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             Aufheben
           </button>
@@ -1051,7 +1060,7 @@ function evBadge(et: string) {
 .section-header { display: flex; align-items: center; gap: var(--space-3); }
 .section-title { font-size: var(--text-sm); font-weight: 600; color: var(--text-secondary); }
 .section-meta { font-size: 11px; color: var(--text-muted); }
-.select-all-btn { font-size: 11px; color: var(--text-muted); padding: 2px 8px; border-radius: 99px; border: 1px solid var(--bg-border); background: var(--bg-elevated); cursor: pointer; transition: all .12s; }
+.select-all-btn { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-muted); padding: 4px 10px; border-radius: 99px; border: 1px solid var(--bg-border); background: var(--bg-elevated); cursor: pointer; transition: all .12s; margin-left: auto; }
 .select-all-btn:hover { color: var(--text-secondary); border-color: rgba(255,255,255,.2); }
 .select-clear-btn { color: var(--text-secondary); border-color: rgba(255,255,255,.2); }
 
@@ -1067,22 +1076,19 @@ function evBadge(et: string) {
 }
 .dl-card:hover { background: var(--bg-elevated); border-color: color-mix(in srgb, var(--accent, var(--sabnzbd)) 20%, var(--bg-border)); }
 .dl-card:hover .dl-acts { opacity: 1; }
-.dl-card:hover .dl-checkbox { opacity: 1; }
 
 .dl-card-selected {
   background: var(--bg-elevated) !important;
   border-color: color-mix(in srgb, var(--accent, var(--sabnzbd)) 35%, var(--bg-border)) !important;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent, var(--sabnzbd)) 20%, transparent);
 }
-.dl-card-selected .dl-checkbox { opacity: 1; }
 
-/* Checkbox */
-.dl-checkbox {
+/* Right Checkbox (Batch Mode) */
+.dl-checkbox-right {
   display: flex; align-items: center; justify-content: center;
-  width: 36px; flex-shrink: 0; opacity: 0; transition: opacity .12s;
-  cursor: pointer;
+  width: 40px; flex-shrink: 0; cursor: pointer;
+  border-left: 1px solid var(--bg-border);
 }
-.dl-checkbox-visible { opacity: 1; }
 .dl-cb-inner {
   width: 16px; height: 16px; border-radius: 4px;
   border: 1.5px solid var(--bg-border); background: var(--bg-elevated);
@@ -1094,7 +1100,6 @@ function evBadge(et: string) {
   border-color: var(--accent, var(--sabnzbd));
   color: #000;
 }
-.dl-card-selectable .dl-checkbox { opacity: 1; }
 
 .dl-accent { width: 3px; flex-shrink: 0; background: var(--accent, var(--sabnzbd)); }
 
