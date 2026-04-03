@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-04-03 · DownloadsView · NormalizedSlot computed-Reaktivität
+**Was passierte:** `batchMoveToTopCount` und `batchPriorityCount` riefen eine normale Funktion (`eligibleSlots()`) auf statt direkt auf `selectedSlots.value` zuzugreifen. Das erzeugt keine reaktive Abhängigkeit – die computed-Werte wurden nicht neu berechnet wenn sich die Auswahl änderte.
+**Regel:** Computed-Properties MÜSSEN direkt auf reaktive Quellen (`.value`) zugreifen. Hilfsfunktionen die reaktive Arrays filtern sind in computeds nur sicher wenn sie intern `.value` verwenden – besser direkt inlinen.
+
+## 2026-04-03 · DownloadsView · Shift-Select Index-Tracking
+**Was passierte:** Bei Shift-Klick muss der Index des zuletzt geklickten Items getrackt werden. `lastSelectedIndex` darf nur beim normalen Toggle gesetzt werden, NICHT beim Shift-Range-Select – sonst verschiebt sich der Anker bei jedem Shift-Klick.
+**Regel:** Range-Select-Logik: Anker-Index nur beim normalen Klick setzen. Shift-Klick liest den Anker, setzt ihn aber nicht neu.
+
 ## 2026-04-02 · CalendarView · Datum-Timezone-Bug
 **Was passierte:** `toISOString()` gibt UTC zurück. In UTC+1/+2 wird Sonntag 00:00 Uhr lokal zu Samstag 22:00/23:00 UTC → dateKey falsch, Sonntag-Spalte leer.
 **Regel:** NIEMALS `toISOString().slice(0,10)` für Kalender-Datums-Keys. Immer `fmtDate(d: Date)` mit `getFullYear()` / `getMonth()` / `getDate()` (lokale Methoden).

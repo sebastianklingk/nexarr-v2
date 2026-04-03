@@ -40,6 +40,7 @@ export async function getQueue(): Promise<SabnzbdState> {
         eta:       slot.eta ?? '',
         timeleft:  slot.timeleft ?? '',
         cat:       slot.cat ?? '',
+        priority:  slot.priority ?? 'Normal',
       })),
     } satisfies SabnzbdState;
   }, TTL.QUEUE);
@@ -83,5 +84,19 @@ export async function pauseItem(nzoId: string): Promise<void> {
 
 export async function resumeItem(nzoId: string): Promise<void> {
   await client('queue', { name: 'resume', value: nzoId });
+  C.invalidate('sabnzbd_queue');
+}
+
+// Priorität setzen: Force=2, High=1, Normal=0, Low=-1
+export async function setPriority(nzoId: string, priority: 'Force' | 'High' | 'Normal' | 'Low'): Promise<void> {
+  const priorityMap: Record<string, number> = { Force: 2, High: 1, Normal: 0, Low: -1 };
+  const value = priorityMap[priority] ?? 0;
+  await client('queue', { name: 'priority', value: nzoId, value2: value });
+  C.invalidate('sabnzbd_queue');
+}
+
+// Job an Anfang der Queue verschieben (Position 0)
+export async function moveToTop(nzoId: string): Promise<void> {
+  await client('queue', { name: 'switch', value: nzoId, value2: 0 });
   C.invalidate('sabnzbd_queue');
 }

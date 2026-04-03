@@ -5,6 +5,7 @@ import { env } from './config/env.js';
 import { initDb, dbGet, dbRun } from './db/index.js';
 import { createApp } from './app.js';
 import { initSocket } from './socket/index.js';
+import { warmCache, startCacheRefreshTimer } from './cache/warmup.js';
 
 async function bootstrap() {
   // 1. DB + Migrations
@@ -31,6 +32,14 @@ async function bootstrap() {
     console.log(`\n🚀 nexarr v2 läuft auf http://0.0.0.0:${port}`);
     console.log(`   Umgebung: ${env.NODE_ENV}`);
     console.log(`   DB:       ${env.DB_PATH}\n`);
+
+    // 5. Cache-Warming im Hintergrund (alle 4 Wellen, blockiert den Server nicht)
+    warmCache(4).catch(err => {
+      console.warn('Cache-Warming Fehler:', (err as Error)?.message ?? err);
+    });
+
+    // 6. Periodischer Refresh für Welle 1+2 alle 4 Minuten
+    startCacheRefreshTimer();
   });
 
   // Graceful Shutdown

@@ -5,6 +5,7 @@ import { useMoviesStore } from '../stores/movies.store.js';
 import { useApi } from '../composables/useApi.js';
 import InteractiveSearchModal from '../components/ui/InteractiveSearchModal.vue';
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue';
+import RatingPills from '../components/ui/RatingPills.vue';
 import type { RadarrMovie, TMDBCredits, TMDBVideo } from '@nexarr/shared';
 
 const route  = useRoute();
@@ -159,7 +160,7 @@ const techBadges = computed(() => {
   const ac = (mi.audioCodec??'').toUpperCase();
   if (ac.includes('ATMOS')) b.push({label:'Atmos',color:'#22c65b'});
   else if (ac.includes('TRUEHD')) b.push({label:'TrueHD',color:'#22c65b'});
-  else if (ac.includes('EAC3')||ac.includes('DDP')) b.push({label:'DD+',color:'#aaa'});
+  else if (ac.includes('EAC3')||ac.includes('DDP')) b.push({label:'Dolby',color:'#aaa'});
   else if (ac.includes('DTS')) b.push({label:'DTS',color:'#aaa'});
   const ch = parseFloat(String(mi.audioChannels??0));
   if (ch===7.1) b.push({label:'7.1',color:'#555'});
@@ -172,7 +173,6 @@ const qualityName = computed(() => (movie.value?.movieFile?.quality as any)?.qua
 function fmtRuntime(m?:number){ if(!m) return ''; const h=Math.floor(m/60),mn=m%60; return h>0?`${h}h ${mn}m`:`${mn}m`; }
 function fmtBytes(b?:number){ if(!b) return ''; const g=b/1024/1024/1024; return g>=1?`${g.toFixed(2)} GB`:`${(b/1024/1024).toFixed(0)} MB`; }
 function fmtDate(iso?:string){ if(!iso) return ''; return new Date(iso).toLocaleDateString('de-DE'); }
-function fmtTs(ts?:number){ if(!ts) return ''; return new Date(ts*1000).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
 function flagEmoji(c:string){ const m:Record<string,string>={de:'🇩🇪',en:'🇬🇧',fr:'🇫🇷',es:'🇪🇸',it:'🇮🇹',nl:'🇳🇱',pt:'🇵🇹',pl:'🇵🇱',ru:'🇷🇺',ja:'🇯🇵',ko:'🇰🇷',zh:'🇨🇳',tr:'🇹🇷',sv:'🇸🇪',da:'🇩🇰',fi:'🇫🇮',cs:'🇨🇿',hu:'🇭🇺'}; return m[c]??'🏳️'; }
 
 const tPlayCount    = computed(() => tautulliHistory.value.length);
@@ -223,55 +223,53 @@ onMounted(async () => {
               <div v-else class="hero-poster hero-ph">{{ movie.title[0] }}</div>
             </div>
 
-            <!-- Info -->
             <div class="hero-info">
               <div class="app-bar"/>
+
+              <!-- Status-Badges VOR dem Titel -->
+              <div class="hero-top-badges">
+                <span :class="['htb', movie.hasFile ? 'htb-ok' : 'htb-miss']">
+                  {{ movie.hasFile ? '✓ Vorhanden' : '✗ Fehlt' }}
+                </span>
+                <span v-if="movie.monitored" class="htb htb-watch">Überwacht</span>
+                <span v-if="!movie.monitored" class="htb htb-unwatch">Nicht überwacht</span>
+                <span class="htb htb-app">Filme</span>
+              </div>
+
               <h1 class="hero-title">{{ movie.title }}</h1>
 
+              <!-- Meta-Zeile: 18 · 2026 · 1h 49m · 4K HDR H.265 5.1 -->
               <div class="hero-meta">
+                <span v-if="(movie as any).certification" class="cert-badge">{{ (movie as any).certification }}</span>
                 <span v-if="movie.year">{{ movie.year }}</span>
                 <span v-if="movie.runtime" class="sep">·</span>
                 <span v-if="movie.runtime">{{ fmtRuntime(movie.runtime) }}</span>
-                <span v-if="(movie as any).certification" class="cert-badge">{{ (movie as any).certification }}</span>
-                <span v-if="(movie as any).originalLanguage?.name" class="sep">·</span>
-                <span v-if="(movie as any).originalLanguage?.name" class="meta-lang">{{ (movie as any).originalLanguage.name }}</span>
-                <span v-if="movie.genres?.length" class="sep">·</span>
-                <span v-if="movie.genres?.length">{{ movie.genres.slice(0,3).join(', ') }}</span>
+                <template v-if="techBadges.length">
+                  <span class="sep">·</span>
+                  <span v-for="(b, i) in techBadges" :key="b.label">
+                    <span class="tech-inline" :style="{color:b.color}">{{ b.label }}</span><span v-if="i < techBadges.length - 1" class="tech-sep"> </span>
+                  </span>
+                </template>
               </div>
 
-              <div v-if="techBadges.length" class="tech-badges">
-                <span v-for="b in techBadges" :key="b.label" class="tech-badge" :style="{color:b.color,borderColor:b.color+'44'}">{{ b.label }}</span>
+              <!-- Genres -->
+              <div v-if="movie.genres?.length" class="hero-genres">
+                <span v-for="g in movie.genres.slice(0,5)" :key="g" class="genre-chip">{{ g }}</span>
               </div>
 
-              <!-- Ratings als klickbare Pills -->
-              <div class="hero-ratings">
-                <a v-if="movie.ratings?.imdb?.value && imdbUrl" :href="imdbUrl" target="_blank" rel="noopener" class="r-chip r-imdb">
-                  <span class="r-src">IMDb</span>
-                  <span class="r-val">{{ movie.ratings.imdb.value.toFixed(1) }}</span>
-                  <span v-if="movie.ratings.imdb.votes" class="r-votes">{{ (movie.ratings.imdb.votes/1000).toFixed(0) }}k</span>
-                </a>
-                <a v-if="movie.ratings?.tmdb?.value && tmdbUrl" :href="tmdbUrl" target="_blank" rel="noopener" class="r-chip r-tmdb">
-                  <span class="r-src">TMDb</span>
-                  <span class="r-val">{{ (movie.ratings.tmdb.value*10).toFixed(0) }}%</span>
-                </a>
-                <div v-if="movie.ratings?.rottenTomatoes?.value" class="r-chip r-rt">
-                  <span class="r-src">RT</span>
-                  <span class="r-val">{{ movie.ratings.rottenTomatoes.value }}%</span>
-                </div>
-              </div>
-
-              <div class="hero-badges">
-                <span :class="['badge',movie.hasFile?'badge-ok':'badge-miss']">{{ movie.hasFile?'✓ Vorhanden':'✗ Fehlt' }}</span>
-                <span v-if="!movie.monitored" class="badge badge-off">Nicht überwacht</span>
-                <span v-if="qualityName" class="badge badge-qual">{{ qualityName }}</span>
-                <span v-if="movie.movieFile?.size" class="badge badge-size">{{ fmtBytes((movie.movieFile as any).size) }}</span>
-              </div>
+              <!-- Ratings Pills -->
+              <RatingPills
+                :ratings="(movie as any).ratings"
+                :imdb-id="movie.imdbId"
+                :tmdb-id="movie.tmdbId"
+                tmdb-type="movie"
+              />
             </div>
           </div>
         </div>
       </div>
 
-      <!-- ── Action Bar (horizontal, unter Hero) ── -->
+      <!-- ── Action Bar ── -->
       <div class="detail-action-bar">
         <a v-if="tmdbTrailer" :href="`https://www.youtube.com/watch?v=${tmdbTrailer.key}`" target="_blank" rel="noopener" class="dab-btn">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
@@ -296,10 +294,8 @@ onMounted(async () => {
         </button>
         <button class="dab-btn" :class="{'dab-active':movie.monitored}" :disabled="isMonitorToggling" @click="toggleMonitored">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path v-if="movie.monitored" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-            <circle v-if="movie.monitored" cx="12" cy="12" r="3"/>
-            <path v-if="!movie.monitored" d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-            <line v-if="!movie.monitored" x1="1" y1="1" x2="23" y2="23"/>
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
           </svg>
           <span>{{ movie.monitored ? 'Überwacht' : 'Ignoriert' }}</span>
         </button>
@@ -368,7 +364,7 @@ onMounted(async () => {
             </div>
           </div>
         </div>
-        <div v-if="tmdbLoading" class="cast-grid cast-skel">
+        <div v-if="tmdbLoading" class="cast-grid">
           <div v-for="i in 8" :key="i" class="skeleton" style="aspect-ratio:2/3;border-radius:8px"/>
         </div>
       </div>
@@ -390,12 +386,15 @@ onMounted(async () => {
             <div v-if="(movie.movieFile as any)?.releaseGroup" class="fi"><span class="fl">Release Group</span><span class="fv">{{ (movie.movieFile as any).releaseGroup }}</span></div>
             <div v-if="(movie.movieFile as any)?.size" class="fi"><span class="fl">Dateigröße</span><span class="fv">{{ fmtBytes((movie.movieFile as any).size) }}</span></div>
             <div v-if="(movie.movieFile as any)?.dateAdded" class="fi"><span class="fl">Hinzugefügt</span><span class="fv">{{ fmtDate((movie.movieFile as any).dateAdded) }}</span></div>
-            <div v-if="(movie.movieFile as any)?.relativePath||(movie.movieFile as any)?.path" class="fi fi-full"><span class="fl">Dateipfad</span><span class="fv fv-mono">{{ (movie.movieFile as any).relativePath ?? (movie.movieFile as any).path }}</span></div>
+            <div v-if="(movie.movieFile as any)?.relativePath||(movie.movieFile as any)?.path" class="fi fi-full">
+              <span class="fl">Dateiname</span>
+              <span class="fv fv-mono">{{ (movie.movieFile as any).relativePath ?? (movie.movieFile as any).path }}</span>
+            </div>
           </div>
         </div>
         <div v-else class="no-file">
           <p>Keine Datei vorhanden.</p>
-          <button class="act-btn act-search" style="margin-top:12px" @click="triggerSearch">Jetzt suchen</button>
+          <button style="margin-top:12px" @click="triggerSearch">Jetzt suchen</button>
         </div>
       </div>
 
@@ -407,7 +406,6 @@ onMounted(async () => {
         </div>
         <div v-else-if="bazarrError" class="bz-error">{{ bazarrError }}</div>
         <template v-else-if="bazarr">
-          <!-- Header -->
           <div class="bz-header">
             <div class="bz-stats">
               <span class="bz-stat bz-stat-ok">{{ bazarr.subtitles.length }} Untertitel</span>
@@ -423,20 +421,13 @@ onMounted(async () => {
               <button class="bz-btn bz-detail-btn" @click="bazarrDetail=!bazarrDetail">{{ bazarrDetail?'Weniger':'Details' }}</button>
             </div>
           </div>
-
           <p v-if="bazarr.sceneName" class="bz-scene">{{ bazarr.sceneName }}</p>
-
-          <!-- Audio Languages -->
           <div v-if="bazarr.audio_language.length" class="bz-row">
             <span class="bz-row-label">Audio</span>
             <div class="bz-badges">
-              <span v-for="al in bazarr.audio_language" :key="al.code2" class="bz-badge bz-audio">
-                {{ flagEmoji(al.code2) }} {{ al.name }}
-              </span>
+              <span v-for="al in bazarr.audio_language" :key="al.code2" class="bz-badge bz-audio">{{ flagEmoji(al.code2) }} {{ al.name }}</span>
             </div>
           </div>
-
-          <!-- Available Subs -->
           <div v-if="bazarr.subtitles.length" class="bz-row">
             <span class="bz-row-label">Vorhanden</span>
             <div class="bz-badges">
@@ -447,8 +438,6 @@ onMounted(async () => {
               </span>
             </div>
           </div>
-
-          <!-- Missing Subs -->
           <div v-if="bazarr.missing_subtitles.length" class="bz-row">
             <span class="bz-row-label">Fehlend</span>
             <div class="bz-badges">
@@ -459,8 +448,6 @@ onMounted(async () => {
               </span>
             </div>
           </div>
-
-          <!-- Detail Liste -->
           <div v-if="bazarrDetail" class="bz-details">
             <div v-for="s in bazarr.subtitles" :key="'d-'+s.code2" class="bz-detail-row">
               <span class="bz-di-icon">◆</span>
@@ -494,15 +481,10 @@ onMounted(async () => {
             </template>
             <span v-else class="tt-stat tt-unwatched">Noch nicht angeschaut</span>
           </div>
-
           <div v-if="tautulliHistory.length===0" class="tt-empty">Keine Wiedergabe-History vorhanden.</div>
           <div v-else class="tt-table-wrap">
             <table class="tt-table">
-              <thead>
-                <tr>
-                  <th>Datum</th><th>Uhrzeit</th><th>Benutzer</th><th>App</th><th>Transcode</th><th>Pause</th><th>%</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Datum</th><th>Uhrzeit</th><th>Benutzer</th><th>App</th><th>Transcode</th><th>Pause</th><th>%</th></tr></thead>
               <tbody>
                 <tr v-for="(h,i) in tautulliHistory" :key="i">
                   <td>{{ h.date?new Date(h.date*1000).toLocaleDateString('de-DE'):'' }}</td>
@@ -530,28 +512,14 @@ onMounted(async () => {
     </template>
 
     <!-- Modals -->
-    <InteractiveSearchModal
-      v-if="movie"
-      v-model="showInteractive"
-      source="radarr"
-      :entityId="movie.id"
-      :title="movie.title"
-    />
-    <ConfirmDialog
-      v-model="showDeleteConfirm"
-      title="Film löschen?"
-      :message="`'${movie?.title}' und alle Dateien unwiderruflich aus Radarr entfernen?`"
-      confirm-label="Löschen"
-      @confirm="confirmDelete"
-    />
-
+    <InteractiveSearchModal v-if="movie" v-model="showInteractive" source="radarr" :entityId="movie.id" :title="movie.title"/>
+    <ConfirmDialog v-model="showDeleteConfirm" title="Film löschen?" :message="`'${movie?.title}' und alle Dateien unwiderruflich aus Radarr entfernen?`" confirm-label="Löschen" @confirm="confirmDelete"/>
   </div>
 </template>
 
 <style scoped>
 .detail-view { min-height: 100%; }
 
-/* Hero */
 .hero { position:relative; min-height:440px; display:flex; flex-direction:column; justify-content:flex-end; }
 .hero-bg { position:absolute; inset:0; background-image:var(--fanart); background-size:cover; background-position:center top; z-index:0; }
 .hero-gradient { position:absolute; inset:0; background:linear-gradient(to bottom, rgba(10,10,10,.15) 0%, rgba(10,10,10,.55) 45%, rgba(10,10,10,.97) 100%); z-index:1; }
@@ -560,26 +528,35 @@ onMounted(async () => {
 .back-btn:hover { color:var(--text-primary); }
 .hero-main { display:flex; gap:var(--space-5); align-items:flex-end; }
 
-/* Poster */
 .hero-poster-wrap { flex-shrink:0; }
 .hero-poster { width:140px; min-width:140px; aspect-ratio:2/3; object-fit:cover; border-radius:var(--radius-lg); border:1px solid rgba(255,255,255,.1); box-shadow:0 12px 40px rgba(0,0,0,.6); }
 .hero-ph { display:flex; align-items:center; justify-content:center; background:var(--bg-elevated); font-size:52px; font-weight:700; color:var(--text-muted); }
 
-/* Horizontale Action-Bar */
-.detail-action-bar {
-  display:flex; align-items:center; gap:4px; flex-wrap:wrap;
-  padding: var(--space-3) var(--space-6);
-  background:rgba(0,0,0,.3); border-bottom:1px solid var(--bg-border);
-  backdrop-filter: blur(8px);
-}
-.dab-btn {
-  display:inline-flex; align-items:center; gap:6px;
-  padding:6px 12px; border-radius:var(--radius-md);
-  font-size:12px; font-weight:500; white-space:nowrap; cursor:pointer;
-  background:var(--bg-elevated); border:1px solid rgba(255,255,255,.07);
-  color:var(--text-tertiary); text-decoration:none;
-  transition:all .15s;
-}
+.hero-info { flex:1; display:flex; flex-direction:column; gap:var(--space-2); padding-bottom:var(--space-1); }
+.app-bar { width:32px; height:3px; background:var(--radarr); border-radius:2px; margin-bottom:var(--space-1); }
+
+.hero-top-badges { display:flex; gap:6px; flex-wrap:wrap; }
+.htb { display:inline-flex; align-items:center; padding:3px 9px; border-radius:5px; font-size:10px; font-weight:700; white-space:nowrap; }
+.htb-ok      { background:rgba(34,197,94,.12);  color:#22c55e;       border:1px solid rgba(34,197,94,.25); }
+.htb-miss    { background:rgba(239,68,68,.12);  color:#ef4444;       border:1px solid rgba(239,68,68,.25); }
+.htb-watch   { background:rgba(33,147,181,.12); color:var(--sonarr); border:1px solid rgba(33,147,181,.25); }
+.htb-unwatch { background:var(--bg-elevated);   color:var(--text-muted); border:1px solid var(--bg-border); }
+.htb-app     { background:rgba(244,165,74,.12); color:var(--radarr); border:1px solid rgba(244,165,74,.25); }
+
+.hero-title { font-size:clamp(20px,3vw,32px); font-weight:700; color:var(--text-primary); line-height:1.2; margin:0; }
+
+.hero-meta { display:flex; align-items:center; gap:var(--space-2); color:var(--text-tertiary); font-size:var(--text-sm); flex-wrap:wrap; }
+.sep { color:var(--text-muted); }
+.cert-badge { font-size:10px; font-weight:700; padding:1px 6px; background:rgba(244,165,74,.15); border:1px solid rgba(244,165,74,.3); border-radius:3px; color:var(--radarr); }
+.tech-inline { font-size:var(--text-sm); font-weight:700; }
+.tech-sep { color:var(--text-muted); }
+
+.hero-genres { display:flex; gap:6px; flex-wrap:wrap; }
+.genre-chip { font-size:11px; padding:3px 10px; background:var(--bg-elevated); border:1px solid var(--bg-border); border-radius:99px; color:var(--text-muted); }
+
+/* Action Bar */
+.detail-action-bar { display:flex; align-items:center; gap:4px; flex-wrap:wrap; padding: var(--space-3) var(--space-6); background:rgba(0,0,0,.3); border-bottom:1px solid var(--bg-border); backdrop-filter:blur(8px); }
+.dab-btn { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:var(--radius-md); font-size:12px; font-weight:500; white-space:nowrap; cursor:pointer; background:var(--bg-elevated); border:1px solid rgba(255,255,255,.07); color:var(--text-tertiary); text-decoration:none; transition:all .15s; }
 .dab-btn:hover:not(:disabled) { background:var(--bg-overlay); color:var(--text-primary); border-color:rgba(255,255,255,.14); }
 .dab-btn:disabled { opacity:.45; cursor:not-allowed; }
 .dab-btn.dab-active { color:var(--radarr); border-color:rgba(244,165,74,.3); background:rgba(244,165,74,.08); }
@@ -587,33 +564,6 @@ onMounted(async () => {
 .dab-btn.dab-err { color:#ef4444; }
 .dab-btn.dab-danger:hover:not(:disabled) { color:#ef4444; border-color:rgba(239,68,68,.35); background:rgba(239,68,68,.08); }
 .dab-sep { width:1px; height:18px; background:rgba(255,255,255,.08); margin:0 2px; flex-shrink:0; }
-
-/* Hero Info */
-.hero-info { flex:1; display:flex; flex-direction:column; gap:var(--space-3); padding-bottom:var(--space-1); }
-.app-bar { width:32px; height:3px; background:var(--radarr); border-radius:2px; }
-.hero-title { font-size:clamp(20px,3vw,32px); font-weight:700; color:var(--text-primary); line-height:1.2; margin:0; }
-.hero-meta { display:flex; align-items:center; gap:var(--space-2); color:var(--text-tertiary); font-size:var(--text-sm); flex-wrap:wrap; }
-.sep { color:var(--text-muted); }
-.cert-badge { font-size:10px; font-weight:700; padding:1px 6px; background:rgba(244,165,74,.15); border:1px solid rgba(244,165,74,.3); border-radius:3px; color:var(--radarr); margin-left:2px; }
-.meta-lang { font-size:var(--text-sm); color:var(--text-tertiary); }
-.tech-badges { display:flex; gap:5px; flex-wrap:wrap; }
-.tech-badge { font-size:10px; font-weight:700; padding:2px 7px; border-radius:4px; border:1px solid; letter-spacing:.03em; }
-.hero-ratings { display:flex; gap:var(--space-2); flex-wrap:wrap; }
-.r-chip { display:flex; align-items:center; gap:5px; padding:3px 10px; border-radius:var(--radius-sm); font-size:var(--text-xs); font-weight:600; border:1px solid; text-decoration:none; cursor:pointer; transition:opacity .15s; }
-.r-chip:hover { opacity:.85; }
-.r-imdb { background:rgba(245,197,24,.1); border-color:rgba(245,197,24,.3); }
-.r-tmdb { background:rgba(1,180,228,.1); border-color:rgba(1,180,228,.3); }
-.r-rt   { background:rgba(250,60,60,.1); border-color:rgba(250,60,60,.3); }
-.r-src { color:var(--text-muted); font-weight:400; }
-.r-val { color:var(--text-primary); }
-.r-votes { color:var(--text-muted); font-size:10px; }
-.hero-badges { display:flex; gap:var(--space-2); flex-wrap:wrap; }
-.badge { padding:2px 10px; border-radius:99px; font-size:var(--text-xs); font-weight:500; }
-.badge-ok   { background:rgba(34,197,94,.12); color:#22c55e; border:1px solid rgba(34,197,94,.25); }
-.badge-miss { background:rgba(239,68,68,.12); color:#ef4444; border:1px solid rgba(239,68,68,.25); }
-.badge-off  { background:var(--bg-elevated); color:var(--text-muted); border:1px solid var(--bg-border); }
-.badge-qual { background:rgba(244,165,74,.12); color:var(--radarr); border:1px solid rgba(244,165,74,.25); }
-.badge-size { background:var(--bg-elevated); color:var(--text-tertiary); border:1px solid var(--bg-border); }
 
 /* Tabs */
 .tabs-bar { display:flex; border-bottom:1px solid var(--bg-border); padding:0 var(--space-6); background:var(--bg-surface); position:sticky; top:0; z-index:10; }
@@ -623,7 +573,7 @@ onMounted(async () => {
 .tab-count { background:var(--radarr); color:#000; font-size:10px; font-weight:700; padding:1px 5px; border-radius:99px; }
 .tab-content { padding:var(--space-6); max-width:900px; }
 
-/* Übersicht */
+/* Overview */
 .overview-wrap { margin-bottom:var(--space-6); }
 .overview-text { color:var(--text-tertiary); line-height:1.75; font-size:var(--text-base); margin:0; }
 .overview-text.collapsed { display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; }
@@ -662,13 +612,12 @@ onMounted(async () => {
 .bz-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--space-4); flex-wrap:wrap; gap:var(--space-3); }
 .bz-stats { display:flex; gap:var(--space-2); flex-wrap:wrap; }
 .bz-stat { font-size:12px; font-weight:600; padding:3px 10px; border-radius:99px; }
-.bz-stat-ok { background:rgba(167,139,250,.12); color:var(--bazarr); border:1px solid rgba(167,139,250,.25); }
-.bz-stat-miss { background:rgba(239,68,68,.1); color:#ef4444; border:1px solid rgba(239,68,68,.25); border-style:dashed; }
-.bz-stat-full { background:rgba(34,197,94,.1); color:#22c55e; border:1px solid rgba(34,197,94,.25); }
-.bz-stat-warn { background:rgba(245,158,11,.1); color:#f59e0b; border:1px solid rgba(245,158,11,.25); }
+.bz-stat-ok   { background:rgba(167,139,250,.12); color:var(--bazarr); border:1px solid rgba(167,139,250,.25); }
+.bz-stat-miss { background:rgba(239,68,68,.1);    color:#ef4444;       border:1px dashed rgba(239,68,68,.25); }
+.bz-stat-full { background:rgba(34,197,94,.1);    color:#22c55e;       border:1px solid rgba(34,197,94,.25); }
+.bz-stat-warn { background:rgba(245,158,11,.1);   color:#f59e0b;       border:1px solid rgba(245,158,11,.25); }
 .bz-actions { display:flex; gap:var(--space-2); }
-.bz-btn { font-size:11px; font-weight:500; padding:4px 12px; border-radius:var(--radius-sm); cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:5px;
-  background:rgba(167,139,250,.1); border:1px solid rgba(167,139,250,.25); color:var(--bazarr); }
+.bz-btn { font-size:11px; font-weight:500; padding:4px 12px; border-radius:var(--radius-sm); cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:5px; background:rgba(167,139,250,.1); border:1px solid rgba(167,139,250,.25); color:var(--bazarr); }
 .bz-btn:hover:not(:disabled) { background:rgba(167,139,250,.2); } .bz-btn:disabled { opacity:.6; cursor:not-allowed; }
 .bz-detail-btn { background:var(--bg-elevated); border-color:var(--bg-border); color:var(--text-muted); }
 .bz-detail-btn:hover { background:var(--bg-overlay); color:var(--text-secondary); }
@@ -677,16 +626,16 @@ onMounted(async () => {
 .bz-row-label { font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; min-width:64px; padding-top:4px; flex-shrink:0; }
 .bz-badges { display:flex; gap:5px; flex-wrap:wrap; }
 .bz-badge { display:inline-flex; align-items:center; gap:3px; font-size:11px; font-weight:500; padding:3px 8px; border-radius:99px; }
-.bz-audio { background:rgba(53,197,244,.08); color:var(--sonarr); border:1px solid rgba(53,197,244,.2); }
-.bz-sub { background:rgba(167,139,250,.1); color:var(--bazarr); border:1px solid rgba(167,139,250,.25); }
-.bz-miss { background:rgba(239,68,68,.08); color:#ef4444; border:1px dashed rgba(239,68,68,.3); }
-.bz-tag { font-size:9px; font-weight:700; padding:0 4px; background:rgba(255,255,255,.1); border-radius:2px; }
+.bz-audio { background:rgba(53,197,244,.08);  color:var(--sonarr); border:1px solid rgba(53,197,244,.2); }
+.bz-sub   { background:rgba(167,139,250,.1);  color:var(--bazarr); border:1px solid rgba(167,139,250,.25); }
+.bz-miss  { background:rgba(239,68,68,.08);   color:#ef4444;       border:1px dashed rgba(239,68,68,.3); }
+.bz-tag   { font-size:9px; font-weight:700; padding:0 4px; background:rgba(255,255,255,.1); border-radius:2px; }
 .bz-details { margin-top:var(--space-4); border-top:1px solid var(--bg-border); padding-top:var(--space-4); display:flex; flex-direction:column; gap:var(--space-2); }
 .bz-detail-row { display:flex; align-items:center; gap:var(--space-2); padding:6px var(--space-3); background:var(--bg-elevated); border:1px solid var(--bg-border); border-radius:var(--radius-md); font-size:11px; flex-wrap:wrap; }
 .bz-di-icon { color:var(--bazarr); font-size:8px; flex-shrink:0; }
 .bz-di-flag { font-size:13px; flex-shrink:0; }
 .bz-di-name { color:var(--text-secondary); font-weight:500; }
-.bz-di-tag { font-size:9px; padding:1px 5px; background:rgba(167,139,250,.12); color:var(--bazarr); border:1px solid rgba(167,139,250,.25); border-radius:99px; }
+.bz-di-tag  { font-size:9px; padding:1px 5px; background:rgba(167,139,250,.12); color:var(--bazarr); border:1px solid rgba(167,139,250,.25); border-radius:99px; }
 .bz-di-prov { color:var(--text-muted); font-size:10px; }
 .bz-di-size { color:var(--text-muted); font-size:10px; margin-left:auto; }
 .bz-di-path { font-family:monospace; font-size:9px; color:var(--text-muted); word-break:break-all; width:100%; margin-top:2px; }
@@ -694,9 +643,7 @@ onMounted(async () => {
 /* Tautulli */
 .tt-loading { display:flex; flex-direction:column; gap:var(--space-2); }
 .tt-stats-bar { display:flex; align-items:center; gap:var(--space-2); flex-wrap:wrap; padding:var(--space-3) var(--space-4); background:var(--bg-elevated); border:1px solid var(--bg-border); border-radius:var(--radius-md); margin-bottom:var(--space-4); font-size:var(--text-sm); }
-.tt-stat { color:var(--text-secondary); }
-.tt-unwatched { color:var(--text-muted); font-style:italic; }
-.tt-sep { color:var(--text-muted); }
+.tt-stat { color:var(--text-secondary); } .tt-unwatched { color:var(--text-muted); font-style:italic; } .tt-sep { color:var(--text-muted); }
 .tt-empty { color:var(--text-muted); font-size:var(--text-sm); font-style:italic; }
 .tt-table-wrap { overflow-x:auto; border:1px solid var(--bg-border); border-radius:var(--radius-lg); }
 .tt-table { width:100%; border-collapse:collapse; font-size:12px; }

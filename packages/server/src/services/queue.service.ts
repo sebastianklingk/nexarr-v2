@@ -1,10 +1,18 @@
-import type { ArrQueueItem, QueueState, SabnzbdState } from '@nexarr/shared';
+import type {
+  ArrQueueItem,
+  QueueState,
+  SabnzbdState,
+  NormalizedSlot,
+  DownloaderSummary,
+} from '@nexarr/shared';
+import { env } from '../config/env.js';
 import * as radarrService from './radarr.service.js';
 import * as sonarrService from './sonarr.service.js';
 import * as lidarrService from './lidarr.service.js';
 import * as sabnzbdService from './sabnzbd.service.js';
+import * as transmissionService from './transmission.service.js';
 
-// ── Raw Arr Queue Record (lose getippt, da externe API) ────────────────────────
+// ── Raw Arr Queue Record ───────────────────────────────────────────────────────
 
 interface RawArrRecord {
   id?: number;
@@ -17,6 +25,16 @@ interface RawArrRecord {
   indexer?: string;
   timeleft?: string;
   errorMessage?: string;
+  // Extended fields
+  downloadId?: string;
+  downloadClient?: string;
+  downloadClientName?: string;
+  quality?: { quality?: { name?: string } };
+  languages?: Array<{ id?: number; name?: string }>;
+  customFormats?: Array<{ id?: number; name?: string }>;
+  movieId?: number;
+  seriesId?: number;
+  artistId?: number;
 }
 
 interface ArrQueueResponse {
@@ -50,21 +68,110 @@ function mapArrQueue(
       timeleft:             item.timeleft,
       errorMessage:         item.errorMessage,
       app,
+      // Extended
+      downloadId:           item.downloadId,
+      quality:              item.quality?.quality?.name,
+      languages:            item.languages?.map(l => l.name).filter((n): n is string => !!n),
+      customFormats:        item.customFormats?.map(cf => cf.name).filter((n): n is string => !!n),
+      downloadClientName:   item.downloadClientName ?? item.downloadClient,
+      movieId:              item.movieId,
+      seriesId:             item.seriesId,
+      artistId:             item.artistId,
     };
   });
+}
+
+// ── SABnzbd Normalisierung ────────────────────────────────────────────────────
+
+function normalizeSabStatus(s: string): NormalizedSlot['status'] {
+  const t = s.toLowerCase();
+  if (t === 'downloading') return 'downloading';
+  if (t === 'paused') return 'paused';
+  if (t === 'completed') return 'completed';
+  if (t === 'queued' || t === 'grabbing') return 'queued';
+  if (t === 'failed') return 'error';
+  return 'queued';
+}
+
+function normalizeSabnzbd(state: SabnzbdState): NormalizedSlot[] {
+  return state.slots.map(slot => ({
+    id:            `sabnzbd:${slot.nzo_id}`,
+    nativeId:      slot.nzo_id,
+    downloader:    'sabnzbd' as const,
+    filename:      slot.filename,
+    status:        normalizeSabStatus(slot.status),
+    percentage:    slot.percentage,
+    mbTotal:       slot.mbTotal,
+    mbLeft:        slot.mbLeft,
+    // SABnzbd gibt nur globale Speed – pro Slot nicht verfügbar
+    speedMbs:      undefined,
+    timeleft:      slot.timeleft || undefined,
+    category:      slot.cat || undefined,
+    priority:      slot.priority,
+    canPause:      true,
+    canMoveToTop:  true,
+    canSetPriority: true,
+  }));
+}
+
+function sabDownloaderSummary(state: SabnzbdState): DownloaderSummary {
+  return {
+    type:         'sabnzbd',
+    name:         'SABnzbd',
+    cssVar:       '--sabnzbd',
+    isAvailable:  true,
+    paused:       state.paused,
+    speedMbs:     state.speedMbs,
+    totalMb:      state.mbTotal,
+    leftMb:       state.mbLeft,
+    slotCount:    state.slotCount,
+  };
+}
+
+function transmissionDownloaderSummary(
+  slots: NormalizedSlot[],
+  stats: { speedMbs: number; totalMb: number; leftMb: number; paused: boolean },
+): DownloaderSummary {
+  return {
+    type:         'transmission',
+    name:         'Transmission',
+    cssVar:       '--transmission',
+    isAvailable:  true,
+    paused:       stats.paused,
+    speedMbs:     stats.speedMbs,
+    totalMb:      stats.totalMb,
+    leftMb:       stats.leftMb,
+    slotCount:    slots.length,
+  };
 }
 
 // ── Aggregated Queue ──────────────────────────────────────────────────────────
 
 export async function getAggregatedQueue(): Promise<QueueState> {
-  const [radarrResult, sonarrResult, lidarrResult, sabnzbdResult] =
-    await Promise.allSettled([
-      radarrService.getQueue()  as Promise<ArrQueueResponse>,
-      sonarrService.getQueue()  as Promise<ArrQueueResponse>,
-      lidarrService.getQueue()  as Promise<ArrQueueResponse>,
-      sabnzbdService.getQueue() as Promise<SabnzbdState>,
-    ]);
+  // Arr-Services immer abfragen
+  const arrPromises = Promise.allSettled([
+    radarrService.getQueue()  as Promise<ArrQueueResponse>,
+    sonarrService.getQueue()  as Promise<ArrQueueResponse>,
+    lidarrService.getQueue()  as Promise<ArrQueueResponse>,
+  ]);
 
+  // SABnzbd nur wenn konfiguriert
+  const sabPromise = env.SABNZBD_URL
+    ? sabnzbdService.getQueue() as Promise<SabnzbdState>
+    : Promise.resolve(null);
+
+  // Transmission nur wenn konfiguriert
+  const transmissionPromise = env.TRANSMISSION_URL
+    ? Promise.allSettled([
+        transmissionService.getNormalizedSlots(),
+        transmissionService.getGlobalStats(),
+      ])
+    : Promise.resolve(null);
+
+  const [[radarrResult, sonarrResult, lidarrResult], sabResult, transmissionResult] =
+    await Promise.all([arrPromises, sabPromise.catch(() => null), transmissionPromise]);
+
+  // ── Arr Items ──────────────────────────────────────────────────────────────
   const arrItems: ArrQueueItem[] = [];
 
   if (radarrResult.status === 'fulfilled') {
@@ -77,11 +184,43 @@ export async function getAggregatedQueue(): Promise<QueueState> {
     arrItems.push(...mapArrQueue(lidarrResult.value.records ?? [], 'lidarr'));
   }
 
-  const sabnzbd: SabnzbdState | null =
-    sabnzbdResult.status === 'fulfilled' ? sabnzbdResult.value : null;
+  // ── SABnzbd ────────────────────────────────────────────────────────────────
+  const sabnzbd: SabnzbdState | null = sabResult;
+  const sabSlots: NormalizedSlot[] = sabnzbd ? normalizeSabnzbd(sabnzbd) : [];
+  const sabSummary: DownloaderSummary | null = sabnzbd ? sabDownloaderSummary(sabnzbd) : null;
 
-  const totalCount =
-    arrItems.length + (sabnzbd?.slotCount ?? 0);
+  // ── Transmission ───────────────────────────────────────────────────────────
+  let transmissionSlots: NormalizedSlot[] = [];
+  let transmissionSummary: DownloaderSummary | null = null;
 
-  return { arrItems, sabnzbd, totalCount, updatedAt: Date.now() };
+  if (transmissionResult && Array.isArray(transmissionResult)) {
+    const [slotsResult, statsResult] = transmissionResult as [
+      PromiseSettledResult<NormalizedSlot[]>,
+      PromiseSettledResult<{ speedMbs: number; totalMb: number; leftMb: number; paused: boolean }>,
+    ];
+    if (slotsResult.status === 'fulfilled') {
+      transmissionSlots = slotsResult.value;
+    }
+    if (slotsResult.status === 'fulfilled' && statsResult.status === 'fulfilled') {
+      transmissionSummary = transmissionDownloaderSummary(transmissionSlots, statsResult.value);
+    }
+  }
+
+  // ── Aggregation ────────────────────────────────────────────────────────────
+  const slots: NormalizedSlot[] = [...sabSlots, ...transmissionSlots];
+  const downloaders: DownloaderSummary[] = [
+    ...(sabSummary ? [sabSummary] : []),
+    ...(transmissionSummary ? [transmissionSummary] : []),
+  ];
+
+  const totalCount = arrItems.length + slots.length;
+
+  return {
+    arrItems,
+    sabnzbd,           // backward-compat für Dashboard-Widgets
+    slots,
+    downloaders,
+    totalCount,
+    updatedAt: Date.now(),
+  };
 }

@@ -26,6 +26,11 @@ const envSchema = z.object({
   SABNZBD_URL:       optUrl,
   SABNZBD_API_KEY:   optStr,
 
+  // Transmission (optional – zweiter Downloader)
+  TRANSMISSION_URL:  optUrl,
+  TRANSMISSION_USER: optStr,
+  TRANSMISSION_PASS: optStr,
+
   TAUTULLI_URL:      optUrl,
   TAUTULLI_API_KEY:  optStr,
 

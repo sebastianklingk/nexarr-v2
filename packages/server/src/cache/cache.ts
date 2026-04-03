@@ -43,13 +43,27 @@ export const C = {
     store.set(key, { data, expiresAt: Date.now() + ttl, fetchedAt: Date.now() });
   },
 
+  /** Einzelnen Cache-Eintrag löschen (Alias für invalidate) */
+  del(key: string): void {
+    store.delete(key);
+  },
+
+  /** Einzelnen Cache-Eintrag löschen */
   invalidate(key: string): void {
     store.delete(key);
   },
 
+  /** Alle Keys die den pattern-String enthalten löschen */
   invalidatePattern(pattern: string): void {
     for (const key of store.keys()) {
       if (key.includes(pattern)) store.delete(key);
+    }
+  },
+
+  /** Alias für invalidatePattern */
+  delPrefix(prefix: string): void {
+    for (const key of store.keys()) {
+      if (key.startsWith(prefix)) store.delete(key);
     }
   },
 
@@ -61,10 +75,15 @@ export const C = {
     const now = Date.now();
     let active = 0;
     let stale = 0;
-    for (const entry of store.values()) {
-      if (now < entry.expiresAt) active++;
-      else stale++;
+    const keys: string[] = [];
+    for (const [key, entry] of store.entries()) {
+      if (now < entry.expiresAt) {
+        active++;
+        keys.push(key);
+      } else {
+        stale++;
+      }
     }
-    return { total: store.size, active, stale };
+    return { total: store.size, active, stale, keys };
   },
 };

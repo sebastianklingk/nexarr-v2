@@ -11,16 +11,17 @@ import systemRoutes  from './routes/system.routes.js';
 import radarrRoutes  from './routes/radarr.routes.js';
 import sonarrRoutes  from './routes/sonarr.routes.js';
 import lidarrRoutes  from './routes/lidarr.routes.js';
-import sabnzbdRoutes   from './routes/sabnzbd.routes.js';
-import calendarRoutes  from './routes/calendar.routes.js';
-import tautulliRoutes  from './routes/tautulli.routes.js';
-import overseerrRoutes from './routes/overseerr.routes.js';
-import prowlarrRoutes  from './routes/prowlarr.routes.js';
-import { gotifyRouter }  from './routes/gotify.routes.js';
-import { bazarrRouter } from './routes/bazarr.routes.js';
-import { tmdbRouter }   from './routes/tmdb.routes.js';
-import { plexRouter }   from './routes/plex.routes.js';
-import { absRouter }    from './routes/abs.routes.js';
+import sabnzbdRoutes      from './routes/sabnzbd.routes.js';
+import transmissionRoutes from './routes/transmission.routes.js';
+import calendarRoutes     from './routes/calendar.routes.js';
+import tautulliRoutes     from './routes/tautulli.routes.js';
+import overseerrRoutes    from './routes/overseerr.routes.js';
+import prowlarrRoutes     from './routes/prowlarr.routes.js';
+import { gotifyRouter }   from './routes/gotify.routes.js';
+import { bazarrRouter }   from './routes/bazarr.routes.js';
+import { tmdbRouter }     from './routes/tmdb.routes.js';
+import { plexRouter }     from './routes/plex.routes.js';
+import { absRouter }      from './routes/abs.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -51,21 +52,22 @@ export function createApp() {
   }));
 
   // ── API Routes ────────────────────────────────────────────────────────────
-  app.use('/api/auth',    authRoutes);
-  app.use('/api/system',  systemRoutes);
-  app.use('/api/radarr',  radarrRoutes);
-  app.use('/api/sonarr',  sonarrRoutes);
-  app.use('/api/lidarr',  lidarrRoutes);
-  app.use('/api/sabnzbd',   sabnzbdRoutes);
-  app.use('/api/calendar',  calendarRoutes);
-  app.use('/api/tautulli',  tautulliRoutes);
-  app.use('/api/overseerr', overseerrRoutes);
-  app.use('/api/prowlarr',  prowlarrRoutes);
-  app.use('/api/gotify',    gotifyRouter);
-  app.use('/api/bazarr',    bazarrRouter);
-  app.use('/api/tmdb',      tmdbRouter);
-  app.use('/api/plex',      plexRouter);
-  app.use('/api/abs',       absRouter);
+  app.use('/api/auth',         authRoutes);
+  app.use('/api/system',       systemRoutes);
+  app.use('/api/radarr',       radarrRoutes);
+  app.use('/api/sonarr',       sonarrRoutes);
+  app.use('/api/lidarr',       lidarrRoutes);
+  app.use('/api/sabnzbd',      sabnzbdRoutes);
+  app.use('/api/transmission', transmissionRoutes);
+  app.use('/api/calendar',     calendarRoutes);
+  app.use('/api/tautulli',     tautulliRoutes);
+  app.use('/api/overseerr',    overseerrRoutes);
+  app.use('/api/prowlarr',     prowlarrRoutes);
+  app.use('/api/gotify',       gotifyRouter);
+  app.use('/api/bazarr',       bazarrRouter);
+  app.use('/api/tmdb',         tmdbRouter);
+  app.use('/api/plex',         plexRouter);
+  app.use('/api/abs',          absRouter);
 
   // ── Static (Production) ───────────────────────────────────────────────────
   if (env.NODE_ENV === 'production') {

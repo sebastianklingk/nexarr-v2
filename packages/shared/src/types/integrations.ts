@@ -12,9 +12,11 @@ export interface RadarrMovie {
   tmdbId: number;
   genres: string[];
   ratings: {
-    imdb?: { value: number; votes: number };
-    tmdb?: { value: number; votes: number };
+    imdb?:           { value: number; votes: number };
+    tmdb?:           { value: number; votes: number };
+    trakt?:          { value: number; votes: number };
     rottenTomatoes?: { value: number };
+    metacritic?:     { value: number };
   };
   images: Array<{ coverType: 'poster' | 'fanart' | 'banner'; remoteUrl: string }>;
   hasFile: boolean;
@@ -61,7 +63,17 @@ export interface SonarrSeries {
   tmdbId?: number;
   imdbId?: string;
   genres: string[];
-  ratings: { value: number; votes: number };
+  ratings: {
+    // Sonarr v4 multi-source
+    imdb?:          { value: number; votes: number };
+    tmdb?:          { value: number; votes: number };
+    trakt?:         { value: number; votes: number };
+    rottenTomatoes?:{ value: number };
+    metacritic?:    { value: number };
+    // Sonarr v3 single-value fallback
+    value?:  number;
+    votes?:  number;
+  };
   images: Array<{ coverType: 'poster' | 'fanart' | 'banner'; remoteUrl: string }>;
   seasons: SonarrSeason[];
   status: 'continuing' | 'ended' | 'upcoming';

@@ -5,6 +5,7 @@ import { useSeriesStore } from '../stores/series.store.js';
 import { useApi } from '../composables/useApi.js';
 import InteractiveSearchModal from '../components/ui/InteractiveSearchModal.vue';
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue';
+import RatingPills from '../components/ui/RatingPills.vue';
 import type { SonarrSeries, SonarrEpisode, SonarrSeason, TMDBCredits, TMDBVideo } from '@nexarr/shared';
 
 const route  = useRoute();
@@ -20,6 +21,12 @@ const isLoading     = ref(true);
 const activeTab     = ref<'seasons'|'overview'>('seasons');
 const openSeasons   = ref<Set<number>>(new Set([1]));
 const overviewExpanded = ref(false);
+
+const expandedEps = ref<Set<number>>(new Set());
+function toggleEpOverview(id: number) {
+  if (expandedEps.value.has(id)) expandedEps.value.delete(id);
+  else expandedEps.value.add(id);
+}
 
 // ── Action Bar ────────────────────────────────────────────────────────────────
 const isSearchingAll  = ref(false);
@@ -67,7 +74,6 @@ const seasonMonitorToggling = ref<number|null>(null);
 const episodeSearching = ref<number|null>(null);
 const episodeMonitorToggling = ref<number|null>(null);
 const bazarrEpSearching = ref<number|null>(null);
-const fileDeletePending = ref<number|null>(null);
 const showFileDeleteConfirm = ref(false);
 const fileDeleteEp = ref<SonarrEpisode|null>(null);
 const interactiveEpId = ref(0);
@@ -180,19 +186,45 @@ async function batchDeleteFiles() {
 const tmdbCredits = ref<TMDBCredits|null>(null);
 const tmdbTrailer = ref<TMDBVideo|null>(null);
 const tmdbLoading = ref(false);
+const tmdbShowRating = ref<{value:number;votes:number}|null>(null);
 
 async function loadTmdb() {
-  if (!series.value?.tvdbId||tmdbCredits.value!==null) return;
+  if (tmdbCredits.value!==null) return;
   tmdbLoading.value = true;
   try {
-    const res = await fetch(`/api/tmdb/find/tvdb/${series.value.tvdbId}`, { credentials:'include' });
-    if (!res.ok) return;
-    const data = await res.json();
-    tmdbCredits.value = data.credits ?? null;
-    const vids: TMDBVideo[] = data.videos?.results ?? [];
-    tmdbTrailer.value = vids.find(v=>v.type==='Trailer'&&v.official) ?? vids.find(v=>v.type==='Trailer') ?? null;
+    const sonarrTmdbId = (series.value as any)?.tmdbId as number | undefined;
+    const tvdbId = series.value?.tvdbId;
+
+    if (!sonarrTmdbId && !tvdbId) return;
+
+    if (sonarrTmdbId) {
+      // Direkter TMDB-Pfad: Details (inkl. Credits) + Videos parallel
+      const [detRes, vidRes] = await Promise.all([
+        fetch(`/api/tmdb/tv/${sonarrTmdbId}`,        { credentials: 'include' }),
+        fetch(`/api/tmdb/tv/${sonarrTmdbId}/videos`, { credentials: 'include' }),
+      ]);
+      if (detRes.ok) {
+        const d = await detRes.json();
+        if (d.credits)     tmdbCredits.value    = d.credits;
+        if (d.vote_average) tmdbShowRating.value = { value: d.vote_average, votes: d.vote_count ?? 0 };
+      }
+      if (vidRes.ok) {
+        const v = await vidRes.json();
+        const vids: TMDBVideo[] = v.results ?? [];
+        tmdbTrailer.value = vids.find(v=>v.type==='Trailer'&&v.official) ?? vids.find(v=>v.type==='Trailer') ?? null;
+      }
+    } else {
+      // Fallback: TVDB-ID → TMDB-ID via find-Endpoint (gibt credits + videos + ratings)
+      const res = await fetch(`/api/tmdb/find/tvdb/${tvdbId}`, { credentials: 'include' });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.credits)      tmdbCredits.value    = data.credits;
+      if (data.vote_average) tmdbShowRating.value  = { value: data.vote_average, votes: data.vote_count ?? 0 };
+      const vids: TMDBVideo[] = data.videos?.results ?? [];
+      tmdbTrailer.value = vids.find(v=>v.type==='Trailer'&&v.official) ?? vids.find(v=>v.type==='Trailer') ?? null;
+    }
   } catch { /* */ }
-  finally { tmdbLoading.value=false; }
+  finally { tmdbLoading.value = false; }
 }
 
 // ── Computed ──────────────────────────────────────────────────────────────────
@@ -223,6 +255,30 @@ const episodeFileMap = computed(() => {
   const m = new Map<number,any>();
   for (const f of episodeFiles.value) m.set(f.id,f);
   return m;
+});
+
+// Ratings-Objekt für RatingPills – Sonarr v4 multi-source + v3 fallback + TMDB
+const seriesRatings = computed(() => {
+  const r = series.value?.ratings;
+  const result: Record<string, {value:number;votes?:number}> = {};
+
+  if (r) {
+    // Sonarr v4: dedizierte Quellen
+    if (r.imdb?.value)         result.imdb         = { value: r.imdb.value,  votes: r.imdb.votes };
+    if (r.tmdb?.value)         result.tmdb         = { value: r.tmdb.value };
+    if (r.trakt?.value)        result.trakt        = { value: r.trakt.value };
+    if (r.rottenTomatoes?.value) result.rottenTomatoes = { value: r.rottenTomatoes.value };
+    if (r.metacritic?.value)   result.metacritic   = { value: r.metacritic.value };
+    // Sonarr v3: einzelner value/votes = IMDb/TVDB
+    if (!result.imdb && r.value) result.imdb = { value: r.value, votes: r.votes };
+  }
+
+  // TMDB-Rating aus eigenem Fetch ergänzen wenn Sonarr es nicht liefert
+  if (!result.tmdb && tmdbShowRating.value?.value) {
+    result.tmdb = { value: tmdbShowRating.value.value };
+  }
+
+  return Object.keys(result).length > 0 ? result : null;
 });
 
 function seasonProgress(s:SonarrSeason){ const t=s.statistics?.totalEpisodeCount??0,h=s.statistics?.episodeFileCount??0; return t>0?Math.round(h/t*100):0; }
@@ -257,10 +313,11 @@ function epFileBadges(fileId?:number):Array<{label:string;color:string}> {
     if(ch>=7) b.push({label:'7.1',color:'#555'}); else if(ch>=5) b.push({label:'5.1',color:'#555'});
   }
   const qn=f.quality?.quality?.name;
-  if(qn&&!b.find(x=>x.label==='4K'||x.label==='1080p'||x.label==='720p')) b.unshift({label:qn,color:'var(--sonarr)'});
+  if(qn&&!b.find((x:any)=>x.label==='4K'||x.label==='1080p'||x.label==='720p')) b.unshift({label:qn,color:'var(--sonarr)'});
   const langs:any[]=(f.languages??[]);
-  for(const l of langs.slice(0,3)) b.push({label:l.name?.slice(0,2)?.toUpperCase()??'',color:'#555'});
-  return b.filter(x=>x.label);
+  for(const l of langs.slice(0,3)) b.push({label:l.name?.slice(0,3)?.toUpperCase()??'',color:'#777'});
+  if(f.releaseGroup) b.push({label:f.releaseGroup,color:'#555'});
+  return b.filter((x:any)=>x.label);
 }
 
 function epRuntime(fileId?:number):string {
@@ -279,6 +336,12 @@ function epSize(fileId?:number):string {
   return fmtBytes(f?.size);
 }
 
+function epFilename(fileId?:number):string {
+  if(!fileId) return '';
+  const f=episodeFileMap.value.get(fileId);
+  return f?.relativePath ?? f?.path ?? '';
+}
+
 onMounted(async () => {
   if (store.series.length===0) await store.fetchSeries();
   series.value = await store.fetchSeriesById(seriesId.value);
@@ -287,14 +350,13 @@ onMounted(async () => {
       store.fetchEpisodes(seriesId.value),
       fetch(`/api/sonarr/series/${seriesId.value}/episodefiles`,{credentials:'include'}).then(r=>r.ok?r.json():[]).catch(()=>[]),
     ]);
-    // Bazarr episode subs
     fetch(`/api/bazarr/series/${seriesId.value}/episodes`,{credentials:'include'})
       .then(r=>r.ok?r.json():null).then((data:any[])=>{
         if(!data) return;
         const m:Record<number,any>={};
         for(const d of data) m[d.sonarrEpisodeId]=d;
         bazarrEpMap.value=m;
-      }).catch(()=>{/* bazarr not configured */});
+      }).catch(()=>{});
   }
   isLoading.value = false;
   loadTmdb();
@@ -305,7 +367,8 @@ onMounted(async () => {
   <div class="detail-view">
 
     <div v-if="isLoading" class="detail-loading">
-      <div class="skeleton skeleton-hero"/><div class="detail-body"><div class="skeleton" style="height:36px;width:50%;border-radius:8px"/></div>
+      <div class="skeleton skeleton-hero"/>
+      <div class="detail-body"><div class="skeleton" style="height:36px;width:50%;border-radius:8px"/></div>
     </div>
 
     <div v-else-if="!series" class="empty-state">
@@ -326,60 +389,81 @@ onMounted(async () => {
             <div class="hero-poster-wrap">
               <img v-if="posterUrl" :src="posterUrl" :alt="series.title" class="hero-poster"/>
               <div v-else class="hero-poster hero-ph">{{ series.title[0] }}</div>
-
-              <!-- Action bar wird jetzt unter Hero angezeigt -->
-              <div class="action-bar-hidden" style="display:none">
-                <button class="act-btn act-search" :class="{'act-ok':searchAllStatus==='ok','act-err':searchAllStatus==='error'}" :disabled="isSearchingAll" @click="searchAll">
-                  <svg v-if="isSearchingAll" class="spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                  <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                  {{ isSearchingAll?'…':searchAllStatus==='ok'?'✓':'Alle suchen' }}
-                </button>
-                <button class="act-btn act-refresh" :disabled="isRefreshing" @click="refreshSeries">
-                  <svg :class="{spin:isRefreshing}" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.02-7.36"/></svg>
-                  {{ isRefreshing?'…':'↺ Aktualisieren' }}
-                </button>
-                <a v-if="plexUrl" :href="plexUrl" target="_blank" rel="noopener" class="act-btn act-plex">▶ Plex</a>
-                <button class="act-btn" :class="series.monitored?'act-monitored-on':'act-monitored-off'" :disabled="isMonitorToggling" @click="toggleMonitored">
-                  {{ series.monitored?'👁 Überwacht':'👁 Ignoriert' }}
-                </button>
-                <button class="act-btn act-delete" @click="showDeleteConfirm=true">🗑 Entfernen</button>
-              </div>
             </div>
 
             <div class="hero-info">
               <div class="app-bar"/>
-              <h1 class="hero-title">{{ series.title }}</h1>
-              <div class="hero-meta">
-                <span v-if="series.year">{{ series.year }}</span>
-                <span v-if="series.network" class="sep">·</span>
-                <span v-if="series.network">{{ series.network }}</span>
-                <span v-if="series.runtime" class="sep">·</span>
-                <span v-if="series.runtime">{{ series.runtime }} min</span>
-                <span v-if="(series as any).nextAiring" class="next-air">
-                  🕒 {{ new Date((series as any).nextAiring).toLocaleDateString('de-DE') }}
+
+              <!-- Badges VOR Titel: Beendet | The CW | 2014 | TV-14 -->
+              <div class="hero-top-badges">
+                <span :class="['htb', series.status==='continuing' ? 'htb-cont' : 'htb-end']">
+                  {{ series.status==='continuing' ? 'Laufend' : 'Beendet' }}
                 </span>
+                <span v-if="series.network" class="htb htb-net">{{ series.network }}</span>
+                <span v-if="series.year" class="htb htb-year">{{ series.year }}</span>
+                <span v-if="(series as any).certification" class="htb htb-cert">{{ (series as any).certification }}</span>
               </div>
-              <div class="hero-ratings">
-                <div v-if="series.ratings?.value" class="r-chip">
-                  <span class="r-src">IMDb</span>
-                  <span class="r-val">★ {{ series.ratings.value.toFixed(1) }}</span>
-                  <span v-if="series.ratings.votes" class="r-votes">{{ (series.ratings.votes/1000).toFixed(0) }}k</span>
+
+              <h1 class="hero-title">{{ series.title }}</h1>
+
+              <!-- Overview direkt im Hero (3 Zeilen) -->
+              <p v-if="series.overview" class="hero-overview">{{ series.overview }}</p>
+
+              <!-- Detaillierte Meta-Grid -->
+              <div class="hero-meta-grid">
+                <div v-if="(series as any).nextAiring" class="hm-item">
+                  <span class="hm-label">Nächste Episode</span>
+                  <span class="hm-val hm-next">{{ fmtDate((series as any).nextAiring) }}</span>
+                </div>
+                <div v-if="(series as any).previousAiring || (series as any).lastAired" class="hm-item">
+                  <span class="hm-label">Letzte Episode</span>
+                  <span class="hm-val">{{ fmtDate((series as any).previousAiring || (series as any).lastAired) }}</span>
+                </div>
+                <div v-if="(series as any).firstAired" class="hm-item">
+                  <span class="hm-label">Erstausstrahlung</span>
+                  <span class="hm-val">{{ fmtDate((series as any).firstAired) }}</span>
+                </div>
+                <div v-if="(series as any).airTime" class="hm-item">
+                  <span class="hm-label">Sendezeit</span>
+                  <span class="hm-val">{{ (series as any).airTime }}</span>
+                </div>
+                <div v-if="series.runtime" class="hm-item">
+                  <span class="hm-label">Laufzeit</span>
+                  <span class="hm-val">{{ series.runtime }} min</span>
+                </div>
+                <div v-if="(series as any).originalLanguage?.name" class="hm-item">
+                  <span class="hm-label">Sprache</span>
+                  <span class="hm-val">{{ (series as any).originalLanguage.name }}</span>
+                </div>
+                <div v-if="series.added" class="hm-item">
+                  <span class="hm-label">Hinzugefügt</span>
+                  <span class="hm-val">{{ fmtDate(series.added) }}</span>
                 </div>
               </div>
-              <div v-if="tmdbTrailer" class="hero-trailer">
-                <a :href="`https://www.youtube.com/watch?v=${tmdbTrailer.key}`" target="_blank" rel="noopener" class="act-btn act-trailer-sm">▶ Trailer</a>
-              </div>
-              <div class="hero-badges">
-                <span :class="['badge',series.status==='continuing'?'badge-on':'badge-off']">{{ series.status==='continuing'?'● Laufend':'■ Beendet' }}</span>
-                <span v-if="!series.monitored" class="badge badge-unmon">Nicht überwacht</span>
-                <span v-if="series.imdbId" class="badge badge-neu"><a :href="`https://www.imdb.com/title/${series.imdbId}`" target="_blank" rel="noopener" class="badge-link">{{ series.imdbId }}</a></span>
+
+              <!-- Ratings Pills + TheTVDB-Link -->
+              <div class="hero-bottom-row">
+                <!-- RatingPills: IMDb/TMDB/trakt/META/RT als anklickbare Pills -->
+                <RatingPills
+                  v-if="seriesRatings"
+                  :ratings="seriesRatings"
+                  :imdb-id="series.imdbId"
+                  :tmdb-id="(series as any).tmdbId"
+                  tmdb-type="tv"
+                />
+
+                <!-- Nur TheTVDB separat, da keine Rating-Pill dafür -->
+                <a v-if="series.tvdbId" :href="`https://www.thetvdb.com/?id=${series.tvdbId}&tab=series`" target="_blank" rel="noopener" class="ext-link">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  TheTVDB
+                </a>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- ── Action Bar (horizontal, unter Hero) ── -->
+      <!-- ── Action Bar ── -->
       <div class="detail-action-bar">
         <button class="dab-btn" :class="{'dab-ok':searchAllStatus==='ok','dab-err':searchAllStatus==='error'}" :disabled="isSearchingAll" @click="searchAll">
           <svg v-if="isSearchingAll" class="spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
@@ -400,10 +484,7 @@ onMounted(async () => {
         </a>
         <button class="dab-btn" :class="{'dab-active':series.monitored}" :disabled="isMonitorToggling" @click="toggleMonitored">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path v-if="series.monitored" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-            <circle v-if="series.monitored" cx="12" cy="12" r="3"/>
-            <path v-if="!series.monitored" d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-            <line v-if="!series.monitored" x1="1" y1="1" x2="23" y2="23"/>
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
           </svg>
           <span>{{ series.monitored ? 'Überwacht' : 'Ignoriert' }}</span>
         </button>
@@ -457,7 +538,6 @@ onMounted(async () => {
               <div class="season-prog-wrap"><div class="season-prog" :style="{width:seasonProgress(season)+'%'}" :class="{'prog-full':seasonProgress(season)===100}"/></div>
               <span class="season-pct" :style="{color:seasonProgress(season)===100?'#22c55e':seasonProgress(season)>0?'var(--sonarr)':'var(--text-muted)'}">{{ seasonProgress(season) }}%</span>
 
-              <!-- Season actions (rechts) -->
               <button class="s-act-btn" title="Alle wählen" @click.stop="selectAllInSeason(season.seasonNumber)">☑</button>
               <button class="s-act-btn" :class="{'ss-ok':seasonSearchStatus[season.seasonNumber]==='ok'}" :disabled="seasonSearching===season.seasonNumber" title="Staffel suchen" @click.stop="searchSeason(season.seasonNumber)">
                 <svg v-if="seasonSearching===season.seasonNumber" class="spin" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
@@ -470,35 +550,25 @@ onMounted(async () => {
               </button>
             </div>
 
-            <!-- Episodes -->
             <div v-if="openSeasons.has(season.seasonNumber)" class="episodes-list">
               <div v-if="!episodesBySeason.get(season.seasonNumber)?.length" class="ep-loading">Keine Episoden…</div>
 
               <div v-for="ep in episodesBySeason.get(season.seasonNumber)" :key="ep.id" class="ep-block">
                 <div :class="['ep-row', ep.hasFile?'ep-has':ep.monitored?'ep-miss':'ep-unmon']">
-                  <!-- Checkbox -->
                   <label class="ep-checkbox" @click.stop>
                     <input type="checkbox" :checked="selectedEps.has(ep.id)" @change="toggleEpSelect(ep.id)" @click.stop/>
                   </label>
-                  <!-- Status -->
                   <span :class="['ep-status',ep.hasFile?'ico-ok':ep.monitored?'ico-miss':'ico-off']">
                     {{ ep.hasFile?'✓':ep.monitored?'–':'○' }}
                   </span>
-                  <!-- Ep# -->
                   <span class="ep-num">{{ String(ep.episodeNumber).padStart(2,'0') }}</span>
-                  <!-- Monitor toggle -->
-                  <button class="ep-mon-btn" :class="ep.monitored?'ep-mon-on':'ep-mon-off'" :disabled="episodeMonitorToggling===ep.id" title="Überwachung toggle" @click.stop="toggleEpisodeMonitor(ep)">
+                  <button class="ep-mon-btn" :class="ep.monitored?'ep-mon-on':'ep-mon-off'" :disabled="episodeMonitorToggling===ep.id" @click.stop="toggleEpisodeMonitor(ep)">
                     <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                   </button>
-                  <!-- Title -->
                   <span :class="['ep-title',ep.hasFile?'ep-t-ok':'ep-t-miss']">{{ ep.title }}</span>
-                  <!-- Runtime -->
                   <span v-if="ep.hasFile&&(ep as any).episodeFileId" class="ep-runtime">{{ epRuntime((ep as any).episodeFileId) }}</span>
-                  <!-- Date -->
                   <span v-if="ep.airDate" class="ep-date">{{ fmtDate(ep.airDate) }}</span>
-                  <!-- Size -->
                   <span v-if="ep.hasFile&&(ep as any).episodeFileId" class="ep-size">{{ epSize((ep as any).episodeFileId) }}</span>
-                  <!-- Hover actions -->
                   <div class="ep-actions">
                     <button class="ep-act" title="Interaktive Suche" @click.stop="openInteractiveEp(ep)">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><circle cx="11" cy="11" r="3"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -515,17 +585,27 @@ onMounted(async () => {
                   </div>
                 </div>
 
-                <!-- Tech badges unter Episode -->
                 <div v-if="ep.hasFile&&(ep as any).episodeFileId" class="ep-tech-row">
                   <span v-for="b in epFileBadges((ep as any).episodeFileId)" :key="b.label" class="ep-tech" :style="{color:b.color,borderColor:b.color+'44'}">{{ b.label }}</span>
-                  <!-- Bazarr badges -->
                   <template v-if="bazarrEpMap[ep.id]">
                     <span v-for="s in bazarrEpMap[ep.id].subtitles" :key="'bs-'+s.code2" class="ep-tech ep-bz-ok">{{ flagEmoji(s.code2) }}</span>
                     <span v-if="bazarrEpMap[ep.id].missing_subtitles.length" class="ep-tech ep-bz-miss">✗{{ bazarrEpMap[ep.id].missing_subtitles.length }}</span>
                   </template>
                 </div>
-              </div>
 
+                <div
+                  v-if="ep.overview"
+                  class="ep-overview"
+                  :class="{'ep-ov-expanded': expandedEps.has(ep.id)}"
+                  @click.stop="toggleEpOverview(ep.id)"
+                >
+                  {{ ep.overview }}
+                </div>
+
+                <div v-if="ep.hasFile && (ep as any).episodeFileId && epFilename((ep as any).episodeFileId)" class="ep-filename">
+                  {{ epFilename((ep as any).episodeFileId) }}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -574,7 +654,7 @@ onMounted(async () => {
 
     </template>
 
-    <!-- Batch Selection Toolbar (fixed bottom) -->
+    <!-- Batch Toolbar -->
     <Teleport to="body">
       <div v-if="selectedEps.size>0" class="batch-toolbar">
         <span class="batch-count">{{ selectedEps.size }} Episode(n) ausgewählt</span>
@@ -599,17 +679,45 @@ onMounted(async () => {
 
 <style scoped>
 .detail-view { min-height: 100%; }
-.hero { position:relative; min-height:420px; display:flex; flex-direction:column; justify-content:flex-end; }
+
+.hero { position:relative; min-height:480px; display:flex; flex-direction:column; justify-content:flex-end; }
 .hero-bg { position:absolute; inset:0; background-image:var(--fanart); background-size:cover; background-position:center top; z-index:0; }
-.hero-gradient { position:absolute; inset:0; background:linear-gradient(to bottom, rgba(10,10,10,.15) 0%, rgba(10,10,10,.55) 45%, rgba(10,10,10,.97) 100%); z-index:1; }
+.hero-gradient { position:absolute; inset:0; background:linear-gradient(to bottom, rgba(10,10,10,.15) 0%, rgba(10,10,10,.5) 40%, rgba(10,10,10,.97) 100%); z-index:1; }
 .hero-content { position:relative; z-index:2; padding: var(--space-5) var(--space-6) var(--space-6); display:flex; flex-direction:column; gap:var(--space-4); }
 .back-btn { display:inline-flex; align-items:center; gap:5px; color:var(--text-tertiary); font-size:var(--text-sm); transition:color .15s; align-self:flex-start; }
 .back-btn:hover { color:var(--text-primary); }
 .hero-main { display:flex; gap:var(--space-5); align-items:flex-end; }
 .hero-poster-wrap { flex-shrink:0; }
-.hero-poster { width:140px; min-width:140px; aspect-ratio:2/3; object-fit:cover; border-radius:var(--radius-lg); border:1px solid rgba(255,255,255,.1); box-shadow:0 12px 40px rgba(0,0,0,.6); }
+.hero-poster { width:150px; min-width:150px; aspect-ratio:2/3; object-fit:cover; border-radius:var(--radius-lg); border:1px solid rgba(255,255,255,.1); box-shadow:0 12px 40px rgba(0,0,0,.6); }
+.hero-ph { display:flex; align-items:center; justify-content:center; background:var(--bg-elevated); font-size:52px; font-weight:700; color:var(--text-muted); }
 
-/* Horizontale Action-Bar */
+.hero-info { flex:1; display:flex; flex-direction:column; gap:var(--space-2); padding-bottom:var(--space-1); min-width:0; }
+.app-bar { width:32px; height:3px; background:var(--sonarr); border-radius:2px; margin-bottom:var(--space-1); }
+
+.hero-top-badges { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.htb { display:inline-flex; align-items:center; padding:3px 9px; border-radius:5px; font-size:10px; font-weight:700; white-space:nowrap; }
+.htb-cont { background:rgba(53,197,244,.12); color:var(--sonarr); border:1px solid rgba(53,197,244,.25); }
+.htb-end  { background:rgba(100,100,100,.12); color:#666; border:1px solid #2a2a2a; }
+.htb-net  { background:rgba(255,255,255,.06); color:#aaa; border:1px solid #2a2a2a; }
+.htb-year { background:rgba(255,255,255,.05); color:#777; border:1px solid #1f1f1f; }
+.htb-cert { background:rgba(255,149,0,.08);  color:#ff9500; border:1px solid rgba(255,149,0,.18); }
+
+.hero-title { font-size:clamp(20px,3vw,30px); font-weight:700; color:var(--text-primary); line-height:1.2; margin:0; }
+
+.hero-overview { font-size:12px; color:rgba(255,255,255,.6); line-height:1.6; margin:0; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; max-width:680px; }
+
+.hero-meta-grid { display:flex; gap:var(--space-4); flex-wrap:wrap; }
+.hm-item { display:flex; align-items:center; gap:5px; font-size:11px; }
+.hm-label { color:rgba(255,255,255,.45); font-weight:600; }
+.hm-val { color:rgba(255,255,255,.75); }
+.hm-next { color:var(--sonarr); }
+
+.hero-bottom-row { display:flex; align-items:center; gap:var(--space-4); flex-wrap:wrap; }
+.hero-links { display:flex; gap:8px; flex-wrap:wrap; }
+.ext-link { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; background:rgba(255,255,255,.04); border:1px solid #1f1f1f; border-radius:6px; font-size:10px; font-weight:600; color:#555; text-decoration:none; transition:all .15s; }
+.ext-link:hover { border-color:var(--sonarr); color:var(--sonarr); }
+
+/* Action Bar */
 .detail-action-bar { display:flex; align-items:center; gap:4px; flex-wrap:wrap; padding:var(--space-3) var(--space-6); background:rgba(0,0,0,.3); border-bottom:1px solid var(--bg-border); backdrop-filter:blur(8px); }
 .dab-btn { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:var(--radius-md); font-size:12px; font-weight:500; white-space:nowrap; cursor:pointer; background:var(--bg-elevated); border:1px solid rgba(255,255,255,.07); color:var(--text-tertiary); text-decoration:none; transition:all .15s; }
 .dab-btn:hover:not(:disabled) { background:var(--bg-overlay); color:var(--text-primary); border-color:rgba(255,255,255,.14); }
@@ -619,37 +727,8 @@ onMounted(async () => {
 .dab-btn.dab-err { color:#ef4444; }
 .dab-btn.dab-danger:hover:not(:disabled) { color:#ef4444; border-color:rgba(239,68,68,.35); background:rgba(239,68,68,.08); }
 .dab-sep { width:1px; height:18px; background:rgba(255,255,255,.08); margin:0 2px; flex-shrink:0; }
-.hero-ph { display:flex; align-items:center; justify-content:center; background:var(--bg-elevated); font-size:52px; font-weight:700; color:var(--text-muted); }
-.action-bar { display:flex; flex-direction:column; gap:4px; width:130px; }
-.act-btn { display:inline-flex; align-items:center; justify-content:center; gap:5px; padding:5px 8px; border-radius:var(--radius-sm); font-size:11px; font-weight:500; cursor:pointer; transition:all .15s; width:100%; white-space:nowrap; }
-.act-btn:disabled { opacity:.6; cursor:not-allowed; }
-.act-search { background:rgba(53,197,244,.1); border:1px solid rgba(53,197,244,.25); color:var(--text-secondary); }
-.act-search:not(:disabled):hover { background:rgba(53,197,244,.2); }
-.act-refresh { background:var(--bg-elevated); border:1px solid var(--bg-border); color:var(--text-tertiary); }
-.act-plex { background:rgba(229,160,13,.1); border:1px solid rgba(229,160,13,.25); color:var(--text-secondary); text-decoration:none; }
-.act-monitored-on { background:rgba(53,197,244,.12); border:1px solid rgba(53,197,244,.3); color:var(--sonarr); }
-.act-monitored-off { background:var(--bg-elevated); border:1px solid var(--bg-border); color:var(--text-muted); }
-.act-delete { background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.2); color:var(--text-muted); }
-.act-delete:hover { background:rgba(239,68,68,.18); color:#ef4444; }
-.act-ok { background:rgba(34,197,94,.12); border-color:rgba(34,197,94,.3); color:#22c55e; }
-.act-err { background:rgba(239,68,68,.12); border-color:rgba(239,68,68,.3); color:#ef4444; }
-.hero-info { flex:1; display:flex; flex-direction:column; gap:var(--space-3); padding-bottom:var(--space-1); }
-.app-bar { width:32px; height:3px; background:var(--sonarr); border-radius:2px; }
-.hero-title { font-size:clamp(20px,3vw,32px); font-weight:700; color:var(--text-primary); line-height:1.2; margin:0; }
-.hero-meta { display:flex; align-items:center; gap:var(--space-2); color:var(--text-tertiary); font-size:var(--text-sm); flex-wrap:wrap; }
-.sep { color:var(--text-muted); }
-.next-air { color:var(--sonarr); font-size:var(--text-xs); }
-.r-chip { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:var(--radius-sm); font-size:var(--text-xs); font-weight:600; border:1px solid; background:rgba(245,197,24,.1); border-color:rgba(245,197,24,.3); }
-.r-src { color:var(--text-muted); font-weight:400; } .r-val { color:var(--text-primary); } .r-votes { color:var(--text-muted); font-size:10px; }
-.hero-trailer { margin-top:var(--space-1); }
-.act-trailer-sm { display:inline-flex; align-items:center; gap:5px; padding:4px 12px; border-radius:var(--radius-sm); font-size:11px; font-weight:500; cursor:pointer; background:rgba(255,0,0,.1); border:1px solid rgba(255,0,0,.25); color:var(--text-secondary); text-decoration:none; }
-.hero-badges { display:flex; gap:var(--space-2); flex-wrap:wrap; }
-.badge { padding:2px 10px; border-radius:99px; font-size:var(--text-xs); font-weight:500; }
-.badge-on { background:rgba(53,197,244,.12); color:var(--sonarr); border:1px solid rgba(53,197,244,.25); }
-.badge-off { background:var(--bg-elevated); color:var(--text-muted); border:1px solid var(--bg-border); }
-.badge-unmon { background:var(--bg-elevated); color:var(--text-muted); border:1px solid var(--bg-border); }
-.badge-neu { background:var(--bg-elevated); color:var(--text-tertiary); border:1px solid var(--bg-border); }
-.badge-link { color:inherit; text-decoration:none; }
+
+/* Stats */
 .stats-bar { display:flex; align-items:center; background:var(--bg-surface); border-bottom:1px solid var(--bg-border); padding: var(--space-4) var(--space-6); }
 .stat-item { display:flex; flex-direction:column; gap:2px; padding:0 var(--space-5); flex:1; }
 .stat-item:first-child { padding-left:0; }
@@ -660,13 +739,18 @@ onMounted(async () => {
 .stat-bar { height:100%; background:var(--sonarr); border-radius:2px; transition:width .3s; }
 .bar-full { background:var(--status-success); }
 .stat-divider { width:1px; height:40px; background:var(--bg-border); flex-shrink:0; }
+
 .genre-bar { display:flex; gap:var(--space-2); flex-wrap:wrap; padding: var(--space-3) var(--space-6); border-bottom:1px solid var(--bg-border); background:var(--bg-surface); }
 .genre-tag { font-size:11px; padding:3px 10px; background:var(--bg-elevated); border:1px solid var(--bg-border); border-radius:99px; color:var(--text-muted); }
+
+/* Tabs */
 .tabs-bar { display:flex; border-bottom:1px solid var(--bg-border); padding:0 var(--space-6); background:var(--bg-surface); position:sticky; top:0; z-index:10; }
 .tab-btn { padding: var(--space-3) var(--space-5); font-size:var(--text-sm); color:var(--text-muted); border-bottom:2px solid transparent; transition:color .15s,border-color .15s; margin-bottom:-1px; cursor:pointer; }
 .tab-btn:hover { color:var(--text-secondary); }
 .tab-btn.active { color:var(--text-primary); border-bottom-color:var(--sonarr); }
 .tab-content { padding: var(--space-5) var(--space-6); }
+
+/* Seasons */
 .seasons-list { display:flex; flex-direction:column; gap:var(--space-2); }
 .season-block { border:1px solid var(--bg-border); border-radius:var(--radius-lg); overflow:hidden; background:var(--bg-surface); }
 .season-header { width:100%; display:flex; align-items:center; gap:var(--space-3); padding: var(--space-3) var(--space-4); cursor:pointer; transition:background .15s; }
@@ -684,13 +768,14 @@ onMounted(async () => {
 .s-act-btn:hover:not(:disabled) { background:var(--bg-overlay); color:var(--sonarr); border-color:rgba(53,197,244,.35); }
 .s-act-btn:disabled { opacity:.6; cursor:not-allowed; }
 .s-mon-on { color:var(--sonarr); border-color:rgba(53,197,244,.3); }
-.s-mon-off { color:var(--text-muted); }
 .ss-ok { background:rgba(34,197,94,.1); border-color:rgba(34,197,94,.3); color:#22c55e; }
+
+/* Episodes */
 .episodes-list { border-top:1px solid var(--bg-border); }
 .ep-loading { padding:var(--space-4); color:var(--text-muted); font-size:var(--text-sm); text-align:center; }
 .ep-block { border-bottom:1px solid rgba(255,255,255,.03); }
 .ep-block:last-child { border-bottom:none; }
-.ep-row { display:flex; align-items:center; gap:8px; padding:6px var(--space-4); transition:background .12s; position:relative; }
+.ep-row { display:flex; align-items:center; gap:8px; padding:7px var(--space-4); transition:background .12s; position:relative; }
 .ep-row:hover { background:var(--bg-elevated); }
 .ep-row:hover .ep-actions { opacity:1; }
 .ep-checkbox { display:flex; align-items:center; flex-shrink:0; }
@@ -709,13 +794,19 @@ onMounted(async () => {
 .ep-act { display:flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:var(--radius-sm); background:var(--bg-overlay); border:1px solid var(--bg-border); color:var(--text-muted); cursor:pointer; transition:all .12s; }
 .ep-act:hover:not(:disabled) { color:var(--sonarr); border-color:rgba(53,197,244,.35); }
 .ep-act:disabled { opacity:.5; cursor:not-allowed; }
-.ep-act-search:hover { color:var(--sonarr); }
 .ep-act-bazarr:hover { color:var(--bazarr); border-color:rgba(167,139,250,.35); }
 .ep-act-del:hover { color:#ef4444; border-color:rgba(239,68,68,.35); }
-.ep-tech-row { display:flex; gap:3px; flex-wrap:wrap; padding:3px var(--space-4) 5px calc(var(--space-4) + 60px); }
+
+.ep-tech-row { display:flex; gap:3px; flex-wrap:wrap; padding:2px var(--space-4) 4px calc(var(--space-4) + 60px); }
 .ep-tech { font-size:9px; font-weight:700; padding:1px 5px; border-radius:3px; border:1px solid; letter-spacing:.02em; }
 .ep-bz-ok { background:rgba(167,139,250,.1); color:var(--bazarr); border-color:rgba(167,139,250,.2); }
 .ep-bz-miss { background:rgba(239,68,68,.08); color:#ef4444; border-color:rgba(239,68,68,.2); border-style:dashed; }
+
+.ep-overview { font-size:11px; color:var(--text-muted); line-height:1.55; font-style:italic; padding:3px var(--space-4) 4px calc(var(--space-4) + 60px); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; cursor:pointer; transition:color .12s; }
+.ep-overview:hover { color:var(--text-tertiary); }
+.ep-ov-expanded { -webkit-line-clamp:unset; display:block; }
+
+.ep-filename { font-family:monospace; font-size:9px; color:var(--text-muted); padding:0 var(--space-4) 5px calc(var(--space-4) + 60px); word-break:break-all; opacity:.55; }
 
 /* Overview Tab */
 .overview-wrap { margin-bottom:var(--space-6); }
@@ -748,7 +839,6 @@ onMounted(async () => {
 .batch-del-btn { background:rgba(239,68,68,.1); border-color:rgba(239,68,68,.25); color:#ef4444; }
 .batch-del-btn:hover { background:rgba(239,68,68,.2); }
 .batch-clear { background:var(--bg-overlay); border-color:var(--bg-border); color:var(--text-muted); }
-.batch-clear:hover { color:var(--text-secondary); }
 
 /* Misc */
 .detail-loading { display:flex; flex-direction:column; }

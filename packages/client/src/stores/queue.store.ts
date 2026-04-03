@@ -6,6 +6,8 @@ import type {
   QueueState,
   ArrQueueItem,
   SabnzbdState,
+  NormalizedSlot,
+  DownloaderSummary,
   ClientToServerEvents,
   ServerToClientEvents,
 } from '@nexarr/shared';
@@ -27,8 +29,19 @@ export const useQueueStore = defineStore('queue', () => {
     queueState.value?.arrItems ?? []
   );
 
+  /** @deprecated Nutze `slots` + `downloaders` – bleibt für Dashboard-Widgets vorhanden */
   const sabnzbd = computed<SabnzbdState | null>(() =>
     queueState.value?.sabnzbd ?? null
+  );
+
+  /** Normalisierte Slots aller konfigurierten Downloader */
+  const slots = computed<NormalizedSlot[]>(() =>
+    queueState.value?.slots ?? []
+  );
+
+  /** Zusammenfassung pro Downloader (für Header-Controls + Stats-Bar) */
+  const downloaders = computed<DownloaderSummary[]>(() =>
+    queueState.value?.downloaders ?? []
   );
 
   const totalCount = computed<number>(() =>
@@ -48,8 +61,7 @@ export const useQueueStore = defineStore('queue', () => {
   );
 
   const isDownloading = computed<boolean>(() =>
-    totalCount.value > 0 &&
-    (sabnzbd.value ? !sabnzbd.value.paused : false) ||
+    slots.value.some(s => s.status === 'downloading') ||
     arrItems.value.some(i => i.status === 'downloading')
   );
 
@@ -116,7 +128,7 @@ export const useQueueStore = defineStore('queue', () => {
     // State
     queueState, isConnected, isSubscribed, lastError,
     // Getters
-    arrItems, sabnzbd, totalCount,
+    arrItems, sabnzbd, slots, downloaders, totalCount,
     radarrItems, sonarrItems, lidarrItems, isDownloading,
     // Actions
     subscribe, unsubscribe, disconnect,

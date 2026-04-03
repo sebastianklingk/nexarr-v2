@@ -32,16 +32,25 @@ router.get('/tv/:tmdbId/videos', requireAuth, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// TMDB-ID via TVDB-ID (für Sonarr-Serien)
+// TMDB-ID via TVDB-ID (für Sonarr-Serien) – inkl. Ratings, Credits, Videos
 router.get('/find/tvdb/:tvdbId', requireAuth, async (req, res, next) => {
   try {
     const tmdbId = await tmdbService.findTmdbIdByTvdbId(Number(req.params.tvdbId));
     if (!tmdbId) { res.status(404).json({ error: 'Nicht gefunden' }); return; }
-    const [credits, videos] = await Promise.all([
-      tmdbService.getSeriesCredits(tmdbId),
+    // getTvDetails hat append_to_response=credits → ein API-Call für Details + Credits
+    const [details, videos] = await Promise.all([
+      tmdbService.getTvDetails(tmdbId),
       tmdbService.getSeriesVideos(tmdbId),
     ]);
-    res.json({ tmdbId, credits, videos });
+    const d = details as any;
+    res.json({
+      tmdbId,
+      credits:     d.credits ?? null,
+      videos,
+      // Ratings-Felder direkt auf Root-Level für einfachen Frontend-Zugriff
+      vote_average: d.vote_average ?? null,
+      vote_count:   d.vote_count   ?? null,
+    });
   } catch (e) { next(e); }
 });
 

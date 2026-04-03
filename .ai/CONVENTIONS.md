@@ -435,18 +435,41 @@ stores/*.store.ts           max. 200 Zeilen
 
 ---
 
+## Checkliste: Neue Integration einbauen
+
+Bei jeder neuen API/Integration diese Reihenfolge einhalten:
+
+1. `.env` + `env.ts` (Zod-Schema) um neue Keys ergänzen
+2. `*.service.ts` anlegen – alle `C.fetch()`-Calls mit passendem TTL
+3. `*.routes.ts` anlegen + in `app.ts` registrieren
+4. **`cache/warmup.ts` aktualisieren** – neue Endpunkte in die richtige Welle (1–4) einfügen
+5. Wellen-Tabelle und Cache-Key-Liste in `.ai/INTEGRATIONS.md` ergänzen
+6. TypeCheck + Neustart, Warmup-Log prüfen
+
+> Details zur Wellen-Zuordnung: `.ai/INTEGRATIONS.md` → „⚠️ Pflicht bei jeder neuen Integration“
+
+---
+
 ## Validierung vor jedem Commit
 
 ```bash
 # TypeScript Check – MUSS fehlerfrei sein
-npx tsc --noEmit
-
-# Optional aber empfohlen
-npx eslint packages/server/src packages/client/src
-
-# Syntax-Check Backend
-node -e "require('./packages/server/dist/server.js')"
+npm run typecheck
+# oder manuell:
+node_modules/.bin/tsc --noEmit                    # Server
+node_modules/.bin/vue-tsc --noEmit                # Client
 ```
 
-Claude Code führt `npx tsc --noEmit` IMMER vor dem Commit aus.
-Wenn es Fehler gibt → zuerst fixen, dann committen.
+**Wer führt das aus?**
+- **Chat-Claude:** Kann keine Shell-Befehle ausführen. Gibt den Befehl aus, User führt ihn aus.
+- **Claude Code:** Führt `npm run typecheck` IMMER selbst vor dem Commit aus.
+
+Wenn Fehler → zuerst fixen, dann committen.
+
+**Commit-Workflow (immer in dieser Reihenfolge):**
+```bash
+npm run typecheck          # 1. TypeScript prüfen
+git add -A                 # 2. Alles stagen
+git commit -m "type(scope): beschreibung"  # 3. Committen
+git push gitea main && git push github main  # 4. Pushen
+```

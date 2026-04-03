@@ -5,6 +5,86 @@
 
 ---
 
+## ⚠️ Pflicht bei jeder neuen Integration
+
+Wenn eine neue API / Integration zu nexarr hinzukommt, MUSS **gleichzeitig** geprüft werden:
+
+### 1. Cache-Warmup ergänzen (`packages/server/src/cache/warmup.ts`)
+
+Für jeden neuen Service prüfen:
+- Welche Endpunkte werden beim ersten Seitenaufruf gebraucht? → In passende Welle einbauen
+- Welches TTL hat der Cache-Eintrag? Richtlinie:
+  - `TTL.COLLECTION` (5 min) → Welle 1 oder 2, wird vom Refresh-Timer erneuert
+  - `TTL.STATS` (2 min) → Welle 2, wird vom Refresh-Timer erneuert
+  - `TTL.LONG` (30 min) → Welle 3, kein Refresh nötig
+  - `TTL.QUEUE` (15 s) → **NICHT** vorwärmen, veraltet sofort
+  - `TTL.DETAIL` (10 min) → **NICHT** vorwärmen (zu viele per-Item Keys)
+
+### 2. Wellen-Zuordnung
+
+| Welle | Delay | Inhalt |
+|---|---|---|
+| 1 | sofort | Hauptbibliotheken (MoviesView, SeriesView, MusicView) |
+| 2 | +3 s   | Dashboard-Daten (Stats, History, Requests, Badges) |
+| 3 | +7 s   | Statische Metadaten (RootFolders, Profile, Indexer, Status) |
+| 4 | +12 s  | Externe Dienste mit Rate-Limits (TMDB etc.) |
+
+### 3. Refresh-Timer
+
+Nur Welle 1+2 werden alle 4 Minuten refresht.
+Welle 3+4 haben lange TTLs und brauchen keinen Timer-Refresh.
+
+### 4. Fehlerverhalten sicherstellen
+
+Jeder neue Service-Call im Warmup muss über `Promise.allSettled` laufen (bereits durch `runWave()` sichergestellt).
+NIEMALS `await someService.get()` direkt in `warmCache()` ohne Fehlerbehandlung.
+
+### 5. Aktuell gecachte Endpunkte (Stand 02.04.2026)
+
+**Welle 1 – Bibliotheken:**
+- `radarr_movies` – Radarr: alle Filme
+- `sonarr_series` – Sonarr: alle Serien
+- `lidarr_artists` – Lidarr: alle Künstler
+- `lidarr_albums` – Lidarr: alle Alben
+
+**Welle 2 – Dashboard:**
+- `tautulli_home_stats` – Tautulli: Home-Stats
+- `tautulli_history_20` – Tautulli: letzte 20 Einträge
+- `tautulli_plays_by_date_30` – Tautulli: Timeline 30 Tage
+- `overseerr_requests_pending` – Overseerr: offene Requests
+- `overseerr_requests_all` – Overseerr: alle Requests
+- `sabnzbd_history` – SABnzbd: Download-History
+- `gotify_messages_40` – Gotify: letzte 40 Nachrichten
+- `prowlarr_stats` – Prowlarr: Indexer-Statistiken
+- `prowlarr_history_100` – Prowlarr: History
+
+**Welle 3 – Statische Metadaten:**
+- `radarr_rootfolders` – Radarr: Root-Folders
+- `radarr_qualityprofiles` – Radarr: Quality-Profile
+- `sonarr_rootfolders` – Sonarr: Root-Folders
+- `sonarr_qualityprofiles` – Sonarr: Quality-Profile
+- `prowlarr_indexers` – Prowlarr: Indexer-Liste
+- `plex_libraries` – Plex: Library-Sections
+- `plex_status` – Plex: Server-Status
+- `abs_libraries` – Audiobookshelf: Libraries
+- `bazarr_status` – Bazarr: System-Status
+- `gotify_health` – Gotify: Health
+
+**Welle 4 – Externe Dienste:**
+- `tmdb_trending_movie_week` – TMDB: Trending Filme
+- `tmdb_trending_tv_week` – TMDB: Trending TV
+
+**Bewusst NICHT gecacht:**
+- `sabnzbd_queue` / `sonarr_queue` / `lidarr_queue` – TTL 15s, zu flüchtig
+- `plex_sessions` – Live-Streams, TTL 15s
+- `radarr_movie_*` / `sonarr_series_*` etc. – Per-Item Details, zu viele Keys
+- Prowlarr-Suche – user-spezifisch, kein sinnvoller Cache-Key
+- Bazarr per-Movie Subtitles – per-Item, on-demand sinnvoller
+
+---
+
+---
+
 ## Allgemeine Muster
 
 ### Auth-Patterns
