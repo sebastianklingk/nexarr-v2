@@ -29,7 +29,14 @@ in einer einheitlichen Dark-UI vereint.
 **Server starten (Dev):**
 ```bash
 npm run dev
-# Startet: packages/server (tsx watch, Port 3000) + packages/client (vite, Port 5173)
+# Startet: packages/server (tsx, KEIN watch) + packages/client (vite HMR)
+# predev killt automatisch Port 3000 falls belegt
+```
+
+**Server neu starten (nach Backend-Änderungen):**
+```bash
+npm run restart
+# Oder: Ctrl+C, dann npm run dev
 ```
 
 **Logs:** `/tmp/nexarr-v2.log`

@@ -15,7 +15,8 @@ Vor jeder Aufgabe kurz abwägen:
 | Verzeichnisse + Scaffold anlegen | Chat-Claude direkt |
 | `.ai/`-Dateien pflegen | Chat-Claude direkt |
 | Code lesen / reviewen | Chat-Claude direkt |
-| `git`, `npm install`, `npx tsc` | Claude Code |
+| `git`, `npm install`, `npx tsc` | User (Shell) |
+| **Server neustarten nach Backend-Änderung** | **User: `npm run restart`** |
 | Große Feature-Phase (5+ Dateien + TypeCheck) | Claude Code |
 | Server-Debugging (Logs, Crashes) | Claude Code |
 | Docker Build / Push | Claude Code |
