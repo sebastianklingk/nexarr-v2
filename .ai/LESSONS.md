@@ -5,6 +5,10 @@
 
 ---
 
+## 2026-04-03 · Dev Server · Vite stirbt bei SSH-Disconnect
+**Was passierte:** Vite lief im Vordergrund. Bei SSH-Disconnect/Terminal-Close bekommt der Vordergrund-Prozess SIGHUP → Vite stirbt → Seite nicht erreichbar. Server mit `setsid` überlebte, Vite nicht.
+**Regel:** Server UND Vite BEIDE als `setsid`-Daemons starten (`dev.sh`). `npm run dev` startet beide im Hintergrund, gibt sofort den Prompt zurück. Überleben Terminal-Close, SSH-Disconnect, Ctrl+C. Logs via `npm run logs` / `npm run logs:client`.
+
 ## 2026-04-03 · Dev Server · concurrently + Ctrl+C killt alles
 **Was passierte:** `concurrently` bindet Server + Vite in einem Prozess. Ctrl+C (für Commits/Befehle) killt BEIDE. Danach ist die Seite komplett unerreichbar. Auch `-k` Flag und `predev` fuser verursachten Crashes.
 **Regel:** Server IMMER als Hintergrund-Daemon starten (`dev.sh`). `nohup` + PID-File. Überlebt Ctrl+C und Terminal-Close. Vite läuft im Vordergrund (Ctrl+C stoppt nur Vite). `npm run restart` für Server-Neustart, `npm run logs` für Logs.

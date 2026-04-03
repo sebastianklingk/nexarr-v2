@@ -8,13 +8,14 @@
     "packages/client"
   ],
   "scripts": {
-    "dev": "bash dev.sh start && npm run dev:client",
-    "dev:client": "npm run dev -w packages/client",
-    "dev:server": "bash dev.sh start",
-    "restart": "bash dev.sh restart",
+    "dev": "bash dev.sh start",
     "stop": "bash dev.sh stop",
-    "logs": "bash dev.sh logs",
+    "restart": "bash dev.sh restart",
+    "restart:server": "bash dev.sh restart:server",
+    "restart:client": "bash dev.sh restart:client",
     "status": "bash dev.sh status",
+    "logs": "bash dev.sh logs",
+    "logs:client": "bash dev.sh logs:client",
     "build": "npm run build -w packages/shared && npm run build -w packages/server && npm run build -w packages/client",
     "typecheck": "npm run typecheck -w packages/shared && npm run typecheck -w packages/server && npm run typecheck -w packages/client"
   },

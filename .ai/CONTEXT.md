@@ -1,8 +1,8 @@
 # nexarr v2 – AI Context
 > Dieses Dokument wird am Ende jeder Session aktualisiert.
-> Zuletzt aktualisiert: 03.04.2026 – AUTH_DISABLED + Image-URL-Optimierung (w342/w500/w1280)
+> Zuletzt aktualisiert: 03.04.2026 – Dev-Setup final (Daemon), Downloads UI komplett, Image-Perf, Auth-Bypass
 > Aktualisiert von: Chat-Claude
-> Stand: Phase 10 ✅ KOMPLETT · Phase 11 Schritt 5 ✅ + Auth-Bypass + Poster-Performance
+> Stand: Phase 10 ✅ KOMPLETT · Phase 11 Schritt 5 ✅ + Dev-Infra + Downloads-Polish
 
 ---
 
@@ -26,24 +26,23 @@ in einer einheitlichen Dark-UI vereint.
 | URL | http://192.168.188.42:3000 | http://192.168.188.69:3001 |
 | MCP-Pfad | \\ODIN\appdata\openclaw\config\workspace\nexarr-v2\ | Docker via Portainer |
 
-**Server starten (Dev):**
+**Dev starten (Server + Vite als Daemons):**
 ```bash
 npm run dev
-# 1. Startet Server als Hintergrund-Daemon (Port 3000, überlebt Ctrl+C)
-# 2. Startet Vite im Vordergrund (Port 5173, HMR)
-# Ctrl+C stoppt nur Vite – Server läuft weiter!
+# Startet BEIDE als Hintergrund-Daemons (setsid)
+# Überleben Terminal-Close, SSH-Disconnect, Ctrl+C
+# Befehl gibt sofort den Prompt zurück
 ```
 
-**Nur Server neu starten (nach Backend-Änderungen):**
+**Befehle:**
 ```bash
-npm run restart
-```
-
-**Server stoppen / Status / Logs:**
-```bash
-npm run stop      # Server-Daemon stoppen
-npm run status    # Läuft der Server?
-npm run logs      # Server-Log live verfolgen (tail -f)
+npm run status           # Läuft Server? Läuft Vite?
+npm run restart          # Beides neu starten
+npm run restart:server   # Nur Server
+npm run restart:client   # Nur Vite
+npm run stop             # Alles stoppen
+npm run logs             # Server-Log (tail -f)
+npm run logs:client      # Vite-Log (tail -f)
 ```
 
 **Logs:** `/tmp/nexarr-v2.log`
