@@ -8,6 +8,7 @@ import ConfirmDialog from '../components/ui/ConfirmDialog.vue';
 import RatingPills from '../components/ui/RatingPills.vue';
 import type { SonarrSeries, SonarrEpisode, SonarrSeason, TMDBCredits, TMDBVideo } from '@nexarr/shared';
 import { posterUrl as getPosterUrl, fanartUrl as getFanartUrl } from '../utils/images.js';
+import MediaIcon from '../components/ui/MediaIcon.vue';
 
 const route  = useRoute();
 const router = useRouter();
@@ -288,28 +289,28 @@ function fmtDate(iso?:string){ if(!iso) return ''; return new Date(iso).toLocale
 function fmtBytes(b?:number){ if(!b) return ''; const g=b/1024/1024/1024; return g>=1?`${g.toFixed(2)} GB`:`${(b/1024/1024).toFixed(0)} MB`; }
 function flagEmoji(c:string){ const m:Record<string,string>={de:'🇩🇪',en:'🇬🇧',fr:'🇫🇷',es:'🇪🇸',it:'🇮🇹',nl:'🇳🇱',pt:'🇵🇹',pl:'🇵🇱',ru:'🇷🇺',ja:'🇯🇵',ko:'🇰🇷',zh:'🇨🇳'}; return m[c]??'🏳️'; }
 
-function epFileBadges(fileId?:number):Array<{label:string;color:string}> {
+function epFileBadges(fileId?:number):Array<{label:string;color:string;brand?:string;category?:string;iconValue?:string}> {
   if (!fileId) return [];
   const f = episodeFileMap.value.get(fileId);
   if (!f) return [];
   const mi = f.mediaInfo;
-  const b:Array<{label:string;color:string}>=[];
+  const b:Array<{label:string;color:string;brand?:string;category?:string;iconValue?:string}>=[];
   if (mi) {
     const res=(mi.resolution??'').toLowerCase();
-    if(res.includes('2160')) b.push({label:'4K',color:'#35c5f4'});
-    else if(res.includes('1080')) b.push({label:'1080p',color:'#35c5f4'});
-    else if(res.includes('720')) b.push({label:'720p',color:'#888'});
+    if(res.includes('2160')) b.push({label:'4K',color:'#35c5f4',category:'video_resolution',iconValue:'4k'});
+    else if(res.includes('1080')) b.push({label:'1080p',color:'#35c5f4',category:'video_resolution',iconValue:'1080'});
+    else if(res.includes('720')) b.push({label:'720p',color:'#888',category:'video_resolution',iconValue:'720'});
     const hdr=(mi.videoDynamicRangeType??'').toUpperCase();
-    if(hdr.includes('DOLBY')||hdr==='DV') b.push({label:'DV',color:'#bb86fc'});
-    else if(hdr.includes('HDR')) b.push({label:'HDR',color:'#f5c518'});
+    if(hdr.includes('DOLBY')||hdr==='DV') b.push({label:'DV',color:'#bb86fc',brand:'dolby_vision'});
+    else if(hdr.includes('HDR')) b.push({label:'HDR',color:'#f5c518',brand:'hdr10'});
     const vc=(mi.videoCodec??'').toLowerCase();
     if(vc.includes('h265')||vc.includes('hevc')) b.push({label:'H.265',color:'#aaa'});
     else if(vc.includes('h264')||vc.includes('avc')) b.push({label:'H.264',color:'#aaa'});
     const ac=(mi.audioCodec??'').toUpperCase();
-    if(ac.includes('ATMOS')) b.push({label:'Atmos',color:'#22c65b'});
-    else if(ac.includes('TRUEHD')) b.push({label:'TrueHD',color:'#22c65b'});
-    else if(ac.includes('EAC3')||ac.includes('DDP')) b.push({label:'DD+',color:'#aaa'});
-    else if(ac.includes('DTS')) b.push({label:'DTS',color:'#aaa'});
+    if(ac.includes('ATMOS')) b.push({label:'Atmos',color:'#22c65b',brand:'dolby_atmos'});
+    else if(ac.includes('TRUEHD')) b.push({label:'TrueHD',color:'#22c65b',brand:'dolby_truehd'});
+    else if(ac.includes('EAC3')||ac.includes('DDP')) b.push({label:'DD+',color:'#aaa',brand:'eac3'});
+    else if(ac.includes('DTS')) b.push({label:'DTS',color:'#aaa',brand:'dts'});
     const ch=parseFloat(String(mi.audioChannels??0));
     if(ch>=7) b.push({label:'7.1',color:'#555'}); else if(ch>=5) b.push({label:'5.1',color:'#555'});
   }
@@ -587,7 +588,11 @@ onMounted(async () => {
                 </div>
 
                 <div v-if="ep.hasFile&&(ep as any).episodeFileId" class="ep-tech-row">
-                  <span v-for="b in epFileBadges((ep as any).episodeFileId)" :key="b.label" class="ep-tech" :style="{color:b.color,borderColor:b.color+'44'}">{{ b.label }}</span>
+                  <template v-for="b in epFileBadges((ep as any).episodeFileId)" :key="b.label">
+                    <MediaIcon v-if="b.brand" :brand="b.brand" :height="10" />
+                    <MediaIcon v-else-if="b.category && b.iconValue" :category="b.category" :value="b.iconValue" :height="10" />
+                    <span v-else class="ep-tech" :style="{color:b.color,borderColor:b.color+'44'}">{{ b.label }}</span>
+                  </template>
                   <template v-if="bazarrEpMap[ep.id]">
                     <span v-for="s in bazarrEpMap[ep.id].subtitles" :key="'bs-'+s.code2" class="ep-tech ep-bz-ok">{{ flagEmoji(s.code2) }}</span>
                     <span v-if="bazarrEpMap[ep.id].missing_subtitles.length" class="ep-tech ep-bz-miss">✗{{ bazarrEpMap[ep.id].missing_subtitles.length }}</span>
@@ -798,8 +803,9 @@ onMounted(async () => {
 .ep-act-bazarr:hover { color:var(--bazarr); border-color:rgba(167,139,250,.35); }
 .ep-act-del:hover { color:#ef4444; border-color:rgba(239,68,68,.35); }
 
-.ep-tech-row { display:flex; gap:3px; flex-wrap:wrap; padding:2px var(--space-4) 4px calc(var(--space-4) + 60px); }
+.ep-tech-row { display:flex; gap:3px; flex-wrap:wrap; padding:2px var(--space-4) 4px calc(var(--space-4) + 60px); align-items:center; }
 .ep-tech { font-size:9px; font-weight:700; padding:1px 5px; border-radius:3px; border:1px solid; letter-spacing:.02em; }
+.ep-tech-icon { display:inline-flex; align-items:center; padding:0; border:none; background:none; }
 .ep-bz-ok { background:rgba(167,139,250,.1); color:var(--bazarr); border-color:rgba(167,139,250,.2); }
 .ep-bz-miss { background:rgba(239,68,68,.08); color:#ef4444; border-color:rgba(239,68,68,.2); border-style:dashed; }
 

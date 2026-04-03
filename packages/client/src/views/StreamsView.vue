@@ -7,6 +7,7 @@ import { useSeriesStore } from '../stores/series.store.js';
 import { useMusicStore } from '../stores/music.store.js';
 import { posterUrl as getPosterUrl } from '../utils/images.js';
 import { getPlatformIcon } from '../utils/platformIcons.js';
+import MediaIcon from '../components/ui/MediaIcon.vue';
 import type { TautulliActivity, TautulliStream } from '@nexarr/shared';
 
 const { get } = useApi();

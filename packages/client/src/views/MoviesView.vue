@@ -106,33 +106,35 @@ function qualityLabel(m: RadarrMovie): string | undefined {
   return name.split('-')[0] || undefined;
 }
 
-function techBadges(m: RadarrMovie): Array<{ label: string; color: string }> {
+function techBadges(m: RadarrMovie): Array<{ label: string; color: string; brand?: string; category?: string; iconValue?: string }> {
   if (!m.movieFile?.mediaInfo) return [];
   const mi = m.movieFile.mediaInfo;
-  const badges: Array<{ label: string; color: string }> = [];
+  const badges: Array<{ label: string; color: string; brand?: string; category?: string; iconValue?: string }> = [];
 
   // Resolution
   const res = (mi.resolution ?? '').toLowerCase();
-  if (res.includes('3840') || res.includes('2160')) badges.push({ label: '4K',    color: '#35c5f4' });
-  else if (res.includes('1920') || res.includes('1080')) badges.push({ label: '1080p', color: '#35c5f4' });
-  else if (res.includes('720'))                          badges.push({ label: '720p',  color: '#35c5f4' });
+  if (res.includes('3840') || res.includes('2160')) badges.push({ label: '4K',    color: '#35c5f4', category: 'video_resolution', iconValue: '4k' });
+  else if (res.includes('1920') || res.includes('1080')) badges.push({ label: '1080p', color: '#35c5f4', category: 'video_resolution', iconValue: '1080' });
+  else if (res.includes('720'))                          badges.push({ label: '720p',  color: '#35c5f4', category: 'video_resolution', iconValue: '720' });
 
   // HDR
   const hdr = (mi.videoDynamicRangeType ?? (mi as any).videoDynamicRange ?? '').toUpperCase();
-  if (hdr.includes('DOLBY') || hdr === 'DV')  badges.push({ label: 'DV',    color: '#bb86fc' });
-  else if (hdr.includes('HDR'))               badges.push({ label: 'HDR',   color: '#f5c518' });
+  if (hdr.includes('DOLBY') || hdr === 'DV')  badges.push({ label: 'DV',    color: '#bb86fc', brand: 'dolby_vision' });
+  else if (hdr.includes('HDR10+'))            badges.push({ label: 'HDR10+', color: '#f5c518', brand: 'hdr10plus' });
+  else if (hdr.includes('HDR'))               badges.push({ label: 'HDR',   color: '#f5c518', brand: 'hdr10' });
 
   // Codec
   const vc = (mi.videoCodec ?? '').toLowerCase();
   if (vc.includes('h265') || vc.includes('hevc'))  badges.push({ label: 'H.265', color: '#888' });
   else if (vc.includes('h264') || vc.includes('avc')) badges.push({ label: 'H.264', color: '#888' });
+  else if (vc.includes('av1'))                     badges.push({ label: 'AV1',   color: '#888' });
 
   // Audio
   const ac = (mi.audioCodec ?? '').toUpperCase();
-  if (ac.includes('ATMOS'))                         badges.push({ label: 'Atmos',  color: '#22c65b' });
-  else if (ac.includes('TRUEHD'))                   badges.push({ label: 'TrueHD', color: '#22c65b' });
-  else if (ac.includes('EAC3') || ac.includes('DDP')) badges.push({ label: 'DD+',  color: '#aaa' });
-  else if (ac.includes('DTS'))                      badges.push({ label: 'DTS',    color: '#aaa' });
+  if (ac.includes('ATMOS'))                         badges.push({ label: 'Atmos',  color: '#22c65b', brand: 'dolby_atmos' });
+  else if (ac.includes('TRUEHD'))                   badges.push({ label: 'TrueHD', color: '#22c65b', brand: 'dolby_truehd' });
+  else if (ac.includes('EAC3') || ac.includes('DDP')) badges.push({ label: 'DD+',  color: '#aaa', brand: 'eac3' });
+  else if (ac.includes('DTS'))                      badges.push({ label: 'DTS',    color: '#aaa', brand: 'dts' });
 
   // Channels
   const ch = parseFloat(String(mi.audioChannels ?? 0));

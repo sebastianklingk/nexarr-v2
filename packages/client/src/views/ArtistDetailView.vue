@@ -6,6 +6,7 @@ import { useApi } from '../composables/useApi.js';
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue';
 import type { LidarrArtist, LidarrAlbum } from '@nexarr/shared';
 import { posterUrl as getPosterUrl, fanartUrl as getFanartUrl, tmdbImageUrl } from '../utils/images.js';
+import MediaIcon from '../components/ui/MediaIcon.vue';
 
 const route  = useRoute();
 const router = useRouter();

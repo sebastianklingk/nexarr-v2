@@ -1,28 +1,27 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { getMediaIcon, getBrandIcon, type MediaIconCategory, type MediaIconResult } from '../../utils/mediaIcons.js';
+import { getMediaIcon, getBrandIcon, type MediaIconResult } from '../../utils/mediaIcons.js';
+import type { MediaIconCategory } from '../../utils/mediaIcons.js';
 
 const props = defineProps<{
   /** Use category + value for codec/resolution/channel lookups */
-  category?: MediaIconCategory;
+  category?: string;
   value?: string;
   /** OR use brand for standalone brand icons (dolby_vision, hdr10, etc.) */
   brand?: string;
-  /** Icon size in px (default 24) */
-  size?: number;
+  /** Icon height in px (default 16). Width scales automatically to preserve aspect ratio. */
+  height?: number;
+  /** If true, keep original icon colors. Default: white (for dark UI). */
+  colorful?: boolean;
   /** Optional fallback label shown when no icon found */
   fallbackLabel?: string;
 }>();
 
-const size = computed(() => props.size ?? 24);
+const h = computed(() => props.height ?? 16);
 
 const icon = computed<MediaIconResult | null>(() => {
-  if (props.brand) {
-    return getBrandIcon(props.brand);
-  }
-  if (props.category && props.value) {
-    return getMediaIcon(props.category, props.value);
-  }
+  if (props.brand) return getBrandIcon(props.brand);
+  if (props.category && props.value) return getMediaIcon(props.category as MediaIconCategory, props.value);
   return null;
 });
 </script>
@@ -33,9 +32,8 @@ const icon = computed<MediaIconResult | null>(() => {
     :src="icon.src"
     :alt="icon.label"
     :title="icon.label"
-    :width="size"
-    :height="size"
-    class="media-icon"
+    :height="h"
+    :class="['media-icon', { 'mi-white': !colorful }]"
     loading="lazy"
     decoding="async"
   />
@@ -49,9 +47,15 @@ const icon = computed<MediaIconResult | null>(() => {
 <style scoped>
 .media-icon {
   display: inline-block;
+  width: auto;
   object-fit: contain;
   vertical-align: middle;
   flex-shrink: 0;
+}
+
+/* Force white on dark UI – works for any colored SVG/PNG */
+.mi-white {
+  filter: brightness(0) invert(1);
 }
 
 .media-icon-fallback {

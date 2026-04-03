@@ -6,6 +6,7 @@ import { useMoviesStore } from '../stores/movies.store.js';
 import { useSeriesStore } from '../stores/series.store.js';
 import { useApi } from '../composables/useApi.js';
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue';
+import MediaIcon from '../components/ui/MediaIcon.vue';
 import type { ArrQueueItem, NormalizedSlot, DownloaderType } from '@nexarr/shared';
 import { posterUrl as getPosterUrl, tmdbImageUrl } from '../utils/images.js';
 
@@ -505,6 +506,24 @@ function evBadge(et: string) {
   if (t.includes('delet'))   return { label:'Gelöscht', cls:'ev-del' };
   return { label: et, cls: 'ev-idle' };
 }
+
+/** Parse release name for tech badges with brand icons */
+function releaseBadges(title?: string): Array<{label:string;color:string;brand?:string}> {
+  if (!title) return [];
+  const t = title.toUpperCase();
+  const b: Array<{label:string;color:string;brand?:string}> = [];
+  // HDR (before codec so DV.HEVC doesn't miss DV)
+  if (t.includes('DOVI') || t.includes('DOLBY.VISION') || t.includes('.DV.')) b.push({label:'DV',color:'#bb86fc',brand:'dolby_vision'});
+  else if (t.includes('HDR10+') || t.includes('HDR10PLUS')) b.push({label:'HDR10+',color:'#f5c518',brand:'hdr10plus'});
+  else if (t.includes('HDR10') || t.includes('HDR')) b.push({label:'HDR',color:'#f5c518',brand:'hdr10'});
+  // Audio
+  if (t.includes('ATMOS')) b.push({label:'Atmos',color:'#22c65b',brand:'dolby_atmos'});
+  else if (t.includes('TRUEHD')) b.push({label:'TrueHD',color:'#22c65b',brand:'dolby_truehd'});
+  else if (t.includes('DTS-HD') || t.includes('DTS.HD')) b.push({label:'DTS-HD MA',color:'#aaa',brand:'dts-hd_ma'});
+  else if (t.includes('DTS')) b.push({label:'DTS',color:'#aaa',brand:'dts'});
+  else if (t.includes('EAC3') || t.includes('DDP') || t.includes('DD+') || t.includes('DDPLUS')) b.push({label:'DD+',color:'#aaa',brand:'eac3'});
+  return b;
+}
 </script>
 
 <template>
@@ -699,6 +718,10 @@ function evBadge(et: string) {
               <!-- Badges -->
               <div class="dl-badges">
                 <span v-if="c.arr?.quality" class="badge badge-quality">{{ c.arr.quality }}</span>
+                <template v-for="rb in releaseBadges(c.arr?.title ?? c.slot.filename)" :key="rb.label">
+                  <MediaIcon v-if="rb.brand" :brand="rb.brand" :height="11" />
+                  <span v-else class="badge badge-cf" :style="{color:rb.color}">{{ rb.label }}</span>
+                </template>
                 <template v-if="c.arr?.languages?.length">
                   <span v-for="lang in c.arr.languages.slice(0,3)" :key="lang" class="badge badge-lang">{{ lang }}</span>
                 </template>

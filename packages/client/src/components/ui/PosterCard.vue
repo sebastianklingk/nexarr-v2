@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import MediaIcon from './MediaIcon.vue';
 
 const props = withDefaults(defineProps<{
   title:          string;
@@ -20,7 +21,7 @@ const props = withDefaults(defineProps<{
   runtime?:       number;
   imdbRating?:    number;
   tmdbRating?:    number;
-  techBadges?:    Array<{ label: string; color: string }>;
+  techBadges?:    Array<{ label: string; color: string; brand?: string; category?: string; iconValue?: string }>;
   network?:       string;
   seasons?:       number;
   size?:          'sm' | 'md' | 'lg';
@@ -199,12 +200,11 @@ const epBarColor = computed(() => {
 
           <!-- Tech Badges -->
           <div v-if="techBadges && techBadges.length" class="tt-tech">
-            <span
-              v-for="b in techBadges"
-              :key="b.label"
-              class="tt-badge"
-              :style="{ color: b.color, borderColor: b.color + '44' }"
-            >{{ b.label }}</span>
+            <template v-for="b in techBadges" :key="b.label">
+              <MediaIcon v-if="b.brand" :brand="b.brand" :height="11" />
+              <MediaIcon v-else-if="b.category && b.iconValue" :category="b.category" :value="b.iconValue" :height="11" />
+              <span v-else class="tt-badge" :style="{ color: b.color }">{{ b.label }}</span>
+            </template>
           </div>
         </div>
       </div>
@@ -470,16 +470,13 @@ const epBarColor = computed(() => {
 
 .tt-tech {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   flex-wrap: wrap;
+  align-items: center;
 }
 .tt-badge {
   font-size: 9px;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: rgba(0,0,0,.4);
   font-weight: 700;
-  border: 1px solid;
 }
 
 /* Sizes */

@@ -8,6 +8,7 @@ import ConfirmDialog from '../components/ui/ConfirmDialog.vue';
 import RatingPills from '../components/ui/RatingPills.vue';
 import type { RadarrMovie, TMDBCredits, TMDBVideo } from '@nexarr/shared';
 import { posterUrl as getPosterUrl, fanartUrl as getFanartUrl } from '../utils/images.js';
+import MediaIcon from '../components/ui/MediaIcon.vue';
 
 const route  = useRoute();
 const router = useRouter();
@@ -145,24 +146,28 @@ const tmdbUrl   = computed(() => movie.value?.tmdbId ? `https://www.themoviedb.o
 
 const techBadges = computed(() => {
   const mi = movie.value?.movieFile?.mediaInfo as any;
-  if (!mi) return [] as Array<{label:string;color:string}>;
-  const b: Array<{label:string;color:string}> = [];
+  if (!mi) return [] as Array<{label:string;color:string;brand?:string;category?:string;iconValue?:string}>;
+  const b: Array<{label:string;color:string;brand?:string;category?:string;iconValue?:string}> = [];
   const res = (mi.resolution??'').toLowerCase();
-  if (res.includes('3840')||res.includes('2160')) b.push({label:'4K',color:'#35c5f4'});
-  else if (res.includes('1920')||res.includes('1080')) b.push({label:'1080p',color:'#35c5f4'});
-  else if (res.includes('720')) b.push({label:'720p',color:'#888'});
+  if (res.includes('3840')||res.includes('2160')) b.push({label:'4K',color:'#35c5f4',category:'video_resolution',iconValue:'4k'});
+  else if (res.includes('1920')||res.includes('1080')) b.push({label:'1080p',color:'#35c5f4',category:'video_resolution',iconValue:'1080'});
+  else if (res.includes('720')) b.push({label:'720p',color:'#888',category:'video_resolution',iconValue:'720'});
   const hdr = (mi.videoDynamicRangeType??'').toUpperCase();
-  if (hdr.includes('DOLBY')||hdr==='DV') b.push({label:'DV',color:'#bb86fc'});
-  else if (hdr.includes('HDR10+')) b.push({label:'HDR10+',color:'#f5c518'});
-  else if (hdr.includes('HDR')) b.push({label:'HDR',color:'#f5c518'});
+  if (hdr.includes('DOLBY')||hdr==='DV') b.push({label:'DV',color:'#bb86fc',brand:'dolby_vision'});
+  else if (hdr.includes('HDR10+')) b.push({label:'HDR10+',color:'#f5c518',brand:'hdr10plus'});
+  else if (hdr.includes('HDR')) b.push({label:'HDR',color:'#f5c518',brand:'hdr10'});
   const vc = (mi.videoCodec??'').toLowerCase();
   if (vc.includes('h265')||vc.includes('hevc')) b.push({label:'H.265',color:'#aaa'});
   else if (vc.includes('h264')||vc.includes('avc')) b.push({label:'H.264',color:'#aaa'});
+  else if (vc.includes('av1')) b.push({label:'AV1',color:'#aaa'});
   const ac = (mi.audioCodec??'').toUpperCase();
-  if (ac.includes('ATMOS')) b.push({label:'Atmos',color:'#22c65b'});
-  else if (ac.includes('TRUEHD')) b.push({label:'TrueHD',color:'#22c65b'});
-  else if (ac.includes('EAC3')||ac.includes('DDP')) b.push({label:'Dolby',color:'#aaa'});
-  else if (ac.includes('DTS')) b.push({label:'DTS',color:'#aaa'});
+  if (ac.includes('ATMOS')) b.push({label:'Atmos',color:'#22c65b',brand:'dolby_atmos'});
+  else if (ac.includes('TRUEHD')) b.push({label:'TrueHD',color:'#22c65b',brand:'dolby_truehd'});
+  else if (ac.includes('EAC3')||ac.includes('DDP')) b.push({label:'DD+',color:'#aaa',brand:'eac3'});
+  else if (ac.includes('DTS-HD')||ac.includes('DCA-MA')) b.push({label:'DTS-HD MA',color:'#aaa',brand:'dts-hd_ma'});
+  else if (ac.includes('DTS')) b.push({label:'DTS',color:'#aaa',brand:'dts'});
+  else if (ac.includes('AC3')) b.push({label:'DD',color:'#aaa',brand:'ac3'});
+  else if (ac.includes('FLAC')) b.push({label:'FLAC',color:'#aaa',brand:'flac'});
   const ch = parseFloat(String(mi.audioChannels??0));
   if (ch===7.1) b.push({label:'7.1',color:'#555'});
   else if (ch>=5) b.push({label:'5.1',color:'#555'});
@@ -247,9 +252,11 @@ onMounted(async () => {
                 <span v-if="movie.runtime">{{ fmtRuntime(movie.runtime) }}</span>
                 <template v-if="techBadges.length">
                   <span class="sep">·</span>
-                  <span v-for="(b, i) in techBadges" :key="b.label">
-                    <span class="tech-inline" :style="{color:b.color}">{{ b.label }}</span><span v-if="i < techBadges.length - 1" class="tech-sep"> </span>
-                  </span>
+                  <template v-for="b in techBadges" :key="b.label">
+                    <MediaIcon v-if="b.brand" :brand="b.brand" :height="13" />
+                    <MediaIcon v-else-if="b.category && b.iconValue" :category="b.category" :value="b.iconValue" :height="13" />
+                    <span v-else class="tech-inline" :style="{color:b.color}">{{ b.label }}</span>
+                  </template>
                 </template>
               </div>
 
@@ -373,9 +380,6 @@ onMounted(async () => {
       <!-- ── Tab: Datei ── -->
       <div v-if="activeTab==='files'" class="tab-content">
         <div v-if="movie.movieFile">
-          <div class="file-tech-row">
-            <span v-for="b in techBadges" :key="b.label" class="ftech" :style="{color:b.color,borderColor:b.color+'55',background:b.color+'11'}">{{ b.label }}</span>
-          </div>
           <div class="file-grid">
             <div v-if="qualityName" class="fi"><span class="fl">Qualität</span><span class="fv">{{ qualityName }}</span></div>
             <div v-if="(movie.movieFile.mediaInfo as any)?.resolution" class="fi"><span class="fl">Auflösung</span><span class="fv">{{ (movie.movieFile.mediaInfo as any).resolution }}</span></div>
@@ -546,11 +550,10 @@ onMounted(async () => {
 
 .hero-title { font-size:clamp(20px,3vw,32px); font-weight:700; color:var(--text-primary); line-height:1.2; margin:0; }
 
-.hero-meta { display:flex; align-items:center; gap:var(--space-2); color:var(--text-tertiary); font-size:var(--text-sm); flex-wrap:wrap; }
+.hero-meta { display:flex; align-items:center; gap:6px; color:var(--text-tertiary); font-size:var(--text-sm); flex-wrap:wrap; }
 .sep { color:var(--text-muted); }
 .cert-badge { font-size:10px; font-weight:700; padding:1px 6px; background:rgba(244,165,74,.15); border:1px solid rgba(244,165,74,.3); border-radius:3px; color:var(--radarr); }
 .tech-inline { font-size:var(--text-sm); font-weight:700; }
-.tech-sep { color:var(--text-muted); }
 
 .hero-genres { display:flex; gap:6px; flex-wrap:wrap; }
 .genre-chip { font-size:11px; padding:3px 10px; background:var(--bg-elevated); border:1px solid var(--bg-border); border-radius:99px; color:var(--text-muted); }
@@ -599,8 +602,6 @@ onMounted(async () => {
 .cast-char { font-size:10px; color:var(--text-muted); line-height:1.3; margin:0; }
 
 /* Datei */
-.file-tech-row { display:flex; gap:var(--space-2); flex-wrap:wrap; margin-bottom:var(--space-5); }
-.ftech { font-size:12px; font-weight:700; padding:4px 12px; border-radius:var(--radius-md); border:1px solid; }
 .file-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:var(--space-4); }
 .fi { display:flex; flex-direction:column; gap:3px; } .fi-full { grid-column:1/-1; }
 .fl { font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; }
