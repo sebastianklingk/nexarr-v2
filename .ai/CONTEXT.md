@@ -29,14 +29,21 @@ in einer einheitlichen Dark-UI vereint.
 **Server starten (Dev):**
 ```bash
 npm run dev
-# Startet: packages/server (tsx, KEIN watch) + packages/client (vite HMR)
-# predev killt automatisch Port 3000 falls belegt
+# 1. Startet Server als Hintergrund-Daemon (Port 3000, überlebt Ctrl+C)
+# 2. Startet Vite im Vordergrund (Port 5173, HMR)
+# Ctrl+C stoppt nur Vite – Server läuft weiter!
 ```
 
-**Server neu starten (nach Backend-Änderungen):**
+**Nur Server neu starten (nach Backend-Änderungen):**
 ```bash
 npm run restart
-# Oder: Ctrl+C, dann npm run dev
+```
+
+**Server stoppen / Status / Logs:**
+```bash
+npm run stop      # Server-Daemon stoppen
+npm run status    # Läuft der Server?
+npm run logs      # Server-Log live verfolgen (tail -f)
 ```
 
 **Logs:** `/tmp/nexarr-v2.log`

@@ -5,9 +5,9 @@
 
 ---
 
-## 2026-04-03 · Dev Server · tsx watch verursacht Port-Crashes
-**Was passierte:** `tsx watch` startet den Server bei jeder Dateiänderung neu (auch MCP-Edits). Alter Prozess gibt Port 3000 nicht schnell genug frei → EADDRINUSE → `concurrently -k` killt alles → Seite nicht erreichbar.
-**Regel:** Server im Dev-Modus OHNE `tsx watch` starten (`tsx src/server.ts`). Vite HMR kümmert sich um alle Client-Änderungen. Bei Server-Code-Änderungen: User macht manuellen Restart mit `npm run restart`. KEIN tsx watch für den Server.
+## 2026-04-03 · Dev Server · concurrently + Ctrl+C killt alles
+**Was passierte:** `concurrently` bindet Server + Vite in einem Prozess. Ctrl+C (für Commits/Befehle) killt BEIDE. Danach ist die Seite komplett unerreichbar. Auch `-k` Flag und `predev` fuser verursachten Crashes.
+**Regel:** Server IMMER als Hintergrund-Daemon starten (`dev.sh`). `nohup` + PID-File. Überlebt Ctrl+C und Terminal-Close. Vite läuft im Vordergrund (Ctrl+C stoppt nur Vite). `npm run restart` für Server-Neustart, `npm run logs` für Logs.
 
 ## 2026-04-03 · Alle Views · TMDB-Poster in Originalgröße geladen
 **Was passierte:** `posterUrl()` gab `remoteUrl` direkt zurück – TMDB-URLs mit `/original/` (2000×3000px, ~500KB/Poster). Bei 100+ Filmen in der Grid-Ansicht ~50MB Bilder.

@@ -662,6 +662,35 @@ function evBadge(et: string) {
                   <span v-if="c.arr?.episodeLabel" class="dl-ep-label">{{ c.arr.episodeLabel }}</span>
                 </p>
                 <span v-if="c.arr" class="dl-release">{{ c.arr.title }}</span>
+
+                <!-- Actions (inline) -->
+                <div class="dl-acts" @click.stop>
+                  <button v-if="c.slot.canMoveToTop" class="act-btn act-top" :disabled="!!itemPending[c.slot.id]" @click="moveToTop(c.slot)" title="An Anfang">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 11 12 6 7 11"/><polyline points="17 18 12 13 7 18"/></svg>
+                  </button>
+                  <button v-if="c.slot.canPause && (c.slot.status === 'downloading' || c.slot.status === 'seeding' || c.slot.status === 'queued')"
+                    class="act-btn act-pause" :disabled="!!itemPending[c.slot.id]" @click="pauseSlot(c.slot)" title="Pausieren">
+                    <svg v-if="itemPending[c.slot.id]" class="spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                    <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                  </button>
+                  <button v-else-if="c.slot.canPause && c.slot.status === 'paused'"
+                    class="act-btn act-resume" :disabled="!!itemPending[c.slot.id]" @click="resumeSlot(c.slot)" title="Fortsetzen">
+                    <svg v-if="itemPending[c.slot.id]" class="spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                    <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  </button>
+                  <div v-if="c.slot.canSetPriority" class="priority-wrap">
+                    <button class="act-btn act-prio" @click.stop="priorityOpen[c.slot.id] = !priorityOpen[c.slot.id]" title="Priorität">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="4"/><polyline points="6 9 12 3 18 9"/></svg>
+                    </button>
+                    <div v-if="priorityOpen[c.slot.id]" class="priority-menu">
+                      <button v-for="p in ['Force','High','Normal','Low']" :key="p" class="prio-item" @click="setPriority(c.slot, p)">{{ p }}</button>
+                    </div>
+                  </div>
+                  <button class="act-btn act-del" @click="askDeleteSlot(c.slot, c.arr?.mediaTitle ?? (c.arr ? mediaName(c.arr) : null) ?? c.slot.filename)" title="Entfernen">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                  </button>
+                </div>
+
                 <span :class="['st-badge', stClass(c.slot.status)]">{{ stLabel(c.slot.status) }}</span>
               </div>
 
@@ -704,43 +733,6 @@ function evBadge(et: string) {
                   </template>
                 </span>
               </div>
-            </div>
-
-            <!-- Actions -->
-            <div class="dl-acts" @click.stop>
-              <!-- Move to Top (SABnzbd only) -->
-              <button v-if="c.slot.canMoveToTop" class="act-btn act-top" :disabled="!!itemPending[c.slot.id]" @click="moveToTop(c.slot)" title="An Anfang">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 11 12 6 7 11"/><polyline points="17 18 12 13 7 18"/></svg>
-              </button>
-
-              <!-- Pause -->
-              <button v-if="c.slot.canPause && (c.slot.status === 'downloading' || c.slot.status === 'seeding' || c.slot.status === 'queued')"
-                class="act-btn act-pause" :disabled="!!itemPending[c.slot.id]" @click="pauseSlot(c.slot)" title="Pausieren">
-                <svg v-if="itemPending[c.slot.id]" class="spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-              </button>
-
-              <!-- Resume -->
-              <button v-else-if="c.slot.canPause && c.slot.status === 'paused'"
-                class="act-btn act-resume" :disabled="!!itemPending[c.slot.id]" @click="resumeSlot(c.slot)" title="Fortsetzen">
-                <svg v-if="itemPending[c.slot.id]" class="spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              </button>
-
-              <!-- Priority (SABnzbd only) -->
-              <div v-if="c.slot.canSetPriority" class="priority-wrap">
-                <button class="act-btn act-prio" @click.stop="priorityOpen[c.slot.id] = !priorityOpen[c.slot.id]" title="Priorität">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="4"/><polyline points="6 9 12 3 18 9"/></svg>
-                </button>
-                <div v-if="priorityOpen[c.slot.id]" class="priority-menu">
-                  <button v-for="p in ['Force','High','Normal','Low']" :key="p" class="prio-item" @click="setPriority(c.slot, p)">{{ p }}</button>
-                </div>
-              </div>
-
-              <!-- Delete -->
-              <button class="act-btn act-del" @click="askDeleteSlot(c.slot, c.arr?.mediaTitle ?? (c.arr ? mediaName(c.arr) : null) ?? c.slot.filename)" title="Entfernen">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
-              </button>
             </div>
 
             <!-- Batch Checkbox (rechts, nur im Batch-Modus) -->
@@ -1088,7 +1080,7 @@ function evBadge(et: string) {
 .dl-card {
   display: flex; align-items: stretch;
   background: var(--bg-surface); border: 1px solid var(--bg-border);
-  border-radius: var(--radius-lg); overflow: hidden;
+  border-radius: var(--radius-lg); overflow: visible;
   transition: background .12s, border-color .12s;
   position: relative;
 }
@@ -1119,10 +1111,10 @@ function evBadge(et: string) {
   color: #000;
 }
 
-.dl-accent { width: 3px; flex-shrink: 0; background: var(--accent, var(--sabnzbd)); }
+.dl-accent { width: 3px; flex-shrink: 0; background: var(--accent, var(--sabnzbd)); border-radius: var(--radius-lg) 0 0 var(--radius-lg); }
 
 .dl-poster {
-  width: 42px; flex-shrink: 0; background: var(--bg-elevated);
+  width: 56px; flex-shrink: 0; background: var(--bg-elevated);
   overflow: hidden; display: flex; align-items: center; justify-content: center;
   border-right: 1px solid var(--bg-border);
 }
@@ -1137,12 +1129,12 @@ function evBadge(et: string) {
   display: flex; flex-direction: column; gap: var(--space-2); min-width: 0;
 }
 
-.dl-title-row { display: flex; align-items: center; gap: var(--space-2); overflow: hidden; }
-.dl-title { font-size: var(--text-sm); font-weight: 600; color: var(--text-secondary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0; flex-shrink: 1; }
+.dl-title-row { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.dl-title { font-size: var(--text-sm); font-weight: 600; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0; flex-shrink: 1; min-width: 60px; }
 .dl-title-link { cursor: pointer; }
 .dl-title-link:hover { color: var(--text-primary); }
-.dl-release { font-size: 10px; color: var(--text-muted); font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; opacity: .6; }
-.dl-ep-label { font-size: 11px; font-weight: 400; color: var(--text-muted); margin-left: 4px; white-space: nowrap; }
+.dl-ep-label { font-size: var(--text-sm); font-weight: 500; color: var(--text-secondary); margin-left: 2px; white-space: nowrap; flex-shrink: 0; }
+.dl-release { font-size: var(--text-sm); font-weight: 400; color: var(--text-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
 
 /* App Tag */
 .app-tag { font-size: 10px; font-weight: 600; padding: 1px 7px; border-radius: 4px; border: 1px solid; white-space: nowrap; flex-shrink: 0; letter-spacing: .03em; }
@@ -1182,11 +1174,13 @@ function evBadge(et: string) {
 .item-err { font-size: 11px; color: #ef4444; background: rgba(239,68,68,.08); border-radius: var(--radius-sm); padding: 2px 8px; }
 
 /* ── Actions ──────────────────────────────────────────────────────────────── */
+/* ── Inline Actions ── */
 .dl-acts {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 3px; padding: var(--space-2) var(--space-3); flex-shrink: 0;
+  display: flex; align-items: center;
+  gap: 3px; flex-shrink: 0;
   opacity: 0; transition: opacity .15s;
 }
+.dl-card:hover .dl-acts { opacity: 1; }
 .act-btn {
   display: flex; align-items: center; justify-content: center;
   width: 26px; height: 26px; border-radius: var(--radius-sm);
@@ -1203,7 +1197,7 @@ function evBadge(et: string) {
 
 /* Priority Dropdown */
 .priority-wrap { position: relative; }
-.priority-menu { position: absolute; right: 0; top: 100%; margin-top: 4px; background: var(--bg-surface); border: 1px solid var(--bg-border); border-radius: var(--radius-md); box-shadow: 0 8px 24px rgba(0,0,0,.4); z-index: 100; min-width: 90px; overflow: hidden; }
+.priority-menu { position: absolute; right: 0; bottom: 100%; margin-bottom: 4px; background: var(--bg-surface); border: 1px solid var(--bg-border); border-radius: var(--radius-md); box-shadow: 0 -8px 24px rgba(0,0,0,.5); z-index: 100; min-width: 90px; overflow: hidden; }
 .prio-item { display: block; width: 100%; padding: 7px 12px; font-size: var(--text-xs); color: var(--text-secondary); cursor: pointer; transition: background .12s; text-align: left; border-bottom: 1px solid rgba(255,255,255,.04); }
 .prio-item:last-child { border-bottom: none; }
 .prio-item:hover { background: var(--bg-elevated); color: var(--text-primary); }
