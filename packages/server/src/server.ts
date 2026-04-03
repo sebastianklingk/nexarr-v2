@@ -5,7 +5,7 @@ import { env } from './config/env.js';
 import { initDb, dbGet, dbRun } from './db/index.js';
 import { createApp } from './app.js';
 import { initSocket } from './socket/index.js';
-import { warmCache, startCacheRefreshTimer } from './cache/warmup.js';
+import { warmCache, startCacheRefreshTimer, stopWarmup } from './cache/warmup.js';
 
 async function bootstrap() {
   // 1. DB + Migrations
@@ -49,6 +49,12 @@ async function bootstrap() {
   // Graceful Shutdown
   process.on('SIGTERM', () => {
     console.log('SIGTERM – Server wird heruntergefahren...');
+    stopWarmup();
+    httpServer.close(() => process.exit(0));
+  });
+  process.on('SIGINT', () => {
+    console.log('SIGINT – Server wird heruntergefahren...');
+    stopWarmup();
     httpServer.close(() => process.exit(0));
   });
 }

@@ -38,6 +38,17 @@ import { env } from '../config/env.js';
 
 const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
+// Abort-Controller für sauberen Shutdown (tsx watch restart)
+let warmupAbort: AbortController | null = null;
+let refreshTimer: ReturnType<typeof setInterval> | null = null;
+
+function abortable(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(resolve, ms);
+    signal.addEventListener('abort', () => { clearTimeout(timer); reject(new Error('aborted')); }, { once: true });
+  });
+}
+
 interface Task {
   name: string;
   enabled: () => boolean;
@@ -214,6 +225,17 @@ const WAVE_4: Task[] = [
  * Wird beim Server-Start und vom Refresh-Timer für Welle 1+2 genutzt.
  */
 export async function warmCache(wavesToRun: 1 | 2 | 3 | 4 = 4): Promise<void> {
+  // Vorheriges Warmup abbrechen (bei tsx watch restart)
+  if (warmupAbort) warmupAbort.abort();
+  warmupAbort = new AbortController();
+  const signal = warmupAbort.signal;
+
+  const isDev = env.NODE_ENV === 'development';
+  // In Dev: kürzere Pausen (500ms statt 3-5s) für schnelleren Start
+  const DELAY_1 = isDev ? 500 : 3_000;
+  const DELAY_2 = isDev ? 500 : 4_000;
+  const DELAY_3 = isDev ? 500 : 5_000;
+
   const totalActive = [...WAVE_1, ...WAVE_2, ...WAVE_3, ...WAVE_4]
     .filter(t => t.enabled()).length;
 
@@ -225,25 +247,29 @@ export async function warmCache(wavesToRun: 1 | 2 | 3 | 4 = 4): Promise<void> {
   console.log('🔥 Cache-Warming gestartet...');
   const start = Date.now();
 
-  // Welle 1 – sofort
-  await runWave('Welle 1 · Bibliotheken', WAVE_1);
+  try {
+    // Welle 1 – sofort
+    await runWave('Welle 1 · Bibliotheken', WAVE_1);
 
-  if (wavesToRun >= 2) {
-    await delay(3_000);
-    await runWave('Welle 2 · Dashboard', WAVE_2);
+    if (wavesToRun >= 2) {
+      await abortable(DELAY_1, signal);
+      await runWave('Welle 2 · Dashboard', WAVE_2);
+    }
+
+    if (wavesToRun >= 3) {
+      await abortable(DELAY_2, signal);
+      await runWave('Welle 3 · Metadaten', WAVE_3);
+    }
+
+    if (wavesToRun >= 4) {
+      await abortable(DELAY_3, signal);
+      await runWave('Welle 4 · TMDB', WAVE_4);
+    }
+
+    console.log(`🔥 Cache-Warming fertig in ${((Date.now() - start) / 1000).toFixed(1)}s`);
+  } catch {
+    // Aborted by restart – normal, kein Error-Log nötig
   }
-
-  if (wavesToRun >= 3) {
-    await delay(4_000); // 7s nach Start
-    await runWave('Welle 3 · Metadaten', WAVE_3);
-  }
-
-  if (wavesToRun >= 4) {
-    await delay(5_000); // 12s nach Start
-    await runWave('Welle 4 · TMDB', WAVE_4);
-  }
-
-  console.log(`🔥 Cache-Warming fertig in ${((Date.now() - start) / 1000).toFixed(1)}s`);
 }
 
 /**
@@ -254,7 +280,10 @@ export async function warmCache(wavesToRun: 1 | 2 | 3 | 4 = 4): Promise<void> {
 export function startCacheRefreshTimer(): void {
   const INTERVAL_MS = 4 * 60 * 1000; // 4 Minuten
 
-  setInterval(async () => {
+  // Alten Timer aufräumen (bei tsx watch restart)
+  if (refreshTimer) clearInterval(refreshTimer);
+
+  refreshTimer = setInterval(async () => {
     console.log('🔄 Cache-Refresh (Welle 1+2)...');
     try {
       await runWave('Welle 1 · Bibliotheken', WAVE_1);
@@ -266,4 +295,10 @@ export function startCacheRefreshTimer(): void {
   }, INTERVAL_MS);
 
   console.log(`⏱️  Cache-Refresh-Timer: alle ${INTERVAL_MS / 60_000} min (Welle 1+2)`);
+}
+
+/** Warmup und Timer sauber beenden (für Graceful Shutdown) */
+export function stopWarmup(): void {
+  if (warmupAbort) warmupAbort.abort();
+  if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
 }

@@ -50,6 +50,23 @@ function getPoster(item: ArrQueueItem): string | null {
   return null;
 }
 
+// ── Media Name Lookup (Film/Serien/Künstler-Name aus Stores) ──────────────────
+function mediaName(item: ArrQueueItem): string | null {
+  if (item.app === 'radarr' && item.movieId) {
+    const movie = moviesStore.movies.find(m => m.id === item.movieId);
+    return movie?.title ?? null;
+  }
+  if (item.app === 'sonarr' && item.seriesId) {
+    const series = seriesStore.series?.find((s: any) => s.id === item.seriesId);
+    return series?.title ?? null;
+  }
+  if (item.app === 'lidarr' && item.artistId) {
+    // Lidarr artists sind nicht im Store geladen – Fallback auf arr title
+    return null;
+  }
+  return null;
+}
+
 // ── Combined Queue: NormalizedSlot + Arr-Match ─────────────────────────────────
 interface CombinedSlot {
   slot: NormalizedSlot;
@@ -641,9 +658,9 @@ function evBadge(et: string) {
                   {{ dlLabel(c.slot.downloader) }}
                 </span>
                 <p class="dl-title" @click="c.arr && navigateTo(c.arr)" :class="{'dl-title-link': c.arr?.movieId || c.arr?.seriesId}">
-                  {{ c.arr?.title ?? c.slot.filename }}
+                  {{ (c.arr ? mediaName(c.arr) : null) ?? c.slot.filename }}
                 </p>
-                <span v-if="c.arr" class="dl-release">{{ c.slot.filename }}</span>
+                <span v-if="c.arr" class="dl-release">{{ c.arr.title }}</span>
                 <span :class="['st-badge', stClass(c.slot.status)]">{{ stLabel(c.slot.status) }}</span>
               </div>
 
@@ -720,7 +737,7 @@ function evBadge(et: string) {
               </div>
 
               <!-- Delete -->
-              <button class="act-btn act-del" @click="askDeleteSlot(c.slot, c.arr?.title ?? c.slot.filename)" title="Entfernen">
+              <button class="act-btn act-del" @click="askDeleteSlot(c.slot, (c.arr ? mediaName(c.arr) : null) ?? c.slot.filename)" title="Entfernen">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
               </button>
             </div>

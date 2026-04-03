@@ -8,7 +8,8 @@
     "packages/client"
   ],
   "scripts": {
-    "dev": "concurrently -n server,client -c cyan,magenta \"npm run dev -w packages/server\" \"npm run dev -w packages/client\"",
+    "predev": "fuser -k 3000/tcp 5173/tcp 5174/tcp 5175/tcp 2>/dev/null; sleep 0.5 || true",
+    "dev": "concurrently -k -n server,client -c cyan,magenta \"npm run dev -w packages/server\" \"npm run dev -w packages/client\"",
     "build": "npm run build -w packages/shared && npm run build -w packages/server && npm run build -w packages/client",
     "typecheck": "npm run typecheck -w packages/shared && npm run typecheck -w packages/server && npm run typecheck -w packages/client"
   },
