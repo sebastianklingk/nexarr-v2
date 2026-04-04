@@ -940,6 +940,53 @@ const notificationsClear: OllamaTool = {
   },
 };
 
+// ── 🧭 UI Navigation ────────────────────────────────────────────────────────
+
+const navigateTo: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'navigate_to',
+    description: 'Navigiert den User zu einer nexarr-View (z.B. /movies, /movies/123, /downloads, /calendar).',
+    parameters: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Pfad in nexarr (z.B. /movies, /movies/1604, /series/1, /downloads, /calendar, /streams)' },
+      },
+      required: ['path'],
+    },
+  },
+};
+
+const navigateToExternal: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'navigate_to_external',
+    description: 'Öffnet einen externen Link in einem neuen Browser-Tab (z.B. Plex Deep-Link, TMDB-Seite, YouTube-Trailer).',
+    parameters: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'Vollständige URL (https://...)' },
+      },
+      required: ['url'],
+    },
+  },
+};
+
+const navigateSearch: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'navigate_search',
+    description: 'Öffnet die SearchView mit einem vorgefüllten Suchbegriff.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Suchbegriff' },
+      },
+      required: ['query'],
+    },
+  },
+};
+
 // ── Registry ─────────────────────────────────────────────────────────────────
 
 /** Alle verfügbaren Tools */
@@ -976,6 +1023,8 @@ export const allTools: OllamaTool[] = [
   audiobooksSearch, audiobooksDetails, audiobooksLibraries,
   // Gotify (2)
   notificationsList, notificationsClear,
+  // Navigation (3)
+  navigateTo, navigateToExternal, navigateSearch,
 ];
 
 /**

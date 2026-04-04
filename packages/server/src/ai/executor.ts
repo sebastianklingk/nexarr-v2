@@ -8,6 +8,7 @@ import * as music from './executors/music.executor.js';
 import * as downloads from './executors/downloads.executor.js';
 import * as media from './executors/media.executor.js';
 import * as system from './executors/system.executor.js';
+import * as navigation from './executors/navigation.executor.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -120,6 +121,11 @@ const handlers: Record<string, (args: Args) => Promise<ToolResult>> = {
   // Gotify
   notifications_list:        system.handleNotificationsList,
   notifications_clear:       system.handleNotificationsClear,
+
+  // Navigation
+  navigate_to:               navigation.handleNavigateTo,
+  navigate_to_external:      navigation.handleNavigateToExternal,
+  navigate_search:           navigation.handleNavigateSearch,
 };
 
 /**

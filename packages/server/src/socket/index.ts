@@ -7,6 +7,7 @@ import type {
   SocketData,
 } from '@nexarr/shared';
 import { getAggregatedQueue } from '../services/queue.service.js';
+import { registerAiHandlers } from '../ai/stream.js';
 
 // ── Singleton ─────────────────────────────────────────────────────────────────
 
@@ -85,6 +86,9 @@ export function initSocket(httpServer: HttpServer): typeof io {
       const room = io.sockets.adapter.rooms.get('queue');
       if (!room || room.size === 0) stopQueuePolling();
     });
+
+    // ── AI Handlers ──────────────────────────────────────────────────────────
+    registerAiHandlers(socket);
 
     socket.on('disconnect', () => {
       console.log(`[Socket] Client getrennt: ${socket.id}`);

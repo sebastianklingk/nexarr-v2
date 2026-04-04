@@ -168,6 +168,62 @@ export interface SystemStatus {
   nodeVersion: string;
 }
 
+// ── AI Chat Events ───────────────────────────────────────────────────────────
+
+export interface AiTokenPayload {
+  sessionId: string;
+  token: string;
+  done: boolean;
+  /** Nur bei done=true: Gesamte Antwort */
+  fullResponse?: string;
+  model?: string;
+  evalCount?: number;
+  totalDuration?: number;
+}
+
+export interface AiErrorPayload {
+  sessionId: string;
+  error: string;
+}
+
+export interface AiMessagePayload {
+  message: string;
+  sessionId?: string;
+}
+
+export interface AiToolCallPayload {
+  sessionId: string;
+  name: string;
+  arguments: Record<string, unknown>;
+  result?: { success: boolean; error?: string };
+}
+
+// ── AI Navigation & Card Events ─────────────────────────────────────────────
+
+export interface AiNavigatePayload {
+  sessionId: string;
+  path: string;
+}
+
+export interface AiOpenUrlPayload {
+  sessionId: string;
+  url: string;
+}
+
+export type AiCardType =
+  | 'poster_card'
+  | 'media_carousel'
+  | 'download_card'
+  | 'stream_card'
+  | 'calendar_preview'
+  | 'action_buttons';
+
+export interface AiCardPayload {
+  sessionId: string;
+  cardType: AiCardType;
+  data: Record<string, unknown>;
+}
+
 // ── Socket Event Maps ─────────────────────────────────────────────────────────
 
 // Server → Client
@@ -178,12 +234,19 @@ export interface ServerToClientEvents {
   'notification:new':  (data: Notification)  => void;
   'cache:invalidated': (key: string)         => void;
   'system:status':     (data: SystemStatus)  => void;
+  'ai:token':          (data: AiTokenPayload) => void;
+  'ai:error':          (data: AiErrorPayload) => void;
+  'ai:tool_call':      (data: AiToolCallPayload) => void;
+  'ai:navigate':       (data: AiNavigatePayload) => void;
+  'ai:open_url':       (data: AiOpenUrlPayload) => void;
+  'ai:card':           (data: AiCardPayload) => void;
 }
 
 // Client → Server
 export interface ClientToServerEvents {
   'queue:subscribe':   () => void;
   'queue:unsubscribe': () => void;
+  'ai:message':        (data: AiMessagePayload) => void;
 }
 
 export interface InterServerEvents {}
