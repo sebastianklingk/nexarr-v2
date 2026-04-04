@@ -987,6 +987,192 @@ const navigateSearch: OllamaTool = {
   },
 };
 
+// ── 📈 Analytics (Tautulli) ─────────────────────────────────────────────────
+
+const analyticsMostWatched: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'analytics_most_watched',
+    description: 'Zeigt meistgeschaute Filme/Serien (Top 10/25) aus Tautulli.',
+    parameters: {
+      type: 'object',
+      properties: {
+        time_range: { type: 'number', description: 'Zeitraum in Tagen (Standard: 30)' },
+        count: { type: 'number', description: 'Anzahl Ergebnisse (Standard: 10)' },
+      },
+    },
+  },
+};
+
+const analyticsUserStats: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'analytics_user_stats',
+    description: 'Watch-Statistiken pro User: Stunden, Plays, Player-Nutzung. Ohne user_id werden alle User aufgelistet.',
+    parameters: {
+      type: 'object',
+      properties: {
+        user_id: { type: 'number', description: 'Tautulli-User-ID (leer = User-Liste anzeigen)' },
+      },
+    },
+  },
+};
+
+const analyticsLibraryStats: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'analytics_library_stats',
+    description: 'Bibliotheks-Statistiken: Größe, Plays, letzte Wiedergabe. Ohne section_id alle Bibliotheken.',
+    parameters: {
+      type: 'object',
+      properties: {
+        section_id: { type: 'number', description: 'Plex-Library Section-ID (leer = Übersicht aller Bibliotheken)' },
+      },
+    },
+  },
+};
+
+const analyticsRecentlyAdded: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'analytics_recently_added',
+    description: 'Kürzlich zu Plex hinzugefügte Medien.',
+    parameters: {
+      type: 'object',
+      properties: {
+        count: { type: 'number', description: 'Anzahl Einträge (Standard: 25)' },
+      },
+    },
+  },
+};
+
+const analyticsWatchTimeTrend: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'analytics_watch_time_trend',
+    description: 'Watch-Time Trend: Plays pro Tag, Wochentag oder Stunde.',
+    parameters: {
+      type: 'object',
+      properties: {
+        time_range: { type: 'number', description: 'Zeitraum in Tagen (Standard: 30)' },
+        group_by: { type: 'string', enum: ['date', 'day_of_week', 'hour_of_day'], description: 'Gruppierung (Standard: date)' },
+      },
+    },
+  },
+};
+
+const analyticsTranscodeStats: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'analytics_transcode_stats',
+    description: 'Transcode-Statistiken: Direct Play vs. Transcode, aufgeschlüsselt nach Plattform.',
+    parameters: {
+      type: 'object',
+      properties: {
+        time_range: { type: 'number', description: 'Zeitraum in Tagen (Standard: 30)' },
+      },
+    },
+  },
+};
+
+const analyticsConcurrentStreams: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'analytics_concurrent_streams',
+    description: 'Aktuelle parallele Streams, Bandwidth-Nutzung und Stream-Verteilung.',
+    parameters: { type: 'object', properties: {} },
+  },
+};
+
+const analyticsUserHistory: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'analytics_user_history',
+    description: 'Detaillierte Watch-History eines Users oder gefiltert nach Medientyp.',
+    parameters: {
+      type: 'object',
+      properties: {
+        user: { type: 'string', description: 'Username (leer = alle User)' },
+        media_type: { type: 'string', enum: ['movie', 'episode', 'track'], description: 'Medientyp-Filter' },
+        length: { type: 'number', description: 'Anzahl Einträge (Standard: 25)' },
+      },
+    },
+  },
+};
+
+// ── 🧠 Smart AI Features ────────────────────────────────────────────────────
+
+const recommend: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'recommend',
+    description: 'Intelligente Medien-Empfehlung basierend auf Stimmung, Genre und Watch-History.',
+    parameters: {
+      type: 'object',
+      properties: {
+        mood: { type: 'string', description: 'Stimmung (z.B. "entspannt", "spannend", "lustig")' },
+        genre: { type: 'string', description: 'Genre-Präferenz (z.B. "Action", "Comedy")' },
+        type: { type: 'string', enum: ['movie', 'tv'], description: 'Filme oder Serien (Standard: movie)' },
+      },
+    },
+  },
+};
+
+const buildWatchlist: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'build_watchlist',
+    description: 'Erstellt eine kuratierte Watch-Session innerhalb eines Zeitbudgets mit Laufzeiten.',
+    parameters: {
+      type: 'object',
+      properties: {
+        hours: { type: 'number', description: 'Zeitbudget in Stunden (Standard: 3)' },
+        genre: { type: 'string', description: 'Genre-Filter' },
+        type: { type: 'string', enum: ['movie', 'tv'], description: 'Filme oder Serien (Standard: movie)' },
+      },
+    },
+  },
+};
+
+const libraryReport: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'library_report',
+    description: 'Umfassender Bibliotheks-Report: Genre-Verteilung, Speicher, Qualität, Top-Genres.',
+    parameters: { type: 'object', properties: {} },
+  },
+};
+
+const whatToWatch: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'what_to_watch',
+    description: '"Was soll ich schauen?" – Personalisierte Vorschläge aus deiner Bibliothek.',
+    parameters: {
+      type: 'object',
+      properties: {
+        mood: { type: 'string', description: 'Aktuelle Stimmung' },
+        type: { type: 'string', enum: ['movie', 'tv'], description: 'Filme oder Serien (Standard: movie)' },
+      },
+    },
+  },
+};
+
+const mediaQuiz: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'media_quiz',
+    description: 'Film/Serien-Quiz: Rate den Titel anhand der Beschreibung. Fun-Feature!',
+    parameters: {
+      type: 'object',
+      properties: {
+        difficulty: { type: 'string', enum: ['easy', 'medium', 'hard'], description: 'Schwierigkeitsgrad' },
+        type: { type: 'string', enum: ['movie', 'tv'], description: 'Filme oder Serien' },
+      },
+    },
+  },
+};
+
 // ── Registry ─────────────────────────────────────────────────────────────────
 
 /** Alle verfügbaren Tools */
@@ -1025,6 +1211,12 @@ export const allTools: OllamaTool[] = [
   notificationsList, notificationsClear,
   // Navigation (3)
   navigateTo, navigateToExternal, navigateSearch,
+  // Analytics (8)
+  analyticsMostWatched, analyticsUserStats, analyticsLibraryStats,
+  analyticsRecentlyAdded, analyticsWatchTimeTrend, analyticsTranscodeStats,
+  analyticsConcurrentStreams, analyticsUserHistory,
+  // Smart Features (5)
+  recommend, buildWatchlist, libraryReport, whatToWatch, mediaQuiz,
 ];
 
 /**

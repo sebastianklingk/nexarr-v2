@@ -9,6 +9,8 @@ import * as downloads from './executors/downloads.executor.js';
 import * as media from './executors/media.executor.js';
 import * as system from './executors/system.executor.js';
 import * as navigation from './executors/navigation.executor.js';
+import * as analytics from './executors/analytics.executor.js';
+import * as smart from './executors/smart.executor.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -126,6 +128,23 @@ const handlers: Record<string, (args: Args) => Promise<ToolResult>> = {
   navigate_to:               navigation.handleNavigateTo,
   navigate_to_external:      navigation.handleNavigateToExternal,
   navigate_search:           navigation.handleNavigateSearch,
+
+  // Analytics (Tautulli)
+  analytics_most_watched:       analytics.handleAnalyticsMostWatched,
+  analytics_user_stats:         analytics.handleAnalyticsUserStats,
+  analytics_library_stats:      analytics.handleAnalyticsLibraryStats,
+  analytics_recently_added:     analytics.handleAnalyticsRecentlyAdded,
+  analytics_watch_time_trend:   analytics.handleAnalyticsWatchTimeTrend,
+  analytics_transcode_stats:    analytics.handleAnalyticsTranscodeStats,
+  analytics_concurrent_streams: analytics.handleAnalyticsConcurrentStreams,
+  analytics_user_history:       analytics.handleAnalyticsUserHistory,
+
+  // Smart Features
+  recommend:                    smart.handleRecommend,
+  build_watchlist:              smart.handleBuildWatchlist,
+  library_report:               smart.handleLibraryReport,
+  what_to_watch:                smart.handleWhatToWatch,
+  media_quiz:                   smart.handleMediaQuiz,
 };
 
 /**
