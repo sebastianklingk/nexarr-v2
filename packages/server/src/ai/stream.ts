@@ -14,7 +14,7 @@ import {
   getConversationMessages,
   upsertConversation,
 } from './conversations.js';
-import { allTools } from './tools.js';
+import { selectTools } from './tool-selector.js';
 import { executeToolCall, isDestructive } from './executor.js';
 import { extractMemories } from './memory.js';
 import { generateSummary, shouldGenerateSummary } from './summary.js';
@@ -51,15 +51,24 @@ export function registerAiHandlers(socket: AiSocket): void {
       const systemPrompt = await buildSystemPrompt(message);
       const history = getConversationMessages(sessionId);
 
+      // Bild-Hinweis für den LLM (damit er weiß dass ein Bild da ist)
+      let userContent = message;
+      if (image) {
+        userContent += '\n\n[📷 Ein Bild wurde hochgeladen. Verwende das Tool "vision_identify_media" um das Bild zu analysieren und den Film/die Serie zu erkennen. Das Bild wird automatisch an das Vision-Tool übergeben.]';
+      }
+
       const messages: OllamaMessage[] = [
         { role: 'system', content: systemPrompt },
         ...history,
-        { role: 'user', content: message },
+        { role: 'user', content: userContent },
       ];
+
+      // Smart Tool Selection: nur relevante Tools laden (max ~20 statt 95)
+      const selectedTools = selectTools(message, !!image);
 
       // ── Tool-Loop (non-streaming) ──────────────────────────────────────
       for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
-        const response = await chat(messages, { temperature: 0.3, tools: allTools });
+        const response = await chat(messages, { temperature: 0.3, tools: selectedTools });
 
         // Keine Tool-Calls → streame die finale Antwort
         if (!response.message.tool_calls?.length) {

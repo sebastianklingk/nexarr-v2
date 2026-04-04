@@ -9,6 +9,18 @@
 **Was passierte:** `import ... from '@/utils/mediaIcons'` in MediaIcon.vue – vue-tsc konnte das Modul nicht finden weil kein `paths`-Alias in tsconfig.json konfiguriert ist.
 **Regel:** nexarr v2 nutzt KEINE `@/`-Aliases. IMMER relative Pfade mit `.js`-Extension: `from '../utils/mediaIcons.js'`, `from '../../composables/useApi.js'` etc.
 
+## 2026-04-03 · Brand SVGs · Wikimedia Downloads liefern HTML statt SVG
+**Was passierte:** `curl -sL` und `Special:FilePath` URLs lieferten HTML-Fehlerseiten statt SVGs. Auch `upload.wikimedia.org` URLs geben bei zu schnellem Zugriff HTTP 429 (Rate Limiting). bash `curl` auf Unraid blockiert generell `upload.wikimedia.org`.
+**Regel:** Wikimedia-Downloads immer mit **Node.js** (`https.get` mit User-Agent Header). **1.5s Delay** zwischen Downloads. URLs über die **Wikimedia API** (`/w/api.php?action=query&prop=imageinfo`) verifizieren – die Hash-Pfade (ändern sich!). Skip-already-valid Pattern: Datei nur downloaden wenn sie noch kein valides SVG ist.
+
+## 2026-04-03 · Brand SVGs · H.264/HEVC/AV1 Logos haben Box-Hintergründe
+**Was passierte:** H.264 SVG hat ein weißes Rechteck als Hintergrund + dunklen Text. `filter: brightness(0) invert(1)` invertiert beides → schwarzer Kasten mit weißem Text. Bei 10–13px Größe erscheint das als weißes Quadrat.
+**Regel:** Brand-Icons nur für **saubere Wortmarken ohne Hintergrund** verwenden: Dolby-Familie, DTS-Familie, HDR10/HDR10+. Komplexe Logos mit Box/Rahmen (H.264, HEVC, AV1) als **Text-Badges** belassen – kein `brand`-Key im TechBadge-Objekt.
+
+## 2026-04-03 · MediaIcon · CSS filter für weiße Icons
+**Was passierte:** SVGs von Wikimedia haben verschiedene Farben (schwarz, bunt, etc.). Auf dunklem UI müssen sie weiß sein.
+**Regel:** `filter: brightness(0) invert(1)` auf dem `<img>` Tag. Das macht JEDE Farbe zu Weiß. `colorful` prop für Originalfarben. Höhe fixieren (`height`), Breite `auto` für korrekte Proportionen. Kein `width`+`height` gleichzeitig – das verzerrt/schneidet ab.
+
 ## 2026-04-03 · CalendarView · Sonarr finaleType Enum-Werte falsch
 **Was passierte:** `isFinale` prüfte auf `['seasonFinale','seriesFinale','midSeasonFinale']`. Sonarr liefert aber `'season'`, `'series'`, `'midSeason'` (ohne "Finale"-Suffix). Ergebnis: Finale-Symbol ★ wurde nie angezeigt.
 **Regel:** Sonarr `finaleType` Werte sind: `'none'`, `'season'`, `'series'`, `'midSeason'`. NICHT `'seasonFinale'` etc. Immer `.toLowerCase()` beim Vergleichen – API-Werte können mixed-case sein.
@@ -76,6 +88,18 @@
 ## 2026-04-02 · MovieDetailView / SeriesDetailView · v-else nach v-if mit mehreren SVG-Elementen
 **Was passierte:** In einem SVG-Block mit `<path v-if>` + `<circle v-if>` + `<path v-else>` wirft Vue den Fehler "v-else-if has no adjacent v-if". Das `<circle v-if>` unterbricht die v-if/v-else-Kette.
 **Regel:** In SVGs (und generell) NIEMALS `v-else` verwenden wenn mehrere Geschwister-Elemente mit `v-if` vorhanden sind. Immer `v-if="!condition"` statt `v-else` – dann gibt es keine adjazente Abhängigkeit.
+
+## 2026-04-04 · AI Tools · 93 Tools auf einmal an Ollama überlasten das Modell
+**Was passierte:** Alle 93 Tool-Definitionen (~15.000 Token) wurden bei jedem Chat-Request an qwen3:30b geschickt. Das Modell konnte aus 93 Optionen nicht zuverlässig wählen und rief einfach KEINE Tools auf – nur Text-Antworten.
+**Regel:** NIEMALS alle Tools auf einmal schicken. Immer `selectTools()` aus `tool-selector.ts` verwenden. Keywords → max 2 Kategorien → ~15-20 Tools pro Request. Basis-Tools (Navigation, Stats) sind immer dabei.
+
+## 2026-04-04 · AI Tools · /no_think sabotiert Tool Calling bei Qwen3
+**Was passierte:** System-Prompt startete mit `/no_think` was Qwen3's Chain-of-Thought deaktiviert. Ohne Thinking wählt das Modell Tools signifikant schlechter.
+**Regel:** KEIN `/no_think` im System-Prompt. Thinking ist gewollt für Tool-Auswahl. `stripThinkingTags()` entfernt `<think>` Blöcke bevor sie ans Frontend gehen.
+
+## 2026-04-04 · AI Vision · Bild erreicht Ollama nie ohne Hint
+**Was passierte:** Bild wurde aus Socket-Payload extrahiert und in Tool-Arguments injiziert, aber der LLM sah nur Text → rief nie Vision-Tools auf.
+**Regel:** Bei Bild-Upload einen Text-Hinweis an die User-Message anhängen: `[📷 Ein Bild wurde hochgeladen. Verwende das Tool "vision_identify_media"...]`. So weiß der LLM dass ein Bild da ist.
 
 <!-- Einträge werden hier chronologisch ergänzt, neueste zuerst -->
 

@@ -6,7 +6,7 @@ import type { OllamaTool } from './ai.service.js';
 
 // ── 🎬 Filme ─────────────────────────────────────────────────────────────────
 
-const moviesSearch: OllamaTool = {
+export const moviesSearch: OllamaTool = {
   type: 'function',
   function: {
     name: 'movies_search',
@@ -21,7 +21,7 @@ const moviesSearch: OllamaTool = {
   },
 };
 
-const moviesLookup: OllamaTool = {
+export const moviesLookup: OllamaTool = {
   type: 'function',
   function: {
     name: 'movies_lookup',
@@ -36,7 +36,7 @@ const moviesLookup: OllamaTool = {
   },
 };
 
-const moviesAdd: OllamaTool = {
+export const moviesAdd: OllamaTool = {
   type: 'function',
   function: {
     name: 'movies_add',
@@ -52,7 +52,7 @@ const moviesAdd: OllamaTool = {
   },
 };
 
-const moviesDetails: OllamaTool = {
+export const moviesDetails: OllamaTool = {
   type: 'function',
   function: {
     name: 'movies_details',
@@ -67,7 +67,7 @@ const moviesDetails: OllamaTool = {
   },
 };
 
-const moviesDelete: OllamaTool = {
+export const moviesDelete: OllamaTool = {
   type: 'function',
   function: {
     name: 'movies_delete',
@@ -83,7 +83,7 @@ const moviesDelete: OllamaTool = {
   },
 };
 
-const moviesTriggerSearch: OllamaTool = {
+export const moviesTriggerSearch: OllamaTool = {
   type: 'function',
   function: {
     name: 'movies_trigger_search',
@@ -98,7 +98,7 @@ const moviesTriggerSearch: OllamaTool = {
   },
 };
 
-const moviesInteractiveSearch: OllamaTool = {
+export const moviesInteractiveSearch: OllamaTool = {
   type: 'function',
   function: {
     name: 'movies_interactive_search',
@@ -113,7 +113,7 @@ const moviesInteractiveSearch: OllamaTool = {
   },
 };
 
-const moviesGrabRelease: OllamaTool = {
+export const moviesGrabRelease: OllamaTool = {
   type: 'function',
   function: {
     name: 'movies_grab_release',
@@ -129,7 +129,7 @@ const moviesGrabRelease: OllamaTool = {
   },
 };
 
-const moviesMissing: OllamaTool = {
+export const moviesMissing: OllamaTool = {
   type: 'function',
   function: {
     name: 'movies_missing',
@@ -138,7 +138,7 @@ const moviesMissing: OllamaTool = {
   },
 };
 
-const moviesHistory: OllamaTool = {
+export const moviesHistory: OllamaTool = {
   type: 'function',
   function: {
     name: 'movies_history',
@@ -152,7 +152,7 @@ const moviesHistory: OllamaTool = {
   },
 };
 
-const moviesUpdate: OllamaTool = {
+export const moviesUpdate: OllamaTool = {
   type: 'function',
   function: {
     name: 'movies_update',
@@ -169,7 +169,7 @@ const moviesUpdate: OllamaTool = {
   },
 };
 
-const moviesTmdbRich: OllamaTool = {
+export const moviesTmdbRich: OllamaTool = {
   type: 'function',
   function: {
     name: 'movies_tmdb_rich',
@@ -184,7 +184,7 @@ const moviesTmdbRich: OllamaTool = {
   },
 };
 
-const moviesQualityProfiles: OllamaTool = {
+export const moviesQualityProfiles: OllamaTool = {
   type: 'function',
   function: {
     name: 'movies_quality_profiles',
@@ -195,7 +195,7 @@ const moviesQualityProfiles: OllamaTool = {
 
 // ── 📺 Serien ────────────────────────────────────────────────────────────────
 
-const seriesSearch: OllamaTool = {
+export const seriesSearch: OllamaTool = {
   type: 'function',
   function: {
     name: 'series_search',
@@ -210,7 +210,7 @@ const seriesSearch: OllamaTool = {
   },
 };
 
-const seriesLookup: OllamaTool = {
+export const seriesLookup: OllamaTool = {
   type: 'function',
   function: {
     name: 'series_lookup',
@@ -225,7 +225,7 @@ const seriesLookup: OllamaTool = {
   },
 };
 
-const seriesAdd: OllamaTool = {
+export const seriesAdd: OllamaTool = {
   type: 'function',
   function: {
     name: 'series_add',
@@ -241,7 +241,7 @@ const seriesAdd: OllamaTool = {
   },
 };
 
-const seriesDetails: OllamaTool = {
+export const seriesDetails: OllamaTool = {
   type: 'function',
   function: {
     name: 'series_details',
@@ -256,7 +256,7 @@ const seriesDetails: OllamaTool = {
   },
 };
 
-const seriesDelete: OllamaTool = {
+export const seriesDelete: OllamaTool = {
   type: 'function',
   function: {
     name: 'series_delete',
@@ -272,7 +272,7 @@ const seriesDelete: OllamaTool = {
   },
 };
 
-const seriesEpisodes: OllamaTool = {
+export const seriesEpisodes: OllamaTool = {
   type: 'function',
   function: {
     name: 'series_episodes',
@@ -288,7 +288,7 @@ const seriesEpisodes: OllamaTool = {
   },
 };
 
-const seriesTriggerSearch: OllamaTool = {
+export const seriesTriggerSearch: OllamaTool = {
   type: 'function',
   function: {
     name: 'series_trigger_search',
@@ -303,7 +303,7 @@ const seriesTriggerSearch: OllamaTool = {
   },
 };
 
-const seriesEpisodeSearch: OllamaTool = {
+export const seriesEpisodeSearch: OllamaTool = {
   type: 'function',
   function: {
     name: 'series_episode_search',
@@ -318,7 +318,7 @@ const seriesEpisodeSearch: OllamaTool = {
   },
 };
 
-const seriesGrabRelease: OllamaTool = {
+export const seriesGrabRelease: OllamaTool = {
   type: 'function',
   function: {
     name: 'series_grab_release',
@@ -334,7 +334,7 @@ const seriesGrabRelease: OllamaTool = {
   },
 };
 
-const seriesMissing: OllamaTool = {
+export const seriesMissing: OllamaTool = {
   type: 'function',
   function: {
     name: 'series_missing',
@@ -343,7 +343,7 @@ const seriesMissing: OllamaTool = {
   },
 };
 
-const seriesHistory: OllamaTool = {
+export const seriesHistory: OllamaTool = {
   type: 'function',
   function: {
     name: 'series_history',
@@ -357,7 +357,7 @@ const seriesHistory: OllamaTool = {
   },
 };
 
-const seriesSeasonMonitor: OllamaTool = {
+export const seriesSeasonMonitor: OllamaTool = {
   type: 'function',
   function: {
     name: 'series_season_monitor',
@@ -374,7 +374,7 @@ const seriesSeasonMonitor: OllamaTool = {
   },
 };
 
-const seriesUpdate: OllamaTool = {
+export const seriesUpdate: OllamaTool = {
   type: 'function',
   function: {
     name: 'series_update',
@@ -391,7 +391,7 @@ const seriesUpdate: OllamaTool = {
   },
 };
 
-const seriesTmdbRich: OllamaTool = {
+export const seriesTmdbRich: OllamaTool = {
   type: 'function',
   function: {
     name: 'series_tmdb_rich',
@@ -408,7 +408,7 @@ const seriesTmdbRich: OllamaTool = {
 
 // ── 🎵 Musik ─────────────────────────────────────────────────────────────────
 
-const musicSearch: OllamaTool = {
+export const musicSearch: OllamaTool = {
   type: 'function',
   function: {
     name: 'music_search',
@@ -423,7 +423,7 @@ const musicSearch: OllamaTool = {
   },
 };
 
-const musicLookup: OllamaTool = {
+export const musicLookup: OllamaTool = {
   type: 'function',
   function: {
     name: 'music_lookup',
@@ -438,7 +438,7 @@ const musicLookup: OllamaTool = {
   },
 };
 
-const musicAdd: OllamaTool = {
+export const musicAdd: OllamaTool = {
   type: 'function',
   function: {
     name: 'music_add',
@@ -454,7 +454,7 @@ const musicAdd: OllamaTool = {
   },
 };
 
-const musicDetails: OllamaTool = {
+export const musicDetails: OllamaTool = {
   type: 'function',
   function: {
     name: 'music_details',
@@ -469,7 +469,7 @@ const musicDetails: OllamaTool = {
   },
 };
 
-const musicTriggerSearch: OllamaTool = {
+export const musicTriggerSearch: OllamaTool = {
   type: 'function',
   function: {
     name: 'music_trigger_search',
@@ -486,7 +486,7 @@ const musicTriggerSearch: OllamaTool = {
 
 // ── 📥 Downloads ─────────────────────────────────────────────────────────────
 
-const downloadsStatus: OllamaTool = {
+export const downloadsStatus: OllamaTool = {
   type: 'function',
   function: {
     name: 'downloads_status',
@@ -495,7 +495,7 @@ const downloadsStatus: OllamaTool = {
   },
 };
 
-const downloadsPause: OllamaTool = {
+export const downloadsPause: OllamaTool = {
   type: 'function',
   function: {
     name: 'downloads_pause',
@@ -510,7 +510,7 @@ const downloadsPause: OllamaTool = {
   },
 };
 
-const downloadsResume: OllamaTool = {
+export const downloadsResume: OllamaTool = {
   type: 'function',
   function: {
     name: 'downloads_resume',
@@ -525,7 +525,7 @@ const downloadsResume: OllamaTool = {
   },
 };
 
-const downloadsPauseSingle: OllamaTool = {
+export const downloadsPauseSingle: OllamaTool = {
   type: 'function',
   function: {
     name: 'downloads_pause_single',
@@ -542,7 +542,7 @@ const downloadsPauseSingle: OllamaTool = {
   },
 };
 
-const downloadsDelete: OllamaTool = {
+export const downloadsDelete: OllamaTool = {
   type: 'function',
   function: {
     name: 'downloads_delete',
@@ -559,7 +559,7 @@ const downloadsDelete: OllamaTool = {
   },
 };
 
-const downloadsPriority: OllamaTool = {
+export const downloadsPriority: OllamaTool = {
   type: 'function',
   function: {
     name: 'downloads_priority',
@@ -576,7 +576,7 @@ const downloadsPriority: OllamaTool = {
   },
 };
 
-const downloadsSpeedLimit: OllamaTool = {
+export const downloadsSpeedLimit: OllamaTool = {
   type: 'function',
   function: {
     name: 'downloads_speed_limit',
@@ -593,7 +593,7 @@ const downloadsSpeedLimit: OllamaTool = {
 
 // ── 📅 Kalender ──────────────────────────────────────────────────────────────
 
-const calendarUpcoming: OllamaTool = {
+export const calendarUpcoming: OllamaTool = {
   type: 'function',
   function: {
     name: 'calendar_upcoming',
@@ -607,7 +607,7 @@ const calendarUpcoming: OllamaTool = {
   },
 };
 
-const calendarToday: OllamaTool = {
+export const calendarToday: OllamaTool = {
   type: 'function',
   function: {
     name: 'calendar_today',
@@ -618,7 +618,7 @@ const calendarToday: OllamaTool = {
 
 // ── 📡 Streams & Plex ───────────────────────────────────────────────────────
 
-const streamsActive: OllamaTool = {
+export const streamsActive: OllamaTool = {
   type: 'function',
   function: {
     name: 'streams_active',
@@ -627,7 +627,7 @@ const streamsActive: OllamaTool = {
   },
 };
 
-const streamsHistory: OllamaTool = {
+export const streamsHistory: OllamaTool = {
   type: 'function',
   function: {
     name: 'streams_history',
@@ -641,7 +641,7 @@ const streamsHistory: OllamaTool = {
   },
 };
 
-const plexLibraries: OllamaTool = {
+export const plexLibraries: OllamaTool = {
   type: 'function',
   function: {
     name: 'plex_libraries',
@@ -650,7 +650,7 @@ const plexLibraries: OllamaTool = {
   },
 };
 
-const plexDeeplink: OllamaTool = {
+export const plexDeeplink: OllamaTool = {
   type: 'function',
   function: {
     name: 'plex_deeplink',
@@ -665,7 +665,7 @@ const plexDeeplink: OllamaTool = {
   },
 };
 
-const plexStatus: OllamaTool = {
+export const plexStatus: OllamaTool = {
   type: 'function',
   function: {
     name: 'plex_status',
@@ -676,7 +676,7 @@ const plexStatus: OllamaTool = {
 
 // ── 🔍 Indexer (Prowlarr) ───────────────────────────────────────────────────
 
-const prowlarrSearch: OllamaTool = {
+export const prowlarrSearch: OllamaTool = {
   type: 'function',
   function: {
     name: 'prowlarr_search',
@@ -692,7 +692,7 @@ const prowlarrSearch: OllamaTool = {
   },
 };
 
-const prowlarrGrab: OllamaTool = {
+export const prowlarrGrab: OllamaTool = {
   type: 'function',
   function: {
     name: 'prowlarr_grab',
@@ -710,7 +710,7 @@ const prowlarrGrab: OllamaTool = {
 
 // ── 💡 TMDB Discover ────────────────────────────────────────────────────────
 
-const discoverTrending: OllamaTool = {
+export const discoverTrending: OllamaTool = {
   type: 'function',
   function: {
     name: 'discover_trending',
@@ -724,7 +724,7 @@ const discoverTrending: OllamaTool = {
   },
 };
 
-const discoverByGenre: OllamaTool = {
+export const discoverByGenre: OllamaTool = {
   type: 'function',
   function: {
     name: 'discover_by_genre',
@@ -742,7 +742,7 @@ const discoverByGenre: OllamaTool = {
   },
 };
 
-const discoverSimilar: OllamaTool = {
+export const discoverSimilar: OllamaTool = {
   type: 'function',
   function: {
     name: 'discover_similar',
@@ -760,7 +760,7 @@ const discoverSimilar: OllamaTool = {
 
 // ── 📊 System & Stats ───────────────────────────────────────────────────────
 
-const statsOverview: OllamaTool = {
+export const statsOverview: OllamaTool = {
   type: 'function',
   function: {
     name: 'stats_overview',
@@ -769,7 +769,7 @@ const statsOverview: OllamaTool = {
   },
 };
 
-const systemHealth: OllamaTool = {
+export const systemHealth: OllamaTool = {
   type: 'function',
   function: {
     name: 'system_health',
@@ -780,7 +780,7 @@ const systemHealth: OllamaTool = {
 
 // ── 📬 Overseerr ────────────────────────────────────────────────────────────
 
-const overseerrRequests: OllamaTool = {
+export const overseerrRequests: OllamaTool = {
   type: 'function',
   function: {
     name: 'overseerr_requests',
@@ -789,7 +789,7 @@ const overseerrRequests: OllamaTool = {
   },
 };
 
-const overseerrApprove: OllamaTool = {
+export const overseerrApprove: OllamaTool = {
   type: 'function',
   function: {
     name: 'overseerr_approve',
@@ -804,7 +804,7 @@ const overseerrApprove: OllamaTool = {
   },
 };
 
-const overseerrDecline: OllamaTool = {
+export const overseerrDecline: OllamaTool = {
   type: 'function',
   function: {
     name: 'overseerr_decline',
@@ -821,7 +821,7 @@ const overseerrDecline: OllamaTool = {
 
 // ── 🔤 Untertitel (Bazarr) ──────────────────────────────────────────────────
 
-const subtitlesMovieStatus: OllamaTool = {
+export const subtitlesMovieStatus: OllamaTool = {
   type: 'function',
   function: {
     name: 'subtitles_movie_status',
@@ -836,7 +836,7 @@ const subtitlesMovieStatus: OllamaTool = {
   },
 };
 
-const subtitlesSeriesStatus: OllamaTool = {
+export const subtitlesSeriesStatus: OllamaTool = {
   type: 'function',
   function: {
     name: 'subtitles_series_status',
@@ -851,7 +851,7 @@ const subtitlesSeriesStatus: OllamaTool = {
   },
 };
 
-const subtitlesSearch: OllamaTool = {
+export const subtitlesSearch: OllamaTool = {
   type: 'function',
   function: {
     name: 'subtitles_search',
@@ -870,7 +870,7 @@ const subtitlesSearch: OllamaTool = {
 
 // ── 📚 Audiobookshelf ───────────────────────────────────────────────────────
 
-const audiobooksSearch: OllamaTool = {
+export const audiobooksSearch: OllamaTool = {
   type: 'function',
   function: {
     name: 'audiobooks_search',
@@ -886,7 +886,7 @@ const audiobooksSearch: OllamaTool = {
   },
 };
 
-const audiobooksDetails: OllamaTool = {
+export const audiobooksDetails: OllamaTool = {
   type: 'function',
   function: {
     name: 'audiobooks_details',
@@ -901,7 +901,7 @@ const audiobooksDetails: OllamaTool = {
   },
 };
 
-const audiobooksLibraries: OllamaTool = {
+export const audiobooksLibraries: OllamaTool = {
   type: 'function',
   function: {
     name: 'audiobooks_libraries',
@@ -912,7 +912,7 @@ const audiobooksLibraries: OllamaTool = {
 
 // ── 🔔 Benachrichtigungen (Gotify) ─────────────────────────────────────────
 
-const notificationsList: OllamaTool = {
+export const notificationsList: OllamaTool = {
   type: 'function',
   function: {
     name: 'notifications_list',
@@ -926,7 +926,7 @@ const notificationsList: OllamaTool = {
   },
 };
 
-const notificationsClear: OllamaTool = {
+export const notificationsClear: OllamaTool = {
   type: 'function',
   function: {
     name: 'notifications_clear',
@@ -942,7 +942,7 @@ const notificationsClear: OllamaTool = {
 
 // ── 🧭 UI Navigation ────────────────────────────────────────────────────────
 
-const navigateTo: OllamaTool = {
+export const navigateTo: OllamaTool = {
   type: 'function',
   function: {
     name: 'navigate_to',
@@ -957,7 +957,7 @@ const navigateTo: OllamaTool = {
   },
 };
 
-const navigateToExternal: OllamaTool = {
+export const navigateToExternal: OllamaTool = {
   type: 'function',
   function: {
     name: 'navigate_to_external',
@@ -972,7 +972,7 @@ const navigateToExternal: OllamaTool = {
   },
 };
 
-const navigateSearch: OllamaTool = {
+export const navigateSearch: OllamaTool = {
   type: 'function',
   function: {
     name: 'navigate_search',
@@ -989,7 +989,7 @@ const navigateSearch: OllamaTool = {
 
 // ── 📈 Analytics (Tautulli) ─────────────────────────────────────────────────
 
-const analyticsMostWatched: OllamaTool = {
+export const analyticsMostWatched: OllamaTool = {
   type: 'function',
   function: {
     name: 'analytics_most_watched',
@@ -1004,7 +1004,7 @@ const analyticsMostWatched: OllamaTool = {
   },
 };
 
-const analyticsUserStats: OllamaTool = {
+export const analyticsUserStats: OllamaTool = {
   type: 'function',
   function: {
     name: 'analytics_user_stats',
@@ -1018,7 +1018,7 @@ const analyticsUserStats: OllamaTool = {
   },
 };
 
-const analyticsLibraryStats: OllamaTool = {
+export const analyticsLibraryStats: OllamaTool = {
   type: 'function',
   function: {
     name: 'analytics_library_stats',
@@ -1032,7 +1032,7 @@ const analyticsLibraryStats: OllamaTool = {
   },
 };
 
-const analyticsRecentlyAdded: OllamaTool = {
+export const analyticsRecentlyAdded: OllamaTool = {
   type: 'function',
   function: {
     name: 'analytics_recently_added',
@@ -1046,7 +1046,7 @@ const analyticsRecentlyAdded: OllamaTool = {
   },
 };
 
-const analyticsWatchTimeTrend: OllamaTool = {
+export const analyticsWatchTimeTrend: OllamaTool = {
   type: 'function',
   function: {
     name: 'analytics_watch_time_trend',
@@ -1061,7 +1061,7 @@ const analyticsWatchTimeTrend: OllamaTool = {
   },
 };
 
-const analyticsTranscodeStats: OllamaTool = {
+export const analyticsTranscodeStats: OllamaTool = {
   type: 'function',
   function: {
     name: 'analytics_transcode_stats',
@@ -1075,7 +1075,7 @@ const analyticsTranscodeStats: OllamaTool = {
   },
 };
 
-const analyticsConcurrentStreams: OllamaTool = {
+export const analyticsConcurrentStreams: OllamaTool = {
   type: 'function',
   function: {
     name: 'analytics_concurrent_streams',
@@ -1084,7 +1084,7 @@ const analyticsConcurrentStreams: OllamaTool = {
   },
 };
 
-const analyticsUserHistory: OllamaTool = {
+export const analyticsUserHistory: OllamaTool = {
   type: 'function',
   function: {
     name: 'analytics_user_history',
@@ -1102,7 +1102,7 @@ const analyticsUserHistory: OllamaTool = {
 
 // ── 🧠 Smart AI Features ────────────────────────────────────────────────────
 
-const recommend: OllamaTool = {
+export const recommend: OllamaTool = {
   type: 'function',
   function: {
     name: 'recommend',
@@ -1118,7 +1118,7 @@ const recommend: OllamaTool = {
   },
 };
 
-const buildWatchlist: OllamaTool = {
+export const buildWatchlist: OllamaTool = {
   type: 'function',
   function: {
     name: 'build_watchlist',
@@ -1134,7 +1134,7 @@ const buildWatchlist: OllamaTool = {
   },
 };
 
-const libraryReport: OllamaTool = {
+export const libraryReport: OllamaTool = {
   type: 'function',
   function: {
     name: 'library_report',
@@ -1143,7 +1143,7 @@ const libraryReport: OllamaTool = {
   },
 };
 
-const whatToWatch: OllamaTool = {
+export const whatToWatch: OllamaTool = {
   type: 'function',
   function: {
     name: 'what_to_watch',
@@ -1158,7 +1158,7 @@ const whatToWatch: OllamaTool = {
   },
 };
 
-const mediaQuiz: OllamaTool = {
+export const mediaQuiz: OllamaTool = {
   type: 'function',
   function: {
     name: 'media_quiz',
@@ -1175,7 +1175,7 @@ const mediaQuiz: OllamaTool = {
 
 // ── 🔗 Cross-Service Intelligence ───────────────────────────────────────────
 
-const crossActorSearch: OllamaTool = {
+export const crossActorSearch: OllamaTool = {
   type: 'function',
   function: {
     name: 'cross_actor_search',
@@ -1190,7 +1190,7 @@ const crossActorSearch: OllamaTool = {
   },
 };
 
-const crossDuplicateCheck: OllamaTool = {
+export const crossDuplicateCheck: OllamaTool = {
   type: 'function',
   function: {
     name: 'cross_duplicate_check',
@@ -1199,7 +1199,7 @@ const crossDuplicateCheck: OllamaTool = {
   },
 };
 
-const crossQualityAudit: OllamaTool = {
+export const crossQualityAudit: OllamaTool = {
   type: 'function',
   function: {
     name: 'cross_quality_audit',
@@ -1213,7 +1213,7 @@ const crossQualityAudit: OllamaTool = {
   },
 };
 
-const crossSpaceAnalyzer: OllamaTool = {
+export const crossSpaceAnalyzer: OllamaTool = {
   type: 'function',
   function: {
     name: 'cross_space_analyzer',
@@ -1222,7 +1222,7 @@ const crossSpaceAnalyzer: OllamaTool = {
   },
 };
 
-const crossWatchUnwatched: OllamaTool = {
+export const crossWatchUnwatched: OllamaTool = {
   type: 'function',
   function: {
     name: 'cross_watch_unwatched',
@@ -1236,7 +1236,7 @@ const crossWatchUnwatched: OllamaTool = {
   },
 };
 
-const crossSubtitleAudit: OllamaTool = {
+export const crossSubtitleAudit: OllamaTool = {
   type: 'function',
   function: {
     name: 'cross_subtitle_audit',
@@ -1250,7 +1250,7 @@ const crossSubtitleAudit: OllamaTool = {
   },
 };
 
-const crossReleaseMonitor: OllamaTool = {
+export const crossReleaseMonitor: OllamaTool = {
   type: 'function',
   function: {
     name: 'cross_release_monitor',
@@ -1267,7 +1267,7 @@ const crossReleaseMonitor: OllamaTool = {
 
 // ── ⚙️ Automation ───────────────────────────────────────────────────────────
 
-const autoQualityUpgrade: OllamaTool = {
+export const autoQualityUpgrade: OllamaTool = {
   type: 'function',
   function: {
     name: 'auto_quality_upgrade',
@@ -1282,7 +1282,7 @@ const autoQualityUpgrade: OllamaTool = {
   },
 };
 
-const autoCleanup: OllamaTool = {
+export const autoCleanup: OllamaTool = {
   type: 'function',
   function: {
     name: 'auto_cleanup',
@@ -1291,7 +1291,7 @@ const autoCleanup: OllamaTool = {
   },
 };
 
-const autoMissingSearch: OllamaTool = {
+export const autoMissingSearch: OllamaTool = {
   type: 'function',
   function: {
     name: 'auto_missing_search',
@@ -1305,7 +1305,7 @@ const autoMissingSearch: OllamaTool = {
   },
 };
 
-const scheduledTask: OllamaTool = {
+export const scheduledTask: OllamaTool = {
   type: 'function',
   function: {
     name: 'scheduled_task',
@@ -1324,7 +1324,7 @@ const scheduledTask: OllamaTool = {
   },
 };
 
-const proactiveNotify: OllamaTool = {
+export const proactiveNotify: OllamaTool = {
   type: 'function',
   function: {
     name: 'proactive_notify',
@@ -1340,7 +1340,7 @@ const proactiveNotify: OllamaTool = {
 
 // ── 👁️ Vision (gemma3:27b) ──────────────────────────────────────────────────
 
-const visionIdentifyMedia: OllamaTool = {
+export const visionIdentifyMedia: OllamaTool = {
   type: 'function',
   function: {
     name: 'vision_identify_media',
@@ -1354,7 +1354,7 @@ const visionIdentifyMedia: OllamaTool = {
   },
 };
 
-const visionAnalyzePoster: OllamaTool = {
+export const visionAnalyzePoster: OllamaTool = {
   type: 'function',
   function: {
     name: 'vision_analyze_poster',
@@ -1368,7 +1368,7 @@ const visionAnalyzePoster: OllamaTool = {
   },
 };
 
-const visionUiHelp: OllamaTool = {
+export const visionUiHelp: OllamaTool = {
   type: 'function',
   function: {
     name: 'vision_ui_help',
