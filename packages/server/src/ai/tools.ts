@@ -1173,6 +1173,216 @@ const mediaQuiz: OllamaTool = {
   },
 };
 
+// ── 🔗 Cross-Service Intelligence ───────────────────────────────────────────
+
+const crossActorSearch: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'cross_actor_search',
+    description: '"Welche Filme mit [Schauspieler] habe ich?" – TMDB Credits vs. Radarr-Bibliothek.',
+    parameters: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Name des Schauspielers/Regisseurs' },
+      },
+      required: ['name'],
+    },
+  },
+};
+
+const crossDuplicateCheck: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'cross_duplicate_check',
+    description: 'Findet doppelte Filme in der Radarr-Bibliothek (gleiche TMDB-ID).',
+    parameters: { type: 'object', properties: {} },
+  },
+};
+
+const crossQualityAudit: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'cross_quality_audit',
+    description: 'Qualitäts-Audit: Welche Filme haben nur SD/720p?',
+    parameters: {
+      type: 'object',
+      properties: {
+        max_quality: { type: 'string', enum: ['720p', '1080p'], description: 'Maximale Qualität die als "niedrig" gilt (Standard: 720p)' },
+      },
+    },
+  },
+};
+
+const crossSpaceAnalyzer: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'cross_space_analyzer',
+    description: 'Speicherplatz-Analyse: Root-Folders, größte Dateien, Platz pro Genre.',
+    parameters: { type: 'object', properties: {} },
+  },
+};
+
+const crossWatchUnwatched: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'cross_watch_unwatched',
+    description: 'Ungesehene Medien finden: Bibliothek vs. Tautulli Watch-History.',
+    parameters: {
+      type: 'object',
+      properties: {
+        type: { type: 'string', enum: ['movie', 'tv'], description: 'Filme oder Serien (Standard: movie)' },
+      },
+    },
+  },
+};
+
+const crossSubtitleAudit: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'cross_subtitle_audit',
+    description: 'Untertitel-Audit: Welche Filme fehlen Untertitel in einer bestimmten Sprache?',
+    parameters: {
+      type: 'object',
+      properties: {
+        language: { type: 'string', description: 'Sprachcode (z.B. "de", "en") – Standard: de' },
+      },
+    },
+  },
+};
+
+const crossReleaseMonitor: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'cross_release_monitor',
+    description: 'Überwacht TMDB auf kommende Releases eines Schauspielers/Regisseurs.',
+    parameters: {
+      type: 'object',
+      properties: {
+        person_name: { type: 'string', description: 'Name der Person' },
+        person_id: { type: 'number', description: 'TMDB-Person-ID (optional, wird per Name gesucht)' },
+      },
+    },
+  },
+};
+
+// ── ⚙️ Automation ───────────────────────────────────────────────────────────
+
+const autoQualityUpgrade: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'auto_quality_upgrade',
+    description: 'Batch-Upgrade: Alle Filme auf ein höheres Qualitätsprofil umstellen. DESTRUKTIV.',
+    parameters: {
+      type: 'object',
+      properties: {
+        quality_profile_id: { type: 'number', description: 'Ziel-Qualitätsprofil-ID (leer = Profile anzeigen)' },
+        search_after: { type: 'boolean', description: 'Nach Upgrade automatisch suchen (Standard: true)' },
+      },
+    },
+  },
+};
+
+const autoCleanup: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'auto_cleanup',
+    description: 'Findet fehlgeschlagene und steckengebliebene Downloads zum Aufräumen.',
+    parameters: { type: 'object', properties: {} },
+  },
+};
+
+const autoMissingSearch: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'auto_missing_search',
+    description: 'Startet eine Suche nach allen fehlenden Filmen/Episoden. DESTRUKTIV.',
+    parameters: {
+      type: 'object',
+      properties: {
+        type: { type: 'string', enum: ['movie', 'series', 'both'], description: 'Was suchen (Standard: both)' },
+      },
+    },
+  },
+};
+
+const scheduledTask: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'scheduled_task',
+    description: 'Reminder und geplante Tasks erstellen, auflisten oder abbrechen.',
+    parameters: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['list', 'create', 'cancel'], description: 'Aktion (Standard: list)' },
+        description: { type: 'string', description: 'Beschreibung des Tasks (bei create)' },
+        type: { type: 'string', enum: ['reminder', 'monitor', 'recurring'], description: 'Task-Typ' },
+        trigger_condition: { type: 'string', description: 'Auslöse-Bedingung (z.B. "Staffel 3 Release")' },
+        next_check: { type: 'string', description: 'Nächster Check-Zeitpunkt (ISO-Datum)' },
+        id: { type: 'number', description: 'Task-ID (bei cancel)' },
+      },
+    },
+  },
+};
+
+const proactiveNotify: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'proactive_notify',
+    description: 'Status und Steuerung proaktiver AI-Benachrichtigungen.',
+    parameters: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['status', 'enable', 'disable'], description: 'Aktion (Standard: status)' },
+      },
+    },
+  },
+};
+
+// ── 👁️ Vision (gemma3:27b) ──────────────────────────────────────────────────
+
+const visionIdentifyMedia: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'vision_identify_media',
+    description: 'Identifiziert einen Film/Serie anhand eines Bildes oder Screenshots (benötigt hochgeladenes Bild).',
+    parameters: {
+      type: 'object',
+      properties: {
+        image: { type: 'string', description: 'Base64-encoded Bild (wird automatisch aus dem Chat-Upload befüllt)' },
+      },
+    },
+  },
+};
+
+const visionAnalyzePoster: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'vision_analyze_poster',
+    description: 'Analysiert ein Film-/Serien-Poster im Detail: Titel, Design, Stimmung, Schauspieler.',
+    parameters: {
+      type: 'object',
+      properties: {
+        image: { type: 'string', description: 'Base64-encoded Poster-Bild' },
+      },
+    },
+  },
+};
+
+const visionUiHelp: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'vision_ui_help',
+    description: 'Hilft dem User anhand eines nexarr-Screenshots: Was wird angezeigt? Wie nutze ich diese Seite?',
+    parameters: {
+      type: 'object',
+      properties: {
+        image: { type: 'string', description: 'Base64-encoded Screenshot' },
+        question: { type: 'string', description: 'Frage des Users zum Screenshot' },
+      },
+    },
+  },
+};
+
 // ── Registry ─────────────────────────────────────────────────────────────────
 
 /** Alle verfügbaren Tools */
@@ -1217,6 +1427,13 @@ export const allTools: OllamaTool[] = [
   analyticsConcurrentStreams, analyticsUserHistory,
   // Smart Features (5)
   recommend, buildWatchlist, libraryReport, whatToWatch, mediaQuiz,
+  // Cross-Service (7)
+  crossActorSearch, crossDuplicateCheck, crossQualityAudit, crossSpaceAnalyzer,
+  crossWatchUnwatched, crossSubtitleAudit, crossReleaseMonitor,
+  // Automation (5)
+  autoQualityUpgrade, autoCleanup, autoMissingSearch, scheduledTask, proactiveNotify,
+  // Vision (3)
+  visionIdentifyMedia, visionAnalyzePoster, visionUiHelp,
 ];
 
 /**
@@ -1234,6 +1451,7 @@ export const destructiveTools = new Set([
   'prowlarr_grab',
   'subtitles_search',
   'notifications_clear',
+  'auto_quality_upgrade', 'auto_missing_search',
 ]);
 
 /** Tool-Name → Tool-Definition Lookup */

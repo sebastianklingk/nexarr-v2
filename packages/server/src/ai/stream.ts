@@ -39,7 +39,7 @@ const MAX_TOOL_ITERATIONS = 5;
  */
 export function registerAiHandlers(socket: AiSocket): void {
   socket.on('ai:message', async (data: AiMessagePayload) => {
-    const { message, sessionId: clientSessionId } = data;
+    const { message, sessionId: clientSessionId, image } = data;
     const sessionId = clientSessionId || crypto.randomUUID();
 
     if (!message || typeof message !== 'string') {
@@ -87,6 +87,11 @@ export function registerAiHandlers(socket: AiSocket): void {
             name: call.function.name,
             arguments: call.function.arguments,
           });
+
+          // Inject image into vision tool arguments
+          if (image && call.function.name.startsWith('vision_')) {
+            call.function.arguments.image = image;
+          }
 
           const result = await executeToolCall(call);
 

@@ -189,6 +189,8 @@ export interface AiErrorPayload {
 export interface AiMessagePayload {
   message: string;
   sessionId?: string;
+  /** Base64-encoded Bild für Vision-Tools */
+  image?: string;
 }
 
 export interface AiToolCallPayload {

@@ -12,6 +12,8 @@ import AiActionButtons from './cards/AiActionButtons.vue';
 const ai = useAiStore();
 const input = ref('');
 const messagesEl = ref<HTMLElement | null>(null);
+const pendingImage = ref<string | null>(null);
+const fileInput = ref<HTMLInputElement | null>(null);
 
 // Quick Actions
 const quickActions = [
@@ -23,8 +25,38 @@ const quickActions = [
 
 function send(): void {
   if (!input.value.trim() || ai.isStreaming) return;
-  ai.sendMessage(input.value);
+  ai.sendMessage(input.value, pendingImage.value ?? undefined);
   input.value = '';
+  pendingImage.value = null;
+}
+
+function handleFileSelect(e: Event): void {
+  const target = e.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) return;
+  readImageFile(file);
+  target.value = '';
+}
+
+function handleDrop(e: DragEvent): void {
+  e.preventDefault();
+  const file = e.dataTransfer?.files?.[0];
+  if (file?.type.startsWith('image/')) readImageFile(file);
+}
+
+function readImageFile(file: File): void {
+  if (file.size > 10 * 1024 * 1024) return; // max 10MB
+  const reader = new FileReader();
+  reader.onload = () => {
+    const result = reader.result as string;
+    // Strip data URL prefix, keep only base64
+    pendingImage.value = result.includes(',') ? result.split(',')[1] : result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearImage(): void {
+  pendingImage.value = null;
 }
 
 function sendQuick(prompt: string): void {
@@ -96,7 +128,12 @@ watch(
     </div>
 
     <!-- Messages -->
-    <div ref="messagesEl" class="ai-messages">
+    <div
+      ref="messagesEl"
+      class="ai-messages"
+      @dragover.prevent
+      @drop="handleDrop"
+    >
       <!-- Empty State -->
       <div v-if="!ai.hasMessages" class="ai-empty">
         <div class="ai-empty-icon">🎬</div>
@@ -132,6 +169,14 @@ watch(
               <span class="ai-tool-name">{{ formatToolName(tc.name) }}</span>
             </div>
           </div>
+
+          <!-- Attached Image -->
+          <img
+            v-if="msg.image"
+            :src="'data:image/jpeg;base64,' + msg.image"
+            class="ai-msg-image"
+            alt="Uploaded image"
+          />
 
           <!-- Content -->
           <div class="ai-msg-content">
@@ -186,8 +231,33 @@ watch(
       </div>
     </div>
 
+    <!-- Pending Image Preview -->
+    <div v-if="pendingImage" class="ai-pending-image">
+      <img :src="'data:image/jpeg;base64,' + pendingImage" alt="Upload" class="ai-pending-thumb" />
+      <button class="ai-pending-remove" @click="clearImage()">×</button>
+    </div>
+
     <!-- Input -->
     <div class="ai-input-area">
+      <input
+        ref="fileInput"
+        type="file"
+        accept="image/*"
+        class="ai-file-input"
+        @change="handleFileSelect"
+      />
+      <button
+        class="ai-btn-icon ai-upload-btn"
+        title="Bild hochladen"
+        :disabled="ai.isStreaming"
+        @click="fileInput?.click()"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+          <circle cx="8.5" cy="8.5" r="1.5" />
+          <polyline points="21 15 16 10 5 21" />
+        </svg>
+      </button>
       <textarea
         v-model="input"
         class="ai-input"
@@ -420,6 +490,47 @@ watch(
   flex-direction: column;
   gap: var(--space-2);
   width: 100%;
+}
+
+/* ── Image ── */
+.ai-msg-image {
+  max-width: 200px;
+  max-height: 150px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+.ai-pending-image {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--bg-border);
+  background: var(--bg-elevated);
+}
+.ai-pending-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+.ai-pending-remove {
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ai-file-input {
+  display: none;
+}
+.ai-upload-btn {
+  flex-shrink: 0;
 }
 
 /* ── Error ── */

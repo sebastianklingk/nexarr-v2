@@ -32,6 +32,8 @@ export interface ChatMessage {
   toolCalls?: ToolCallInfo[];
   /** Rich Media Cards von Tool-Results */
   cards?: AiCard[];
+  /** Base64 Bild (für Vision-Messages) */
+  image?: string;
   /** Modell + Performance Infos */
   model?: string;
   evalCount?: number;
@@ -181,7 +183,7 @@ export const useAiStore = defineStore('ai', () => {
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
-  function sendMessage(text: string): void {
+  function sendMessage(text: string, image?: string): void {
     if (!text.trim() || isStreaming.value) return;
 
     const sock = ensureSocket();
@@ -193,6 +195,7 @@ export const useAiStore = defineStore('ai', () => {
       role: 'user',
       content: text.trim(),
       timestamp: Date.now(),
+      image,
     });
 
     // Leere Assistant-Message als Streaming-Platzhalter
@@ -209,6 +212,7 @@ export const useAiStore = defineStore('ai', () => {
     sock.emit('ai:message', {
       message: text.trim(),
       sessionId: sessionId.value ?? undefined,
+      image,
     });
   }
 

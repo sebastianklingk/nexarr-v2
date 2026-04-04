@@ -11,6 +11,9 @@ import * as system from './executors/system.executor.js';
 import * as navigation from './executors/navigation.executor.js';
 import * as analytics from './executors/analytics.executor.js';
 import * as smart from './executors/smart.executor.js';
+import * as cross from './executors/cross.executor.js';
+import * as automation from './executors/automation.executor.js';
+import * as vision from './executors/vision.executor.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -145,6 +148,27 @@ const handlers: Record<string, (args: Args) => Promise<ToolResult>> = {
   library_report:               smart.handleLibraryReport,
   what_to_watch:                smart.handleWhatToWatch,
   media_quiz:                   smart.handleMediaQuiz,
+
+  // Cross-Service Intelligence
+  cross_actor_search:           cross.handleCrossActorSearch,
+  cross_duplicate_check:        cross.handleCrossDuplicateCheck,
+  cross_quality_audit:          cross.handleCrossQualityAudit,
+  cross_space_analyzer:         cross.handleCrossSpaceAnalyzer,
+  cross_watch_unwatched:        cross.handleCrossWatchUnwatched,
+  cross_subtitle_audit:         cross.handleCrossSubtitleAudit,
+  cross_release_monitor:        cross.handleCrossReleaseMonitor,
+
+  // Automation
+  auto_quality_upgrade:         automation.handleAutoQualityUpgrade,
+  auto_cleanup:                 automation.handleAutoCleanup,
+  auto_missing_search:          automation.handleAutoMissingSearch,
+  scheduled_task:               automation.handleScheduledTask,
+  proactive_notify:             automation.handleProactiveNotify,
+
+  // Vision
+  vision_identify_media:        vision.handleVisionIdentifyMedia,
+  vision_analyze_poster:        vision.handleVisionAnalyzePoster,
+  vision_ui_help:               vision.handleVisionUiHelp,
 };
 
 /**
