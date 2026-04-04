@@ -82,6 +82,34 @@ export async function getCalendar(start: string, end: string): Promise<unknown[]
   }, TTL.CALENDAR);
 }
 
+// ── Lookup & Add ─────────────────────────────────────────────────────────────
+
+export async function lookup(term: string): Promise<unknown[]> {
+  const { data } = await client().get('/artist/lookup', { params: { term } });
+  return data as unknown[];
+}
+
+export async function addArtist(body: Record<string, unknown>): Promise<unknown> {
+  const { data } = await client().post('/artist', body);
+  C.invalidate('lidarr_artists');
+  C.invalidate('lidarr_albums');
+  return data;
+}
+
+export async function getRootFolders(): Promise<Array<{ id: number; path: string; freeSpace: number }>> {
+  return C.fetch('lidarr_rootfolders', async () => {
+    const { data } = await client().get('/rootfolder');
+    return data as Array<{ id: number; path: string; freeSpace: number }>;
+  }, TTL.LONG);
+}
+
+export async function getQualityProfiles(): Promise<unknown[]> {
+  return C.fetch('lidarr_qualityprofiles', async () => {
+    const { data } = await client().get('/qualityprofile');
+    return data as unknown[];
+  }, TTL.LONG);
+}
+
 // ── Write / Actions ───────────────────────────────────────────────────────────
 
 export async function updateAlbum(id: number, body: LidarrAlbum): Promise<LidarrAlbum> {
