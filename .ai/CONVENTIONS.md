@@ -467,28 +467,56 @@ import { getPlatformIcon } from '../utils/platformIcons.js';
 
 ### Vue Component: MediaIcon
 ```vue
-<!-- Brand-SVG für bekannte Codecs/Formate -->
-<MediaIcon category="audio_codec" value="truehd" :size="24" />
-<MediaIcon category="video_codec" value="hevc" :size="20" />
-<MediaIcon category="video_resolution" value="4k" :size="20" />
+<!-- Wortmarken-Logos (Dolby, DTS, HDR) – werden weiß gerendert -->
+<MediaIcon brand="dolby_vision" :height="13" />
+<MediaIcon brand="dolby_atmos" :height="13" />
+<MediaIcon brand="hdr10" :height="13" />
+<MediaIcon brand="dts" :height="13" />
 
-<!-- Standalone Brand-Icons (HDR, Dolby Vision etc.) -->
-<MediaIcon brand="dolby_vision" :size="32" />
-<MediaIcon brand="hdr10plus" :size="28" />
+<!-- Resolution PNGs (4K, 1080p) per category+value -->
+<MediaIcon category="video_resolution" value="4k" :height="13" />
 
-<!-- Fallback: Text-Badge wenn kein Icon gefunden -->
-<MediaIcon category="video_codec" value="unknown_codec" fallbackLabel="???" />
+<!-- Original-Farben beibehalten -->
+<MediaIcon brand="dolby_vision" :height="24" colorful />
+
+<!-- Fallback: Text-Badge wenn kein Icon -->
+<MediaIcon category="video_codec" value="unknown" fallback-label="???" />
 ```
 
+### TechBadge-Pattern (einheitlich in ALLEN Views)
+```typescript
+// Interface für alle Badge-Stellen (Hero, Tooltips, Episodes, Downloads)
+interface TechBadge {
+  label: string;     // Fallback-Text
+  color: string;     // Fallback-Farbe
+  brand?: string;    // → <MediaIcon :brand />
+  category?: string; // → <MediaIcon :category :value />
+  iconValue?: string;
+}
+
+// Template-Rendering:
+// <MediaIcon v-if="b.brand" :brand="b.brand" :height="13" />
+// <MediaIcon v-else-if="b.category && b.iconValue" :category="b.category" :value="b.iconValue" :height="13" />
+// <span v-else :style="{color:b.color}">{{ b.label }}</span>
+```
+
+### Welche Icons als Brand, welche als Text?
+| Brand-Icon ✅ (saubere Wortmarken) | Text-Badge ✅ (komplexe SVGs) |
+|---|---|
+| Dolby Vision, Dolby Atmos, Dolby Digital, DD+, TrueHD | H.264, H.265, AV1 (Box-Hintergründe) |
+| DTS, DTS-HD MA | VP9, FLAC, AAC, Opus |
+| HDR10, HDR10+ | 5.1, 7.1 (Channels) |
+| 4K, 1080p, 720p (Resolution PNGs via category) | Sprach-Kürzel (GER, ENG) |
+
 ### Regeln
-- **IMMER** `getMediaIcon()` / `<MediaIcon>` verwenden statt hardcodierte Pfade
-- **IMMER** `getRatingIcon()` für Rating-Seiten-Logos (IMDb, RT, TMDB)
-- **IMMER** `getPlatformIcon()` für Tautulli Stream-Player
-- Brand-SVGs haben Priorität über Tautulli-PNGs (gleicher Codec = SVG wird bevorzugt)
-- Alias-System normalisiert automatisch: `h265`→`hevc`, `truehd`→`dolby_truehd`, `2160`→`4k` etc.
-- Icons regenerieren: `bash scripts/download-icons.sh` (lädt von GitHub + Wikimedia)
+- **Weiß-Rendering:** `filter: brightness(0) invert(1)` – automatisch in MediaIcon.vue
+- **Nur `height` setzen**, nie `width` – Breite skaliert automatisch per Seitenverhältnis
+- **Icons OHNE Badge-Wrapper** – nackt inline, kein `border`, kein `background`, kein `padding`
+- **`align-items: center`** auf der Eltern-Row für vertikale Zentrierung
+- **Downloads:** `releaseBadges(title)` parst Release-Namen nach Codec-Keywords
+- Brand-SVGs regenerieren: `node scripts/fix-brand-icons.mjs` (Wikimedia, 1.5s Delay)
+- Tautulli PNGs + Rating SVGs: `bash scripts/download-icons.sh`
 - `ratingIcons.ts` wird vom Script auto-generiert – NICHT manuell editieren
-- `platformIcons.ts` wurde manuell aus Tautulli SVGs generiert
 - `mediaIcons.ts` ist handgeschrieben – neue Codecs/Aliases hier ergänzen
 
 ---

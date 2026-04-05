@@ -1383,6 +1383,38 @@ export const visionUiHelp: OllamaTool = {
   },
 };
 
+// ── 🚀 Composite Tools (Suche + Navigation in einem Schritt) ────────────────
+
+export const openMovie: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'open_movie',
+    description: 'Öffnet die Detail-Seite eines Films in nexarr. Sucht den Film in der Bibliothek und navigiert direkt dorthin. Nutze dieses Tool wenn der User einen Film ANZEIGEN, ÖFFNEN oder ZEIGEN möchte.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Filmtitel (oder Teil davon) zum Suchen und Öffnen' },
+      },
+      required: ['query'],
+    },
+  },
+};
+
+export const openSeries: OllamaTool = {
+  type: 'function',
+  function: {
+    name: 'open_series',
+    description: 'Öffnet die Detail-Seite einer Serie in nexarr. Sucht die Serie in der Bibliothek und navigiert direkt dorthin. Nutze dieses Tool wenn der User eine Serie ANZEIGEN, ÖFFNEN oder ZEIGEN möchte.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Serientitel (oder Teil davon) zum Suchen und Öffnen' },
+      },
+      required: ['query'],
+    },
+  },
+};
+
 // ── Registry ─────────────────────────────────────────────────────────────────
 
 /** Alle verfügbaren Tools */
@@ -1419,8 +1451,8 @@ export const allTools: OllamaTool[] = [
   audiobooksSearch, audiobooksDetails, audiobooksLibraries,
   // Gotify (2)
   notificationsList, notificationsClear,
-  // Navigation (3)
-  navigateTo, navigateToExternal, navigateSearch,
+  // Navigation (5)
+  navigateTo, navigateToExternal, navigateSearch, openMovie, openSeries,
   // Analytics (8)
   analyticsMostWatched, analyticsUserStats, analyticsLibraryStats,
   analyticsRecentlyAdded, analyticsWatchTimeTrend, analyticsTranscodeStats,

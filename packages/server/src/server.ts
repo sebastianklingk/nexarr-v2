@@ -6,6 +6,7 @@ import { initDb, dbGet, dbRun } from './db/index.js';
 import { createApp } from './app.js';
 import { initSocket } from './socket/index.js';
 import { warmCache, startCacheRefreshTimer, stopWarmup } from './cache/warmup.js';
+import { seedKnowledge } from './ai/knowledge-seed.js';
 
 async function bootstrap() {
   // 1. DB + Migrations
@@ -37,12 +38,17 @@ async function bootstrap() {
     }
     console.log('');
 
-    // 5. Cache-Warming im Hintergrund
+    // 5. Knowledge-Seeds laden (einmalig)
+    seedKnowledge().catch(err => {
+      console.warn('Knowledge-Seed Fehler:', (err as Error)?.message ?? err);
+    });
+
+    // 6. Cache-Warming im Hintergrund
     warmCache(4).catch(err => {
       console.warn('Cache-Warming Fehler:', (err as Error)?.message ?? err);
     });
 
-    // 6. Periodischer Refresh
+    // 7. Periodischer Refresh
     startCacheRefreshTimer();
   });
 

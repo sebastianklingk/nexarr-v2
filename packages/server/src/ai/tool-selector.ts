@@ -42,6 +42,8 @@ import {
   autoQualityUpgrade, autoCleanup, autoMissingSearch, scheduledTask, proactiveNotify,
   // Navigation
   navigateTo, navigateToExternal, navigateSearch,
+  // Composite (Suche + Navigate)
+  openMovie, openSeries,
   // Vision
   visionIdentifyMedia, visionAnalyzePoster, visionUiHelp,
 } from './tools.js';
@@ -59,20 +61,22 @@ const categories: ToolCategory[] = [
     name: 'movies',
     keywords: ['film', 'movie', 'kino', 'radarr', 'tmdb',
                'hinzufügen', 'poster', 'imdb', 'dune', 'inception',
-               'avengers', 'batman', 'marvel', 'dc'],
+               'avengers', 'batman', 'marvel', 'dc',
+               'öffne', 'öffnen', 'zeig', 'zeige', 'anzeigen', 'navigiere'],
     tools: [moviesSearch, moviesLookup, moviesAdd, moviesDetails, moviesDelete,
             moviesTriggerSearch, moviesInteractiveSearch, moviesGrabRelease,
             moviesMissing, moviesHistory, moviesUpdate, moviesTmdbRich,
-            moviesQualityProfiles],
+            moviesQualityProfiles, openMovie, navigateSearch],
   },
   {
     name: 'series',
     keywords: ['serie', 'series', 'staffel', 'episode', 'sonarr', 'folge',
-               'season', 'tv show', 'fernseh', 'anime'],
+               'season', 'tv show', 'fernseh', 'anime',
+               'öffne', 'öffnen', 'zeig', 'zeige', 'anzeigen', 'navigiere'],
     tools: [seriesSearch, seriesLookup, seriesAdd, seriesDetails, seriesDelete,
             seriesEpisodes, seriesTriggerSearch, seriesEpisodeSearch,
             seriesGrabRelease, seriesMissing, seriesHistory,
-            seriesSeasonMonitor, seriesUpdate, seriesTmdbRich],
+            seriesSeasonMonitor, seriesUpdate, seriesTmdbRich, openSeries, navigateSearch],
   },
   {
     name: 'music',
@@ -153,7 +157,8 @@ const categories: ToolCategory[] = [
 const BASE_TOOLS: OllamaTool[] = [
   navigateTo,
   navigateToExternal,
-  navigateSearch,
+  openMovie,          // Composite: sucht Film + navigiert zur Detail-Seite
+  openSeries,         // Composite: sucht Serie + navigiert zur Detail-Seite
   statsOverview,
 ];
 

@@ -131,6 +131,8 @@ const handlers: Record<string, (args: Args) => Promise<ToolResult>> = {
   navigate_to:               navigation.handleNavigateTo,
   navigate_to_external:      navigation.handleNavigateToExternal,
   navigate_search:           navigation.handleNavigateSearch,
+  open_movie:                navigation.handleOpenMovie,
+  open_series:               navigation.handleOpenSeries,
 
   // Analytics (Tautulli)
   analytics_most_watched:       analytics.handleAnalyticsMostWatched,

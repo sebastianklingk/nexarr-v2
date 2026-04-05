@@ -50,7 +50,10 @@ const envSchema = z.object({
   TMDB_API_KEY:      optStr,
 
   OLLAMA_URL:        optUrl,
-  OLLAMA_MODEL:      z.string().default('qwen3:32b'),
+  OLLAMA_CHAT_MODEL:   z.string().default('qwen3:30b'),
+  OLLAMA_EMBED_MODEL:  z.string().default('nomic-embed-text'),
+  OLLAMA_VISION_MODEL: z.string().default('gemma3:27b'),
+  OLLAMA_CTX_SIZE:     z.coerce.number().default(65536),
 
   ABS_URL:           optUrl,
   ABS_TOKEN:         optStr,

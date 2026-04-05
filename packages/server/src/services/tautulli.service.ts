@@ -232,6 +232,49 @@ export async function getUsers(): Promise<unknown> {
   }, TTL.COLLECTION);
 }
 
+// ── User Watch Time Stats ────────────────────────────────────────────────────
+
+export async function getUserWatchTimeStats(userId: number): Promise<unknown> {
+  return C.fetch(`tautulli_user_watchtime_${userId}`, async () => {
+    const { data } = await api('get_user_watch_time_stats', { user_id: userId });
+    return data?.response?.data ?? [];
+  }, TTL.STATS);
+}
+
+export async function getUserPlayerStats(userId: number): Promise<unknown> {
+  return C.fetch(`tautulli_user_player_${userId}`, async () => {
+    const { data } = await api('get_user_player_stats', { user_id: userId });
+    return data?.response?.data ?? [];
+  }, TTL.STATS);
+}
+
+// ── Library Watch Time Stats ─────────────────────────────────────────────────
+
+export async function getLibraryWatchTimeStats(sectionId: number): Promise<unknown> {
+  return C.fetch(`tautulli_lib_watchtime_${sectionId}`, async () => {
+    const { data } = await api('get_library_watch_time_stats', { section_id: sectionId });
+    return data?.response?.data ?? [];
+  }, TTL.STATS);
+}
+
+// ── Recently Added ───────────────────────────────────────────────────────────
+
+export async function getRecentlyAdded(count = 25): Promise<unknown> {
+  return C.fetch(`tautulli_recently_added_${count}`, async () => {
+    const { data } = await api('get_recently_added', { count });
+    return data?.response?.data?.recently_added ?? [];
+  }, TTL.STATS);
+}
+
+// ── Plays by Stream Type ─────────────────────────────────────────────────────
+
+export async function getPlaysByStreamType(timeRange = 30): Promise<unknown> {
+  return C.fetch(`tautulli_plays_stream_type_${timeRange}`, async () => {
+    const { data } = await api('get_plays_by_stream_type', { time_range: String(timeRange) });
+    return data?.response?.data ?? {};
+  }, TTL.STATS);
+}
+
 // Plex-Image Proxy (für StreamsView Poster)
 export async function getPlexImage(img: string, width: number, height: number): Promise<Buffer | null> {
   if (!env.TAUTULLI_URL || !env.TAUTULLI_API_KEY) return null;

@@ -188,14 +188,26 @@ async function streamFinalResponse(
         totalDuration: chunk.total_duration,
       });
 
-      // History speichern
+      // History speichern – Tool-Aufrufe als Kontext einschließen
       const history = getConversationMessages(sessionId);
-      // Finde die letzte User-Message
       const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+
+      // Tool-Calls aus der messages-Kette extrahieren für Kontext
+      const toolsSummary = messages
+        .filter(m => m.role === 'assistant' && m.tool_calls?.length)
+        .flatMap(m => m.tool_calls!.map(tc => tc.function.name))
+        .join(', ');
+
+      // Wenn Tools verwendet wurden: kurze Notiz im Assistant-Content
+      // damit der LLM bei der nächsten Anfrage weiß dass er Tools nutzen muss
+      const savedResponse = toolsSummary
+        ? `[Tools verwendet: ${toolsSummary}]\n${cleanResponse}`
+        : cleanResponse;
+
       const updatedHistory: OllamaMessage[] = [
         ...history,
         { role: 'user', content: lastUserMsg?.content || '' },
-        { role: 'assistant', content: cleanResponse },
+        { role: 'assistant', content: savedResponse },
       ];
 
       const trimmed = updatedHistory.length > 40

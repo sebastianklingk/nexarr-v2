@@ -27,6 +27,39 @@
 
 ---
 
+## Session 2026-04-04 – KI-Integration (Phase AI-1 bis AI-5)
+**Aktive Phase:** Phase AI – KI-Integration
+**Commits:** –
+
+### Erledigt
+- [x] **Phase AI-1 – Fundament:** ai.service.ts (Ollama HTTP Client, Streaming, /no_think), personality.ts (System-Prompt Builder), conversations.ts (SQLite CRUD), stream.ts (Socket.io Streaming + Tool-Loop), ai.routes.ts (REST Endpoints), 003_ai.sql (3 DB-Tabellen: ai_conversations, ai_memories, ai_knowledge)
+- [x] **Phase AI-2 – Tool-System:** tools.ts (21 Tools in 10 Kategorien), executor.ts (Tool-Dispatcher), agent.ts (Agentic Loop, max 5 Iterationen)
+- [x] **Phase AI-3 – Memory:** vectors.ts (Embedding + Cosine Similarity + semantische Suche), memory.ts (LLM-basierte Fakten-Extraktion, ADD/UPDATE/NOOP), summary.ts (Rolling Summary alle 10 Messages)
+- [x] **Phase AI-4 – RAG & Knowledge Base:** chunking.ts (Text/Markdown Chunking mit Overlap), knowledge.ts (Ingestion Pipeline + semantische Suche), knowledge-seed.ts (3 statische Wissens-Dokumente), library-analysis.ts (Bibliotheks-Statistiken + LLM-Geschmacksprofil), RAG-Kontext in personality.ts, 4 neue API-Endpunkte, seedKnowledge() beim Serverstart
+- [x] **Phase AI-5 – Frontend Chat Widget:** ai.store.ts (Pinia Store mit Socket.io Streaming), AiChatPanel.vue (Chat-UI mit Bubbles, Streaming, Quick Actions, Tool-Call Badges), AiChatWidget.vue (Floating Button + Panel), AiToolCallPayload in shared socket types, Tool-Call Events in stream.ts, env.d.ts für Vue SFC Types
+
+### Offen für nächste Session
+- [ ] Phase AI-6+ – Polish, Vision (gemma3:27b), Messenger-Gateway
+- [ ] Playwright-Tests für Chat-Widget im Browser
+- [ ] Library-Analyse als Scheduled Job (täglich)
+
+### Entscheidungen getroffen
+- qwen3:30b mit `/no_think` Prefix statt deepseek-r1 (besseres Tool Calling, schneller)
+- Vektor-Suche In-Memory in Node.js statt externe Vektor-DB (SQLite BLOB + Cosine Similarity)
+- nomic-embed-text (768-dim) für Embeddings
+- Socket.io Streaming für Token-by-Token Antworten (nicht HTTP Streaming)
+- Tool-Loop non-streaming (braucht vollständige Response für tool_calls Erkennung), finale Antwort streaming
+- node:sqlite (Node 22 built-in) statt better-sqlite3
+
+### Probleme / Learnings
+- qwen3:30b Hybrid-Thinking erzeugt `<think>` Tags → `/no_think` Prefix + stripThinkingTags() Fallback
+- SonarrSeries hat kein `seasonCount` direkt → aus `seasons[]` Array aggregieren
+- nomic-embed-text muss manuell gepullt werden (`ollama pull nomic-embed-text`)
+- Client-Typecheck braucht env.d.ts mit Vue SFC Modul-Deklaration
+- `npx tsc` muss aus dem Projektverzeichnis laufen (sonst falsches tsc-Paket)
+
+---
+
 ## Session 2026-03-30 – Kickoff
 **Aktive Phase:** Planung / v2 Vorbereitung
 **Commits:** –

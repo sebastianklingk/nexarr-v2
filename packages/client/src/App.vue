@@ -5,6 +5,7 @@ import { useGotifyStore } from './stores/gotify.store.js';
 import { computed, watch } from 'vue';
 import Sidebar from './components/layout/Sidebar.vue';
 import ToastContainer from './components/layout/ToastContainer.vue';
+import AiChatWidget from './components/ai/AiChatWidget.vue';
 
 const auth   = useAuthStore();
 const gotify = useGotifyStore();
@@ -22,13 +23,14 @@ watch(isLoggedIn, (loggedIn) => {
     <template v-if="isLoggedIn">
       <Sidebar />
       <main class="main-content">
-        <RouterView v-slot="{ Component }">
+        <RouterView v-slot="{ Component, route }">
           <Transition name="page" mode="out-in">
-            <component :is="Component" />
+            <component :is="Component" :key="route.fullPath" />
           </Transition>
         </RouterView>
       </main>
       <ToastContainer />
+      <AiChatWidget />
     </template>
     <template v-else>
       <RouterView />

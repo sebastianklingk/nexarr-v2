@@ -52,3 +52,66 @@ export async function handleNavigateSearch(args: Args): Promise<ToolResult> {
     data: { _action: { type: 'navigate', path: `/search?q=${encodeURIComponent(query)}` } },
   };
 }
+
+// ── Composite: Open Movie / Open Series (Suche + Navigate in einem Schritt) ──
+
+import * as radarr from '../../services/radarr.service.js';
+import * as sonarr from '../../services/sonarr.service.js';
+
+export async function handleOpenMovie(args: Args): Promise<ToolResult> {
+  const query = String(args.query || '').toLowerCase();
+  if (!query) return { success: false, error: 'query ist erforderlich' };
+
+  const movies = await radarr.getMovies();
+  // Exact match first, then includes
+  const match = movies.find(m => m.title.toLowerCase() === query)
+    || movies.find(m => m.title.toLowerCase().includes(query));
+
+  if (!match) {
+    return {
+      success: false,
+      error: `Film "${args.query}" nicht in der Bibliothek gefunden. Nutze movies_lookup um auf TMDB zu suchen.`,
+    };
+  }
+
+  return {
+    success: true,
+    data: {
+      title: match.title,
+      year: match.year,
+      id: match.id,
+      tmdbId: match.tmdbId,
+      hasFile: match.hasFile,
+      _action: { type: 'navigate', path: `/movies/${match.id}` },
+    },
+  };
+}
+
+export async function handleOpenSeries(args: Args): Promise<ToolResult> {
+  const query = String(args.query || '').toLowerCase();
+  if (!query) return { success: false, error: 'query ist erforderlich' };
+
+  const series = await sonarr.getSeries();
+  const match = series.find(s => s.title.toLowerCase() === query)
+    || series.find(s => s.title.toLowerCase().includes(query));
+
+  if (!match) {
+    return {
+      success: false,
+      error: `Serie "${args.query}" nicht in der Bibliothek gefunden. Nutze series_lookup um auf TVDB zu suchen.`,
+    };
+  }
+
+  return {
+    success: true,
+    data: {
+      title: match.title,
+      year: match.year,
+      id: match.id,
+      tvdbId: match.tvdbId,
+      tmdbId: (match as unknown as Record<string, unknown>).tmdbId,
+      status: match.status,
+      _action: { type: 'navigate', path: `/series/${match.id}` },
+    },
+  };
+}

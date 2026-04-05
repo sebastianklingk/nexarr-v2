@@ -22,6 +22,7 @@ import { bazarrRouter }   from './routes/bazarr.routes.js';
 import { tmdbRouter }     from './routes/tmdb.routes.js';
 import { plexRouter }     from './routes/plex.routes.js';
 import { absRouter }      from './routes/abs.routes.js';
+import { aiRouter }       from './routes/ai.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -68,6 +69,7 @@ export function createApp() {
   app.use('/api/tmdb',         tmdbRouter);
   app.use('/api/plex',         plexRouter);
   app.use('/api/abs',          absRouter);
+  app.use('/api/ai',           aiRouter);
 
   // ── Static (Production) ───────────────────────────────────────────────────
   if (env.NODE_ENV === 'production') {

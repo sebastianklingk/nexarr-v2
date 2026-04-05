@@ -1,8 +1,8 @@
 # nexarr v2 – AI Context
 > Dieses Dokument wird am Ende jeder Session aktualisiert.
-> Zuletzt aktualisiert: 03.04.2026 – Icon-System: Media/Rating/Brand Icons + MediaIcon Component
-> Aktualisiert von: Chat-Claude
-> Stand: Phase 10 ✅ KOMPLETT · Phase 11 Schritt 5 ✅ + Downloads-Polish + Verschlüsselung + StreamsView + Kalender-Polish + Icon-System
+> Zuletzt aktualisiert: 04.04.2026 – KI-Integration Phase AI-1 bis AI-5 komplett
+> Aktualisiert von: Claude Code
+> Stand: Phase 10 ✅ KOMPLETT · Phase 11 Schritt 5 ✅ + Downloads-Polish + Verschlüsselung + StreamsView + Kalender-Polish + Icon-System Integration · **Phase AI-5 ✅ KOMPLETT**
 
 ---
 
@@ -143,11 +143,13 @@ packages/
 │       ├── config/env.ts
 │       ├── cache/cache.ts       → C.fetch(), C.invalidate(), C.invalidatePattern()
 │       ├── routes/*.routes.ts
-│       └── services/*.service.ts
+│       ├── services/*.service.ts
+│       └── ai/                  → KI-Layer (14 Module: Ollama, Tools, Memory, RAG, Streaming)
 └── client/     → Vue 3 Frontend
     └── src/
         ├── components/ui/       → PosterCard, InteractiveSearchModal, ConfirmDialog, MediaIcon
-        ├── stores/*.store.ts
+        ├── components/ai/       → AiChatWidget, AiChatPanel
+        ├── stores/*.store.ts    → inkl. ai.store.ts
         ├── utils/               → images.ts, mediaIcons.ts, ratingIcons.ts, platformIcons.ts
         └── views/*View.vue
     └── public/icons/        → brands/ (21 SVG), media/ (76 PNG), rating/ (7 SVG)
@@ -294,16 +296,124 @@ TMDB: trending/discover/details/similar; Radarr/Sonarr/Lidarr: qualityprofiles/h
   - **Media Flag PNGs** (76): video_codec, audio_codec, audio_channels, video_resolution, content_rating → `public/icons/media/{category}/`
   - **Rating SVGs** (7): IMDb, TMDB, TVDB, Rotten Tomatoes (ripe/rotten), Audience (upright/spilled) → `public/icons/rating/`
 - **Quellen:** Tautulli GitHub (media_flags PNGs + rating SVGs) + Wikimedia Commons (Brand SVGs)
-- **Download-Script:** `bash scripts/download-icons.sh` – lädt alles + generiert `ratingIcons.ts`
+- **Download-Scripts:**
+  - `bash scripts/download-icons.sh` – lädt Tautulli PNGs + Rating SVGs + generiert `ratingIcons.ts`
+  - `node scripts/fix-brand-icons.mjs` – lädt Brand SVGs von Wikimedia (1.5s Delay, korrekte API-URLs, skip-already-valid)
 - **Utilities:**
-  - `packages/client/src/utils/mediaIcons.ts` – Zentrale Registry: `getMediaIcon(category, value)`, `getBrandIcon(key)`, `getMediaLabel(category, value)`. Brand-SVGs haben Priorität über PNGs. Alias-System normalisiert Codec-Namen (h265→hevc, truehd→dolby_truehd etc.)
-  - `packages/client/src/utils/ratingIcons.ts` – Inline-SVGs: `getRatingIcon(source)` mit Alias-Support (imdb, tmdb, tvdb, rotten tomatoes, audience)
-  - `packages/client/src/utils/platformIcons.ts` – Inline-SVGs: `getPlatformIcon(platform)` für Tautulli Stream-Player (26 Plattformen)
-- **Vue Component:** `packages/client/src/components/ui/MediaIcon.vue`
-  - `<MediaIcon category="audio_codec" value="truehd" :size="24" />` → zeigt Brand-SVG
-  - `<MediaIcon brand="dolby_vision" :size="32" />` → Standalone Brand-Icon
+  - `mediaIcons.ts` – `getMediaIcon(category, value)`, `getBrandIcon(key)`, `getMediaLabel()`. Brand-SVGs > PNGs. Alias-System (h265→hevc, truehd→dolby_truehd etc.)
+  - `ratingIcons.ts` – Inline-SVGs: `getRatingIcon(source)` (auto-generiert)
+  - `platformIcons.ts` – Inline-SVGs: `getPlatformIcon(platform)` (26 Plattformen)
+- **Vue Component:** `MediaIcon.vue`
+  - Props: `brand?`, `category?`, `value?`, `height?` (default 16), `colorful?` (default false = weiß)
+  - Weiß-Rendering via `filter: brightness(0) invert(1)` – funktioniert für alle SVGs/PNGs
+  - `width: auto` mit fixierter Höhe für korrekte Seitenverhältnisse
   - Fallback: Text-Badge wenn kein Icon gefunden
-- **Nicht enthalten:** aspect_ratio, video_framerate (bewusst weggelassen), studio-Logos (605 PNGs, zu viele)
+
+### Icon-Integration in Views ✅
+- **TechBadge-Pattern:** `{label, color, brand?, category?, iconValue?}` – einheitliches Interface für alle Badge-Stellen
+  - `brand` → `<MediaIcon :brand />` (Dolby, DTS, HDR Familie – saubere Wortmarken)
+  - `category`+`iconValue` → `<MediaIcon :category :value />` (4K, 1080p Resolution-PNGs)
+  - Kein brand/category → Text-Badge `<span>` mit Farbe
+- **Wo integriert:**
+  - **MovieDetailView Hero-Meta:** Brand-Icons inline zwischen Jahr/Runtime/Resolution (13px)
+  - **MovieDetailView Datei-Tab:** Duplicate Tech-Row entfernt (redundant mit Hero)
+  - **SeriesDetailView Episode-Badges:** Brand-Icons (10px) ohne Badge-Wrapper direkt inline
+  - **PosterCard Tooltip:** Brand-Icons in Tech-Badge-Zeile (11px), kein Border/Background
+  - **MoviesView → PosterCard:** techBadges mit brand-Keys durchgereicht
+  - **DownloadsView:** `releaseBadges(title)` parst Release-Namen nach DV, HDR10, Atmos, TrueHD, DTS, DD+ → Brand-Icons neben Quality-Badge
+- **Bewusst KEIN Brand-Icon für:** H.264, HEVC, AV1 – deren SVGs haben Box-Hintergründe die bei kleinen Größen als weiße Quadrate erscheinen. Bleiben Text-Badges.
+- **Noch offen:**
+  - [ ] Rating-Icons (IMDb/TMDB/RT) in RatingPills.vue einbauen
+  - [ ] StreamsView tiefere Integration (Decision/Tech-Badges)
+
+---
+
+## KI-Integration – Stand (Phase AI)
+
+> Vollständige Roadmap: `.ai/ROADMAP_AI.md`
+> Kickoff-Prompt: `.ai/CLAUDE_CODE_PROMPT_AI.md`
+
+### Hardware & Modelle
+- **GPU:** NVIDIA RTX 6000 Ada – 48 GB VRAM (auf ODIN, GPU #1)
+- **Chat:** qwen3:30b (~20 GB VRAM) – mit `/no_think` Prefix
+- **Embeddings:** nomic-embed-text (~275 MB VRAM) – 768-dim
+- **Vision:** gemma3:27b (~18 GB VRAM) – noch nicht integriert
+- **Ollama:** http://192.168.188.42:11434
+
+### .env Keys (AI)
+```bash
+OLLAMA_URL=http://192.168.188.42:11434
+OLLAMA_CHAT_MODEL=qwen3:30b
+OLLAMA_EMBED_MODEL=nomic-embed-text
+OLLAMA_VISION_MODEL=gemma3:27b
+OLLAMA_CTX_SIZE=65536
+```
+
+### Phase AI-1: Fundament ✅
+- `packages/server/src/ai/ai.service.ts` – Ollama HTTP Client (chat, chatStream, getModels, getStatus, stripThinkingTags)
+- `packages/server/src/ai/personality.ts` – System-Prompt Builder (async, mit Memories + RAG + Summary)
+- `packages/server/src/ai/conversations.ts` – SQLite Conversation CRUD
+- `packages/server/src/ai/stream.ts` – Socket.io AI Streaming Handler (Tool-Loop + Token-Stream + Tool-Call Events)
+- `packages/server/src/routes/ai.routes.ts` – REST: GET /api/ai/status, GET /api/ai/models, POST /api/ai/chat + Knowledge/Library Endpoints
+- `packages/server/src/db/migrations/003_ai.sql` – Tabellen: ai_conversations, ai_memories, ai_knowledge
+
+### Phase AI-2: Tool-System ✅
+- `packages/server/src/ai/tools.ts` – 21 Tools in 10 Kategorien (Movies, Series, Music, Downloads, Calendar, Streams, Prowlarr, System, Overseerr, Discover)
+- `packages/server/src/ai/executor.ts` – Tool-Dispatcher (executeToolCall, isDestructive)
+- `packages/server/src/ai/agent.ts` – Agentic Loop (max 5 Iterationen, Temperature 0.3)
+
+### Phase AI-3: Memory ✅
+- `packages/server/src/ai/vectors.ts` – Embedding (embed, embedBatch), Cosine Similarity, semanticSearch, Float32Array↔BLOB
+- `packages/server/src/ai/memory.ts` – Memory Extraction (LLM-basiert: ADD/UPDATE/NOOP), getRelevantMemories (semantisch), invalidateMemory (soft delete)
+- `packages/server/src/ai/summary.ts` – Rolling Summary (alle 10 Messages), gespeichert in ai_conversations
+
+### Phase AI-4: RAG & Knowledge Base ✅
+- `packages/server/src/ai/chunking.ts` – chunkText (Overlap 200 Zeichen), chunkMarkdown (Section-basiert)
+- `packages/server/src/ai/knowledge.ts` – Ingestion Pipeline (chunk → embed → SQLite), searchKnowledge (semantisch), deleteBySource
+- `packages/server/src/ai/knowledge-seed.ts` – 3 statische Dokumente (nexarr Help, Qualitäts-Guide, Troubleshooting), seedKnowledge() beim Serverstart
+- `packages/server/src/ai/library-analysis.ts` – analyzeLibrary() (Genres, Dekaden, Qualität, Top-Rated), generateLibraryProfile() (LLM-Profil → Memory + Knowledge)
+- **API:** GET /api/ai/knowledge/stats, POST /api/ai/knowledge/seed, GET /api/ai/library/stats, POST /api/ai/library/analyze
+- personality.ts: RAG-Kontext via searchKnowledge() in {SYSTEM_CONTEXT}
+
+### Phase AI-5: Frontend Chat Widget ✅
+- `packages/client/src/stores/ai.store.ts` – Pinia Store: Socket.io Streaming, Messages, Tool-Call Tracking, Session Management
+- `packages/client/src/components/ai/AiChatPanel.vue` – Chat-Interface: Message-Bubbles (User/Assistant), Streaming mit Typing-Indicator, Tool-Call Badges (Running/Done/Error), Quick Actions, Auto-Scroll, Error-Display
+- `packages/client/src/components/ai/AiChatWidget.vue` – Floating Action Button (Pulse bei Streaming) + Panel mit Slide-Transition
+- `packages/shared/src/types/socket.ts` – AiToolCallPayload + ai:tool_call Event
+- `packages/client/src/App.vue` – AiChatWidget integriert (nur bei isLoggedIn)
+- `packages/client/src/env.d.ts` – Vue SFC Typ-Deklaration
+
+### Phase AI-6+: Polish, Vision, Messenger (offen)
+- [ ] Vision-Integration (gemma3:27b) – Poster-Analyse, Screenshot-Erkennung
+- [ ] Messenger-Gateway (Telegram, Signal, Discord)
+- [ ] Library-Analyse als Scheduled Job (täglich)
+- [ ] Inline AI in Views (Empfehlungen, Shortcuts)
+- [ ] Playwright-Tests für Chat-Widget
+
+### AI-Architektur Übersicht
+```
+packages/server/src/ai/
+├── ai.service.ts        → Ollama HTTP Client (chat, stream, embed)
+├── personality.ts       → System-Prompt Builder (Memories + RAG + Summary)
+├── conversations.ts     → SQLite Conversation CRUD
+├── stream.ts            → Socket.io Streaming + Tool-Loop
+├── agent.ts             → Agentic Loop (REST)
+├── tools.ts             → 21 Tool-Definitionen
+├── executor.ts          → Tool-Dispatcher
+├── vectors.ts           → Embeddings + Cosine Similarity + semantische Suche
+├── memory.ts            → Memory Extraction + Retrieval
+├── summary.ts           → Rolling Conversation Summary
+├── chunking.ts          → Text/Markdown Chunking
+├── knowledge.ts         → Knowledge Ingestion + Query
+├── knowledge-seed.ts    → Statische Knowledge Seeds
+└── library-analysis.ts  → Bibliotheks-Statistiken + Geschmacksprofil
+
+packages/client/src/
+├── stores/ai.store.ts           → Pinia Store (Socket.io Streaming)
+└── components/ai/
+    ├── AiChatWidget.vue         → Floating Button + Panel
+    └── AiChatPanel.vue          → Chat-Interface
+```
 
 ---
 

@@ -5,6 +5,30 @@
 
 ---
 
+## 2026-04-04 · App.vue · Vue Router recycelt Component bei Param-Wechsel
+**Was passierte:** AI-Navigation von `/movies/123` (Inception) zu `/movies/456` (Dune) via `router.push()` änderte die URL, aber MovieDetailView wurde nicht neu gerendert. Vue Router erkennt denselben Component-Typ und recycelt die Instanz statt sie neu zu mounten. `onMounted()` wird nicht erneut aufgerufen → alte Daten bleiben.
+**Regel:** `<component :is="Component" :key="route.fullPath" />` in App.vue erzwingt Re-Mount bei jedem Pfadwechsel. IMMER `:key="route.fullPath"` auf der `<component>` innerhalb von `<RouterView v-slot="{ Component, route }">` setzen. Ohne Key werden Detail-Views (MovieDetailView, SeriesDetailView, ArtistDetailView) bei ID-Wechsel nicht aktualisiert.
+
+## 2026-04-04 · AI Tools · 93 Tools auf einmal an Ollama schicken überfordert das Modell
+**Was passierte:** Alle 93+ Tool-Definitionen (~15.000 Token, 46 KB JSON-Schema) wurden bei JEDEM Chat-Request an qwen3:30b geschickt. Das Modell konnte aus 93 Optionen nicht zuverlässig die richtige wählen → rief oft KEINE Tools auf, antwortete nur mit Text.
+**Regel:** NIEMALS alle Tools auf einmal schicken. Immer `tool-selector.ts` verwenden: Keyword-basierte Intent-Erkennung → max 2 Kategorien → 12-20 Tools pro Request. Base-Tools (navigate, stats) sind immer dabei.
+
+## 2026-04-04 · AI Vision · Bild wird an Ollama gesendet aber LLM sieht es nicht
+**Was passierte:** Frontend schickte Bild als Base64 im Socket.io Payload. Backend extrahierte das Bild, schickte aber nur Text-Messages an Ollama. Der LLM wusste nicht dass ein Bild vorhanden war → rief kein Vision-Tool auf. Das Bild wurde erst NACH dem Tool-Call injiziert (Henne-Ei-Problem).
+**Regel:** Wenn ein Bild vorhanden ist, IMMER einen Hinweis an die User-Message anhängen: `[📷 Ein Bild wurde hochgeladen. Verwende vision_identify_media...]`. Der LLM sieht den Hint → ruft das Vision-Tool auf → bestehende Image-Injection übergibt das Base64-Bild.
+
+## 2026-04-04 · AI Personality · /no_think deaktiviert Qwen3 Tool-Calling Reasoning
+**Was passierte:** System-Prompt startete mit `/no_think` um `<think>`-Tags zu unterdrücken. Qwen3 nutzt aber genau diese Thinking-Phase um zu entscheiden WELCHES Tool aufgerufen werden soll. Ohne Thinking: deutlich schlechtere Tool-Auswahl.
+**Regel:** `/no_think` NIEMALS im System-Prompt verwenden wenn Tools aktiv sind. Stattdessen `stripThinkingTags()` auf der Antwort anwenden bevor sie ans Frontend geht. Thinking ist gewollt für Tool-Entscheidungen.
+
+## 2026-04-04 · AI Navigation · open_movie/open_series statt navigate_search
+**Was passierte:** `navigate_search` war ein Base-Tool (immer verfügbar). Der LLM nahm es als bequeme Abkürzung statt die Zwei-Schritt-Kette movies_search → navigate_to zu verwenden. Ergebnis: User landete immer auf der Suchseite statt auf der Film-Detailseite.
+**Regel:** Composite-Tools (`open_movie`, `open_series`) verwenden die Suche + Navigation in einem Schritt kombinieren. `navigate_search` aus den Base-Tools entfernen, nur in spezifischen Kategorien verfügbar machen.
+
+## 2026-04-04 · AI Tool Results · Radarr-ID ≠ TMDB-ID
+**Was passierte:** `open_movie` gab `id: match.id` (Radarr-ID, z.B. 1604) zurück. Der LLM baute daraus `tmdb.org/movie/1604` → komplett falscher Film. Radarr-IDs und TMDB-IDs sind völlig unterschiedliche Nummern.
+**Regel:** Tool-Results IMMER mit `tmdbId` (und ggf. `tvdbId`) zurückgeben wenn externe Links möglich sind. Im System-Prompt explizit anweisen: "Für TMDB-Links IMMER tmdbId verwenden, NIEMALS id."
+
 ## 2026-04-03 · MediaIcon.vue · Import-Pfad `@/` statt relativ
 **Was passierte:** `import ... from '@/utils/mediaIcons'` in MediaIcon.vue – vue-tsc konnte das Modul nicht finden weil kein `paths`-Alias in tsconfig.json konfiguriert ist.
 **Regel:** nexarr v2 nutzt KEINE `@/`-Aliases. IMMER relative Pfade mit `.js`-Extension: `from '../utils/mediaIcons.js'`, `from '../../composables/useApi.js'` etc.

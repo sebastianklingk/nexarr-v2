@@ -149,6 +149,22 @@ export async function findTmdbIdByTvdbId(tvdbId: number): Promise<number | null>
   }, TTL.LONG);
 }
 
+// ── Person / Actor Search ────────────────────────────────────────────────────
+
+export async function searchPerson(name: string): Promise<unknown> {
+  return C.fetch(`tmdb_person_search_${name.slice(0, 30)}`, async () => {
+    const { data } = await client().get('/search/person', { params: { query: name } });
+    return data ?? { results: [] };
+  }, TTL.LONG);
+}
+
+export async function getPersonCredits(personId: number): Promise<unknown> {
+  return C.fetch(`tmdb_person_credits_${personId}`, async () => {
+    const { data } = await client().get(`/person/${personId}/combined_credits`);
+    return data ?? { cast: [], crew: [] };
+  }, TTL.LONG);
+}
+
 export async function getSeriesVideos(tmdbId: number): Promise<TMDBVideos> {
   return C.fetch(`tmdb_series_videos_${tmdbId}`, async () => {
     const [de, en] = await Promise.all([
